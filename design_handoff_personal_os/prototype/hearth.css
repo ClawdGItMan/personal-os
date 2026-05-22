@@ -1,0 +1,267 @@
+/* ============================================================
+   HEARTH — Colors & Type
+   Warm minimalist family OS. Editorial serif display +
+   humanist sans body on a cream foundation.
+   ============================================================ */
+
+@import url("https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Manrope:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+
+:root {
+  /* ─────────────────────────── COLOR ─────────────────────────── */
+
+  /* Cream foundation — never pure white */
+  --cream-50:  #FFFCF6;   /* page background, lightest */
+  --cream-100: #FBF5EA;   /* default app surface */
+  --cream-200: #F5ECDB;   /* raised surface, inputs */
+  --cream-300: #ECE0CB;   /* hover on surface, dividers */
+  --cream-400: #D9C9AE;   /* strong divider, disabled stroke */
+
+  /* Ember — primary accent (warm terracotta-orange) */
+  --ember-50:  #FDF1EA;
+  --ember-100: #FADCC9;
+  --ember-200: #F4B898;
+  --ember-300: #ED9569;
+  --ember-400: #E07856;   /* PRIMARY */
+  --ember-500: #C25D3F;
+  --ember-600: #9B4730;
+  --ember-700: #6E3122;
+
+  /* Honey — secondary accent (amber) */
+  --honey-50:  #FEF6E3;
+  --honey-100: #FCE9B8;
+  --honey-200: #F8D381;
+  --honey-300: #F4B860;   /* SECONDARY */
+  --honey-400: #DA9A3D;
+  --honey-500: #A8732A;
+  --honey-600: #6D4A1B;
+
+  /* Cocoa — deep neutral / text (not black) */
+  --cocoa-50:  #5C4A3A;
+  --cocoa-100: #4A3A2D;
+  --cocoa-200: #3A2C22;
+  --cocoa-300: #2A1F18;
+  --cocoa-400: #1B1410;   /* darkest text */
+
+  /* Semantic */
+  --sage-300:    #8FA67A;   /* success / done */
+  --sage-500:    #5E7A4D;
+  --rust-300:    #C25D3F;   /* warn / overdue (shares ember-500) */
+  --rust-500:    #8E3E26;
+  --slate-300:   #6B7280;   /* muted / system */
+  --slate-500:   #3F4750;
+
+  /* Foreground roles (semantic over palette) */
+  --fg-1: var(--cocoa-400);   /* primary text */
+  --fg-2: var(--cocoa-100);   /* body text */
+  --fg-3: var(--cocoa-50);    /* secondary text */
+  --fg-4: #8C7B68;            /* muted, captions */
+  --fg-5: #B8A78F;            /* placeholder, disabled */
+  --fg-on-accent: var(--cream-50);
+
+  /* Background roles */
+  --bg-page:      var(--cream-100);
+  --bg-surface:   var(--cream-50);
+  --bg-raised:    #FFFFFF;
+  --bg-sunken:    var(--cream-200);
+  --bg-hover:     var(--cream-300);
+
+  /* Borders */
+  --border-subtle:  rgba(42, 31, 24, 0.06);
+  --border-default: rgba(42, 31, 24, 0.10);
+  --border-strong:  rgba(42, 31, 24, 0.18);
+
+  /* Accent */
+  --accent:        var(--ember-400);
+  --accent-hover:  var(--ember-500);
+  --accent-press:  var(--ember-600);
+  --accent-soft:   var(--ember-50);
+
+  /* ─────────────────────────── TYPE ─────────────────────────── */
+
+  --font-display: "Newsreader", "Iowan Old Style", Georgia, serif;
+  --font-body:    "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-mono:    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Type scale — modest, editorial */
+  --text-xs:   12px;
+  --text-sm:   13px;
+  --text-base: 15px;
+  --text-md:   17px;
+  --text-lg:   20px;
+  --text-xl:   24px;
+  --text-2xl:  32px;
+  --text-3xl:  44px;
+  --text-4xl:  60px;
+  --text-5xl:  84px;
+
+  --leading-tight:  1.12;
+  --leading-snug:   1.28;
+  --leading-normal: 1.5;
+  --leading-loose:  1.65;
+
+  --tracking-tight:  -0.02em;
+  --tracking-snug:   -0.01em;
+  --tracking-normal: 0;
+  --tracking-wide:   0.04em;
+  --tracking-mega:   0.16em;
+
+  /* ─────────────────────────── SPACE ─────────────────────────── */
+
+  --s-1:  4px;
+  --s-2:  8px;
+  --s-3:  12px;
+  --s-4:  16px;
+  --s-5:  20px;
+  --s-6:  24px;
+  --s-8:  32px;
+  --s-10: 40px;
+  --s-12: 48px;
+  --s-16: 64px;
+  --s-20: 80px;
+  --s-24: 96px;
+
+  /* ─────────────────────────── RADIUS ─────────────────────────── */
+
+  --r-xs:   4px;
+  --r-sm:   6px;
+  --r-md:   10px;
+  --r-lg:   14px;
+  --r-xl:   20px;
+  --r-2xl:  28px;
+  --r-pill: 999px;
+
+  /* ─────────────────────────── SHADOW ─────────────────────────── */
+  /* Warm-tinted shadows. Never pure black. */
+
+  --shadow-xs: 0 1px 2px rgba(86, 56, 32, 0.06);
+  --shadow-sm: 0 1px 3px rgba(86, 56, 32, 0.06), 0 1px 2px rgba(86, 56, 32, 0.04);
+  --shadow-md: 0 4px 12px rgba(86, 56, 32, 0.08), 0 2px 4px rgba(86, 56, 32, 0.04);
+  --shadow-lg: 0 12px 32px rgba(86, 56, 32, 0.10), 0 4px 8px rgba(86, 56, 32, 0.05);
+  --shadow-xl: 0 24px 48px rgba(86, 56, 32, 0.14), 0 8px 16px rgba(86, 56, 32, 0.06);
+
+  /* Inner glow for inputs */
+  --shadow-inset: inset 0 1px 2px rgba(86, 56, 32, 0.05);
+
+  /* ─────────────────────────── MOTION ─────────────────────────── */
+
+  --ease-standard: cubic-bezier(0.32, 0.72, 0, 1);   /* Apple-ish */
+  --ease-entrance: cubic-bezier(0.16, 1, 0.3, 1);    /* expo-out, calm */
+  --ease-exit:     cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-spring:   cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --dur-instant: 80ms;
+  --dur-fast:    160ms;
+  --dur-base:    220ms;
+  --dur-slow:    360ms;
+  --dur-slower:  560ms;
+}
+
+/* ============================================================
+   SEMANTIC ELEMENT STYLES
+   Use these classes; don't reach for tokens directly in markup.
+   ============================================================ */
+
+.h-display {
+  font-family: var(--font-display);
+  font-size:   var(--text-5xl);
+  font-weight: 400;
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+  color: var(--fg-1);
+  font-optical-sizing: auto;
+}
+
+.h1 {
+  font-family: var(--font-display);
+  font-size:   var(--text-3xl);
+  font-weight: 400;
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+  color: var(--fg-1);
+}
+
+.h2 {
+  font-family: var(--font-display);
+  font-size:   var(--text-2xl);
+  font-weight: 400;
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-snug);
+  color: var(--fg-1);
+}
+
+.h3 {
+  font-family: var(--font-body);
+  font-size:   var(--text-lg);
+  font-weight: 600;
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-snug);
+  color: var(--fg-1);
+}
+
+.h4 {
+  font-family: var(--font-body);
+  font-size:   var(--text-md);
+  font-weight: 600;
+  line-height: var(--leading-snug);
+  color: var(--fg-1);
+}
+
+.body {
+  font-family: var(--font-body);
+  font-size:   var(--text-base);
+  font-weight: 400;
+  line-height: var(--leading-normal);
+  color: var(--fg-2);
+}
+
+.body-sm {
+  font-family: var(--font-body);
+  font-size:   var(--text-sm);
+  font-weight: 400;
+  line-height: var(--leading-normal);
+  color: var(--fg-2);
+}
+
+.caption {
+  font-family: var(--font-body);
+  font-size:   var(--text-xs);
+  font-weight: 500;
+  line-height: var(--leading-normal);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--fg-4);
+}
+
+.label {
+  font-family: var(--font-body);
+  font-size:   var(--text-sm);
+  font-weight: 500;
+  letter-spacing: var(--tracking-snug);
+  color: var(--fg-2);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size:   var(--text-sm);
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--fg-2);
+}
+
+.serif-italic {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  color: var(--fg-1);
+}
+
+/* Subtle global defaults you can opt into */
+.hearth-base {
+  background: var(--bg-page);
+  color: var(--fg-1);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
