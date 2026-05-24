@@ -42,10 +42,12 @@ These steps require human action outside of the agent's tools. **The executing a
 ├── .vercelignore                           [new, excludes design_handoff_personal_os]
 ├── package.json                            [new]
 ├── pnpm-lock.yaml                          [new]
-├── next.config.mjs                         [new]
+├── next.config.ts                          [new — scaffold uses .ts on Next 16]
 ├── tsconfig.json                           [new]
-├── tailwind.config.ts                      [new]
-├── postcss.config.mjs                      [new]
+├── postcss.config.mjs                      [new — Tailwind 4 PostCSS plugin]
+├── eslint.config.mjs                       [new — flat ESLint config]
+├── pnpm-workspace.yaml                     [new — allowBuilds policy for pnpm 11]
+                                            (No tailwind.config — Tailwind 4 uses CSS @theme blocks)
 ├── middleware.ts                           [new — auth redirect]
 ├── src/
 │   ├── app/
@@ -123,6 +125,8 @@ ESLint, pnpm. Foundation for Plan 1A.1."
 
 ## Task 2: Replace default styles with dark-theme tokens
 
+> **Tailwind 4 note:** Task 1 scaffolded Tailwind 4 (not 3 — Next.js 16 ships with Tailwind 4 by default). Tailwind 4 uses `@import "tailwindcss"` instead of the three `@tailwind` directives, and removes the JS config file in favor of CSS-based `@theme {}` blocks. The instructions below reflect this. Do NOT use `@tailwind base/components/utilities;` — that syntax does not exist in Tailwind 4 and will fail to compile.
+
 **Files:**
 - Modify: `src/app/globals.css`, `src/app/layout.tsx`, `src/app/page.tsx`
 
@@ -131,9 +135,7 @@ ESLint, pnpm. Foundation for Plan 1A.1."
 Replace entire contents of `src/app/globals.css` with:
 
 ```css
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 :root {
   /* Minimal dark-theme tokens (full system in Plan 1A.2) */
@@ -153,9 +155,11 @@ html, body {
 }
 ```
 
+Note: this removes the scaffold's default `@theme inline` block, Geist font setup, and `prefers-color-scheme` media query. Geist fonts can return in a later plan if we decide to use them; the design specifies Newsreader / Manrope / JetBrains Mono which arrive in Plan 1A.2's full token system.
+
 - [ ] **Step 2.2: Update root layout**
 
-Replace `src/app/layout.tsx` with:
+Replace `src/app/layout.tsx` with (removing the Geist font setup that the scaffold added):
 
 ```tsx
 import type { Metadata } from "next";
@@ -166,7 +170,11 @@ export const metadata: Metadata = {
   description: "Max's personal operating system",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
     <html lang="en" data-theme="dark">
       <body>{children}</body>
