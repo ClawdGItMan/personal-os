@@ -17,21 +17,26 @@ function LoginForm() {
     setStatus("sending");
     setErrorMsg("");
 
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/callback`,
-      },
-    });
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/callback`,
+        },
+      });
 
-    if (error) {
+      if (error) {
+        setStatus("error");
+        setErrorMsg(error.message);
+        return;
+      }
+
+      setStatus("sent");
+    } catch {
       setStatus("error");
-      setErrorMsg(error.message);
-      return;
+      setErrorMsg("Something went wrong. Please try again.");
     }
-
-    setStatus("sent");
   }
 
   return (
@@ -41,7 +46,7 @@ function LoginForm() {
           <div className="text-[10px] tracking-[0.18em] uppercase text-[color:var(--os-fg-3)]">
             MAX OS · V0
           </div>
-          <h1 className="text-2xl mt-2 font-[family-name:var(--font-display)]">Sign in</h1>
+          <h1 className="text-2xl mt-2 font-display">Sign in</h1>
           <p className="text-sm text-[color:var(--os-fg-3)] mt-1">
             Magic link to your inbox.
           </p>
@@ -66,6 +71,7 @@ function LoginForm() {
             <input
               type="email"
               required
+              aria-label="Email address"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
