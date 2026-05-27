@@ -46,9 +46,9 @@
   --os-r-pill: 999px;
 
   /* ---- Typography families (next/font vars set in layout.tsx) ---- */
-  --font-display: var(--font-newsreader), "Iowan Old Style", Georgia, serif;
-  --font-body:    var(--font-manrope), -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  --font-mono:    var(--font-jetbrains-mono), ui-monospace, "SF Mono", Menlo, monospace;
+  --os-font-display: var(--font-newsreader), "Iowan Old Style", Georgia, serif;
+  --os-font-body:    var(--font-manrope), -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --os-font-mono:    var(--font-jetbrains-mono), ui-monospace, "SF Mono", Menlo, monospace;
 
   /* ---- Type scale ---- */
   --text-xs: 12px;  --text-sm: 13px;  --text-base: 15px; --text-md: 17px;
@@ -147,9 +147,9 @@
   --color-os-honey: var(--os-honey);
   --color-os-rust: var(--os-rust);
 
-  --font-display: var(--font-display);
-  --font-body: var(--font-body);
-  --font-mono: var(--font-mono);
+  --font-display: var(--os-font-display);
+  --font-body: var(--os-font-body);
+  --font-mono: var(--os-font-mono);
 
   --radius-os-card: var(--os-r-card);
   --radius-os-inner: var(--os-r-inner);
@@ -160,7 +160,7 @@
 html, body {
   background-color: var(--os-bg);
   color: var(--os-fg-1);
-  font-family: var(--font-body);
+  font-family: var(--os-font-body);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
