@@ -32,7 +32,10 @@ create table public.finance_snapshots (
 
 alter table public.finance_snapshots enable row level security;
 create policy "finance_snapshots_select_own" on public.finance_snapshots for select using (auth.uid() = user_id);
-create policy "finance_snapshots_insert_own" on public.finance_snapshots for insert with check (auth.uid() = user_id);
+create policy "finance_snapshots_insert_own" on public.finance_snapshots for insert with check (
+  auth.uid() = user_id
+  and exists (select 1 from public.finance_accounts where id = account_id and user_id = auth.uid())
+);
 create policy "finance_snapshots_update_own" on public.finance_snapshots for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "finance_snapshots_delete_own" on public.finance_snapshots for delete using (auth.uid() = user_id);
 

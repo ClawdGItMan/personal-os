@@ -32,7 +32,10 @@ create table public.habit_logs (
 
 alter table public.habit_logs enable row level security;
 create policy "habit_logs_select_own" on public.habit_logs for select using (auth.uid() = user_id);
-create policy "habit_logs_insert_own" on public.habit_logs for insert with check (auth.uid() = user_id);
+create policy "habit_logs_insert_own" on public.habit_logs for insert with check (
+  auth.uid() = user_id
+  and exists (select 1 from public.habits where id = habit_id and user_id = auth.uid())
+);
 create policy "habit_logs_update_own" on public.habit_logs for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "habit_logs_delete_own" on public.habit_logs for delete using (auth.uid() = user_id);
 

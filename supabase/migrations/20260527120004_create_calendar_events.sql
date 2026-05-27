@@ -10,6 +10,9 @@ create table public.calendar_events (
   external_id text,
   source text not null default 'manual' check (source in ('manual','google_calendar')),
   created_at timestamptz not null default now(),
+  -- Dedupes synced events only. Manual events have external_id = NULL, and
+  -- Postgres treats NULLs as distinct in UNIQUE, so multiple manual events are
+  -- intentionally allowed; this constraint guards against duplicate provider syncs.
   unique (user_id, source, external_id)
 );
 

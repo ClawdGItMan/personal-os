@@ -17,6 +17,8 @@ create policy "training_sessions_delete_own" on public.training_sessions for del
 create trigger training_sessions_set_updated_at before update on public.training_sessions
   for each row execute function public.set_updated_at();
 
+create index training_sessions_user_started_idx on public.training_sessions (user_id, started_at desc);
+
 create table public.lifts (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -32,7 +34,10 @@ create table public.lifts (
 
 alter table public.lifts enable row level security;
 create policy "lifts_select_own" on public.lifts for select using (auth.uid() = user_id);
-create policy "lifts_insert_own" on public.lifts for insert with check (auth.uid() = user_id);
+create policy "lifts_insert_own" on public.lifts for insert with check (
+  auth.uid() = user_id
+  and exists (select 1 from public.training_sessions where id = session_id and user_id = auth.uid())
+);
 create policy "lifts_update_own" on public.lifts for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "lifts_delete_own" on public.lifts for delete using (auth.uid() = user_id);
 
