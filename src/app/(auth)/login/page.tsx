@@ -1,9 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-export default function LoginPage() {
+function LoginForm() {
+  const searchParams = useSearchParams();
+  const callbackError = searchParams.get("error");
+
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
@@ -37,11 +41,21 @@ export default function LoginPage() {
           <div className="text-[10px] tracking-[0.18em] uppercase text-[color:var(--os-fg-3)]">
             MAX OS · V0
           </div>
-          <h1 className="text-2xl mt-2">Sign in</h1>
+          <h1 className="text-2xl mt-2 font-[family-name:var(--font-display)]">Sign in</h1>
           <p className="text-sm text-[color:var(--os-fg-3)] mt-1">
             Magic link to your inbox.
           </p>
         </div>
+
+        {callbackError && status !== "sent" && (
+          <div className="mb-4 text-xs text-[color:var(--os-rust)]">
+            {callbackError === "missing_code"
+              ? "That sign-in link was incomplete. Try again."
+              : callbackError === "server_error"
+                ? "Something went wrong completing sign-in. Try again."
+                : decodeURIComponent(callbackError)}
+          </div>
+        )}
 
         {status === "sent" ? (
           <div className="text-sm text-[color:var(--os-accent)]">
@@ -66,11 +80,19 @@ export default function LoginPage() {
               {status === "sending" ? "Sending..." : "Send magic link"}
             </button>
             {status === "error" && (
-              <div className="text-xs text-red-400">{errorMsg}</div>
+              <div className="text-xs text-[color:var(--os-rust)]">{errorMsg}</div>
             )}
           </form>
         )}
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }
