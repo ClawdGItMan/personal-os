@@ -164,3 +164,38 @@ html, body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
+
+/* ============================================================
+   ANIMATIONS / CHROME HELPERS (Plan 1A.3)
+   ============================================================ */
+@keyframes os-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
+@keyframes os-blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+@keyframes os-entrance { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+/* os-typing: reserved for the Phase-2 agent typing indicator (not yet consumed) */
+@keyframes os-typing { 0%,60%,100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-3px); opacity: 1; } }
+
+.os-pulse { animation: os-pulse 2.5s var(--ease-standard) infinite; }
+.os-blink { animation: os-blink 1s steps(2, start) infinite; }
+.os-entrance { animation: os-entrance var(--dur-base) var(--ease-entrance) both; }
+
+/* live dot with sage glow */
+.os-dot {
+  width: 6px; height: 6px; border-radius: 999px;
+  background: var(--os-accent);
+  box-shadow: 0 0 6px var(--os-accent-glow);
+}
+
+/* card hover hairline lift */
+.os-card-hover { transition: border-color var(--dur-fast) var(--ease-standard); }
+.os-card-hover:hover { border-color: var(--os-line-2); }
+
+/* tabular numerals for clocks/KPIs */
+.os-tnum { font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+
+/* hide scrollbars on the mobile scroll column */
+.os-noscroll { scrollbar-width: none; -ms-overflow-style: none; }
+.os-noscroll::-webkit-scrollbar { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .os-pulse, .os-blink, .os-entrance { animation: none; }
+}
