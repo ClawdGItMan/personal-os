@@ -38,6 +38,11 @@ export function fmtDate(d: Date): string {
     .toUpperCase();
 }
 
+/** Today as an ISO date string (YYYY-MM-DD), used as the key for daily time-series rows. */
+export function todayISO(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 /** Derive 2-letter initials from a name, e.g. "Max Allaire" -> "MA". */
 export function initialsFrom(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
