@@ -39,7 +39,7 @@ export function LeftRail({ operator }: { operator: Operator }) {
           })}
           <Link
             href="/settings"
-            className={`px-2 py-1.5 rounded-os-inner font-mono text-[11px] uppercase tracking-[0.1em] ${
+            className={`px-2 py-1.5 rounded-os-inner font-mono text-[11px] uppercase tracking-[0.1em] focus-visible:outline-none focus-visible:bg-[color:var(--os-bg-3)] focus-visible:text-[color:var(--os-fg-1)] ${
               pathname === "/settings"
                 ? "bg-[color:var(--os-bg-3)] text-[color:var(--os-fg-1)]"
                 : "text-[color:var(--os-fg-4)] hover:text-[color:var(--os-fg-2)]"

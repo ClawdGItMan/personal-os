@@ -21,7 +21,7 @@ export function MobileTopBar({ initials }: { initials: string }) {
         <Link
           href="/settings"
           aria-label="Settings"
-          className="w-7 h-7 rounded-os-pill bg-[color:var(--os-bg-2)] border border-[color:var(--os-line-1)] flex items-center justify-center font-mono text-[10px] text-[color:var(--os-fg-2)]"
+          className="w-7 h-7 rounded-os-pill bg-[color:var(--os-bg-2)] border border-[color:var(--os-line-1)] flex items-center justify-center font-mono text-[10px] text-[color:var(--os-fg-2)] hover:border-[color:var(--os-line-2)] focus-visible:outline-none focus-visible:border-[color:var(--os-accent)] transition-colors"
         >
           {initials}
         </Link>
