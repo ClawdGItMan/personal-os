@@ -52,3 +52,6 @@ test-results/
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# Claude Code session artifacts
+.claude/
