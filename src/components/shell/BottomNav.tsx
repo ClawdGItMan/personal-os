@@ -21,6 +21,7 @@ export function BottomNav() {
         return (
           <Link key={t.href} href={t.href} className="flex-1 flex flex-col items-center gap-1 py-2">
             <span
+              aria-hidden="true"
               className={`text-base leading-none ${
                 active ? "text-[color:var(--os-accent)]" : "text-[color:var(--os-fg-4)]"
               }`}

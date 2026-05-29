@@ -1,9 +1,19 @@
 import { EmptyState } from "@/components/primitives/EmptyState";
 
-/** Phase-1A agent placeholder. Keeps the panel chrome; no live behavior (Phase 2). */
-export function AgentRail() {
+/**
+ * Phase-1A agent placeholder. Keeps the panel chrome; no live behavior (Phase 2).
+ * `variant="rail"` is the sticky web right-rail; `variant="page"` is the mobile /agent tab
+ * (no sticky/viewport-height chrome, since it lives inside the mobile scroll column).
+ */
+export function AgentRail({ variant = "rail" }: { variant?: "rail" | "page" }) {
+  const frame =
+    variant === "rail"
+      ? "h-[calc(100vh-4.5rem)] sticky top-[4.5rem]"
+      : "min-h-[60vh]";
   return (
-    <div className="flex flex-col h-[calc(100vh-4.5rem)] sticky top-[4.5rem] bg-[color:var(--os-bg-2)] border border-[color:var(--os-line-1)] rounded-os-card overflow-hidden">
+    <div
+      className={`flex flex-col ${frame} bg-[color:var(--os-bg-2)] border border-[color:var(--os-line-1)] rounded-os-card overflow-hidden`}
+    >
       <header className="flex items-center justify-between p-4 border-b border-[color:var(--os-line-1)]">
         <div className="flex items-center gap-1.5 font-mono">
           <span className="text-[10px] text-[color:var(--os-fg-5)]">11</span>

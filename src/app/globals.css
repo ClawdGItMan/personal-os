@@ -171,6 +171,7 @@ html, body {
 @keyframes os-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
 @keyframes os-blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
 @keyframes os-entrance { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+/* os-typing: reserved for the Phase-2 agent typing indicator (not yet consumed) */
 @keyframes os-typing { 0%,60%,100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-3px); opacity: 1; } }
 
 .os-pulse { animation: os-pulse 2.5s var(--ease-standard) infinite; }

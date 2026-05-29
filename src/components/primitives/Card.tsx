@@ -6,20 +6,17 @@ type CardProps = {
   meta?: ReactNode; // right-aligned mono caption
   children?: ReactNode;
   className?: string;
-  noPad?: boolean;
 };
 
 /** The signature `NN //` instrument-panel card. Border, never shadow. */
-export function Card({ num, title, meta, children, className = "", noPad = false }: CardProps) {
+export function Card({ num, title, meta, children, className = "" }: CardProps) {
   const showHeader = num || title || meta;
   return (
     <section
-      className={`os-card-hover os-entrance bg-[color:var(--os-bg-2)] border border-[color:var(--os-line-1)] rounded-os-card ${
-        noPad ? "" : "p-4"
-      } ${className}`}
+      className={`os-card-hover os-entrance bg-[color:var(--os-bg-2)] border border-[color:var(--os-line-1)] rounded-os-card p-4 ${className}`}
     >
       {showHeader && (
-        <header className={`flex items-center justify-between ${noPad ? "px-4 pt-4" : ""} mb-3`}>
+        <header className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-1.5 font-mono">
             {num && <span className="text-[10px] text-[color:var(--os-fg-5)]">{num}</span>}
             {num && <span className="text-[10px] text-[color:var(--os-fg-5)]">{"//"}</span>}
