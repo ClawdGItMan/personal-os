@@ -50,3 +50,9 @@ export function initialsFrom(name: string): string {
   if (parts.length === 1) return (parts[0] ?? "M").slice(0, 2).toUpperCase();
   return `${parts[0]?.[0] ?? ""}${parts[parts.length - 1]?.[0] ?? ""}`.toUpperCase();
 }
+
+/** ISO date (YYYY-MM-DD) for `days` days before today — for time-series query windows.
+ *  Lives here (module scope, not a component) so the impure `Date.now()` is allowed. */
+export function isoDaysAgo(days: number): string {
+  return new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
+}

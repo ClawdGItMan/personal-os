@@ -13,12 +13,16 @@ export function InstallPrompt() {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
-    const nav = window.navigator as Navigator & { standalone?: boolean };
-    const isStandalone =
-      window.matchMedia("(display-mode: standalone)").matches || nav.standalone === true;
     const isIOS = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
     const dismissed = window.localStorage.getItem(DISMISS_KEY) === "1";
-    if (isIOS && !isStandalone && !dismissed) setShow(true);
+    if (!isIOS || dismissed) return;
+    // Subscribe to display-mode (mirrors AppShell): show while not installed, hide on install.
+    const nav = window.navigator as Navigator & { standalone?: boolean };
+    const mq = window.matchMedia("(display-mode: standalone)");
+    const sync = () => setShow(!(mq.matches || nav.standalone === true));
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
   }, []);
 
   if (!show) return null;

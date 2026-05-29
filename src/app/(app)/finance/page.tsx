@@ -5,7 +5,7 @@ import { Sparkline } from "@/components/primitives/Sparkline";
 import { StatRow } from "@/components/primitives/StatRow";
 import { StatCell } from "@/components/primitives/StatCell";
 import { EmptyState } from "@/components/primitives/EmptyState";
-import { fmtUSD, fmtUSDDelta, fmtPct } from "@/lib/format";
+import { fmtUSD, fmtUSDDelta, fmtPct, isoDaysAgo } from "@/lib/format";
 
 const CLASS_COLOR: Record<string, string> = {
   EQUITY: "var(--os-accent)",
@@ -30,7 +30,7 @@ export default async function FinancePage() {
     .order("current_value", { ascending: false });
   const accounts = accountsData ?? [];
 
-  const since = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
+  const since = isoDaysAgo(30);
   const { data: snapsData } = await supabase
     .from("finance_snapshots")
     .select("date,value")
