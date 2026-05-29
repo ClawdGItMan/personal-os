@@ -1,18 +1,166 @@
 @import "tailwindcss";
 
+/* ============================================================
+   PERSONAL OS — DESIGN TOKENS
+   Dark is the default (:root). Cream and Warm are theme overrides.
+   Sourced from design_handoff_personal_os/prototype/{hearth,app/app}.css
+   ============================================================ */
+
 :root {
-  /* Minimal dark-theme tokens (full system in Plan 1A.2) */
+  /* ---- Surfaces (dark) ---- */
   --os-bg:        #0E1014;
   --os-bg-2:      #14171C;
+  --os-bg-3:      #1A1E24;
+  --os-bg-hover:  #1F242B;
+  --os-bg-sunk:   #0A0C10;
+
+  /* ---- Foreground ---- */
   --os-fg-1:      #F2EEE6;
+  --os-fg-2:      rgba(242, 238, 230, 0.72);
   --os-fg-3:      rgba(242, 238, 230, 0.52);
-  --os-accent:    #8FA67A;
+  --os-fg-4:      rgba(242, 238, 230, 0.36);
+  --os-fg-5:      rgba(242, 238, 230, 0.20);
+
+  /* ---- Hairlines ---- */
+  --os-line-1:    rgba(242, 238, 230, 0.06);
   --os-line-2:    rgba(242, 238, 230, 0.10);
+  --os-line-3:    rgba(242, 238, 230, 0.16);
+
+  /* ---- Accent (sage) ---- */
+  --os-accent:        #8FA67A;
+  --os-accent-soft:   rgba(143, 166, 122, 0.14);
+  --os-accent-glow:   rgba(143, 166, 122, 0.30);
+  --os-accent-dim:    rgba(143, 166, 122, 0.55);
+
+  /* ---- Secondary highlights ---- */
+  --os-ember:         #E07856;
+  --os-ember-soft:    rgba(224, 120, 86, 0.14);
+  --os-honey:         #F4B860;
+  --os-rust:          #C25D3F;
+  --os-rust-soft:     rgba(194, 93, 63, 0.14);
+
+  /* ---- Radii / grid ---- */
+  --os-grid: 24px;
+  --os-r-card: 14px;
+  --os-r-inner: 10px;
+  --os-r-pill: 999px;
+
+  /* ---- Typography families (next/font vars set in layout.tsx) ---- */
+  --os-font-display: var(--font-newsreader), "Iowan Old Style", Georgia, serif;
+  --os-font-body:    var(--font-manrope), -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --os-font-mono:    var(--font-jetbrains-mono), ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* ---- Type scale ---- */
+  --text-xs: 12px;  --text-sm: 13px;  --text-base: 15px; --text-md: 17px;
+  --text-lg: 20px;  --text-xl: 24px;  --text-2xl: 32px;  --text-3xl: 44px;
+  --text-4xl: 60px; --text-5xl: 84px;
+
+  --leading-tight: 1.12; --leading-snug: 1.28; --leading-normal: 1.5; --leading-loose: 1.65;
+  --tracking-tight: -0.02em; --tracking-snug: -0.01em; --tracking-normal: 0;
+  --tracking-wide: 0.04em; --tracking-mega: 0.16em;
+
+  /* ---- Spacing (4px grid) ---- */
+  --s-1: 4px;  --s-2: 8px;  --s-3: 12px; --s-4: 16px; --s-5: 20px; --s-6: 24px;
+  --s-8: 32px; --s-10: 40px; --s-12: 48px; --s-16: 64px; --s-20: 80px; --s-24: 96px;
+
+  /* ---- Shadows (warm-tinted, never pure black) ---- */
+  --shadow-sm: 0 1px 3px rgba(86, 56, 32, 0.06), 0 1px 2px rgba(86, 56, 32, 0.04);
+  --shadow-md: 0 4px 12px rgba(86, 56, 32, 0.08), 0 2px 4px rgba(86, 56, 32, 0.04);
+  --shadow-lg: 0 12px 32px rgba(86, 56, 32, 0.10), 0 4px 8px rgba(86, 56, 32, 0.05);
+  --shadow-xl: 0 24px 48px rgba(86, 56, 32, 0.14), 0 8px 16px rgba(86, 56, 32, 0.06);
+
+  /* ---- Motion ---- */
+  --ease-standard: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-entrance: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 160ms; --dur-base: 220ms; --dur-slow: 360ms;
 }
 
+/* ---- Cream theme (daytime, hearth-faithful) ---- */
+[data-theme="cream"] {
+  --os-bg:        #F7F2E8;
+  --os-bg-2:      #FFFCF6;
+  --os-bg-3:      #FFFFFF;
+  --os-bg-hover:  #ECE0CB;
+  --os-bg-sunk:   #EDE2CE;
+
+  --os-fg-1:      #1B1410;
+  --os-fg-2:      rgba(27, 20, 16, 0.72);
+  --os-fg-3:      rgba(27, 20, 16, 0.55);
+  --os-fg-4:      rgba(27, 20, 16, 0.40);
+  --os-fg-5:      rgba(27, 20, 16, 0.20);
+
+  --os-line-1:    rgba(42, 31, 24, 0.06);
+  --os-line-2:    rgba(42, 31, 24, 0.10);
+  --os-line-3:    rgba(42, 31, 24, 0.18);
+
+  --os-accent:        #5E7A4D;
+  --os-accent-soft:   rgba(94, 122, 77, 0.10);
+  --os-accent-glow:   rgba(94, 122, 77, 0.18);
+  --os-accent-dim:    rgba(94, 122, 77, 0.55);
+}
+
+/* ---- Warm theme (evening, deep cocoa + ember) ---- */
+[data-theme="warm"] {
+  --os-bg:        #1A1410;
+  --os-bg-2:      #221A14;
+  --os-bg-3:      #29201A;
+  --os-bg-hover:  #312721;
+  --os-bg-sunk:   #120D0A;
+
+  --os-fg-1:      #FAF1E1;
+  --os-fg-2:      rgba(250, 241, 225, 0.74);
+  --os-fg-3:      rgba(250, 241, 225, 0.50);
+  --os-fg-4:      rgba(250, 241, 225, 0.34);
+  --os-fg-5:      rgba(250, 241, 225, 0.18);
+
+  --os-line-1:    rgba(250, 241, 225, 0.06);
+  --os-line-2:    rgba(250, 241, 225, 0.11);
+  --os-line-3:    rgba(250, 241, 225, 0.20);
+
+  --os-accent:        #ED9569;
+  --os-accent-soft:   rgba(237, 149, 105, 0.13);
+  --os-accent-glow:   rgba(237, 149, 105, 0.30);
+  --os-accent-dim:    rgba(237, 149, 105, 0.55);
+}
+
+/* ============================================================
+   TAILWIND 4 @theme MAPPING
+   Exposes tokens as utilities (bg-os-bg-2, text-os-fg-3, etc.).
+   Values reference the CSS vars above so they resolve per theme.
+   ============================================================ */
+@theme inline {
+  --color-os-bg: var(--os-bg);
+  --color-os-bg-2: var(--os-bg-2);
+  --color-os-bg-3: var(--os-bg-3);
+  --color-os-bg-hover: var(--os-bg-hover);
+  --color-os-bg-sunk: var(--os-bg-sunk);
+  --color-os-fg-1: var(--os-fg-1);
+  --color-os-fg-2: var(--os-fg-2);
+  --color-os-fg-3: var(--os-fg-3);
+  --color-os-fg-4: var(--os-fg-4);
+  --color-os-fg-5: var(--os-fg-5);
+  --color-os-line-1: var(--os-line-1);
+  --color-os-line-2: var(--os-line-2);
+  --color-os-line-3: var(--os-line-3);
+  --color-os-accent: var(--os-accent);
+  --color-os-ember: var(--os-ember);
+  --color-os-honey: var(--os-honey);
+  --color-os-rust: var(--os-rust);
+
+  --font-display: var(--os-font-display);
+  --font-body: var(--os-font-body);
+  --font-mono: var(--os-font-mono);
+
+  --radius-os-card: var(--os-r-card);
+  --radius-os-inner: var(--os-r-inner);
+  --radius-os-pill: var(--os-r-pill);
+}
+
+/* ---- Base ---- */
 html, body {
   background-color: var(--os-bg);
   color: var(--os-fg-1);
-  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--os-font-body);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
