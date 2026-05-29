@@ -45,7 +45,10 @@ export async function logLift(input: unknown): Promise<ActionResult> {
 
   const supabase = await createClient();
 
-  // PR detection: compare to the heaviest prior lift of the same name (RLS scopes to user).
+  // PR detection: is_pr is a HISTORICAL flag — "this lift was an all-time best when logged".
+  // We do NOT demote older PR rows when a new best lands (avoids an extra write + race);
+  // getRecentPRs (Phase 2) reads this as a timeline of records, not a single current-best.
+  // Compares to the heaviest prior lift of the same name (RLS scopes to the user).
   const { data: prior } = await supabase
     .from("lifts")
     .select("weight")

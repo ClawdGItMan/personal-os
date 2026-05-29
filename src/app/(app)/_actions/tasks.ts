@@ -11,9 +11,8 @@ const AddTask = z.object({
   star: z.boolean().default(false),
 });
 
-const ToggleTask = z.object({
+const CompleteTask = z.object({
   id: z.string().min(1),
-  done: z.boolean(),
 });
 
 export async function addTask(input: unknown): Promise<ActionResult> {
@@ -33,8 +32,9 @@ export async function addTask(input: unknown): Promise<ActionResult> {
   return { ok: true };
 }
 
-export async function toggleTask(input: unknown): Promise<ActionResult> {
-  const parsed = ToggleTask.safeParse(input);
+/** Marks a task done. The dashboard card only shows open tasks, so completing removes it. */
+export async function completeTask(input: unknown): Promise<ActionResult> {
+  const parsed = CompleteTask.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
 
   const userId = await getCurrentUserId();
@@ -43,7 +43,7 @@ export async function toggleTask(input: unknown): Promise<ActionResult> {
   const supabase = await createClient();
   const { error } = await supabase
     .from("tasks")
-    .update({ done: parsed.data.done })
+    .update({ done: true })
     .eq("id", parsed.data.id)
     .eq("user_id", userId);
   if (error) return { ok: false, error: error.message };

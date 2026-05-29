@@ -1,16 +1,16 @@
 "use client";
 
 import { useOptimistic, useState, useTransition } from "react";
-import { addTask, toggleTask } from "@/app/(app)/_actions/tasks";
+import { addTask, completeTask } from "@/app/(app)/_actions/tasks";
 
 export type TaskRow = { id: string; title: string; star: boolean };
 
-type Action = { type: "toggle"; id: string } | { type: "add"; task: TaskRow };
+type Action = { type: "complete"; id: string } | { type: "add"; task: TaskRow };
 
 export function TasksClient({ initialTasks }: { initialTasks: TaskRow[] }) {
   const [, startTransition] = useTransition();
   const [tasks, applyOptimistic] = useOptimistic<TaskRow[], Action>(initialTasks, (state, action) =>
-    action.type === "toggle"
+    action.type === "complete"
       ? state.filter((t) => t.id !== action.id)
       : [action.task, ...state],
   );
@@ -27,10 +27,10 @@ export function TasksClient({ initialTasks }: { initialTasks: TaskRow[] }) {
     });
   }
 
-  function onToggle(id: string) {
+  function onComplete(id: string) {
     startTransition(async () => {
-      applyOptimistic({ type: "toggle", id });
-      await toggleTask({ id, done: true });
+      applyOptimistic({ type: "complete", id });
+      await completeTask({ id });
     });
   }
 
@@ -63,7 +63,8 @@ export function TasksClient({ initialTasks }: { initialTasks: TaskRow[] }) {
             <li key={t.id}>
               <button
                 type="button"
-                onClick={() => onToggle(t.id)}
+                onClick={() => onComplete(t.id)}
+                aria-label={`Complete ${t.title}`}
                 className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-os-inner hover:bg-[color:var(--os-bg-hover)] text-left transition-colors group"
               >
                 <span className="w-4 h-4 rounded-[5px] border border-[color:var(--os-line-3)] group-hover:border-[color:var(--os-accent)] flex-shrink-0 transition-colors" />
