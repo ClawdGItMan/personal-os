@@ -1,12 +1,36 @@
 "use client";
 
+import { useState, useTransition } from "react";
 import { Card } from "@/components/primitives/Card";
 import { useClock } from "@/lib/hooks/useClock";
 import { greeting, fmtClock, fmtDate } from "@/lib/format";
+import { capture } from "@/app/(app)/_actions/capture";
 
 export function SessionCard({ first, timezone }: { first: string; timezone: string }) {
   const now = useClock();
   const c = now ? fmtClock(now) : null;
+
+  const [text, setText] = useState("");
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+  const [pending, startTransition] = useTransition();
+
+  function onCapture(e: React.FormEvent) {
+    e.preventDefault();
+    const value = text.trim();
+    if (!value) return;
+    setText("");
+    setError("");
+    startTransition(async () => {
+      const res = await capture({ text: value });
+      if (res.ok) {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+      } else {
+        setError(res.error);
+      }
+    });
+  }
 
   return (
     <Card num="02" title="SESSION" meta={now ? fmtDate(now) : ""}>
@@ -34,21 +58,35 @@ export function SessionCard({ first, timezone }: { first: string; timezone: stri
         </div>
       )}
 
-      {/* Capture bar — visual only this slice; wired to a server action in 1A.4 */}
-      <form className="mt-4 flex gap-2" onSubmit={(e) => e.preventDefault()}>
+      {/* Capture bar — writes to journal_entries (Phase 2 agent will route intent) */}
+      <form className="mt-4 flex gap-2" onSubmit={onCapture}>
         <input
           type="text"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
           placeholder="Capture a thought, task, meal, lift…"
           aria-label="Capture"
-          className="flex-1 px-3 py-2 bg-[color:var(--os-bg-3)] border border-[color:var(--os-line-2)] rounded-os-inner text-sm text-[color:var(--os-fg-1)] placeholder:text-[color:var(--os-fg-5)] focus:outline-none focus:border-[color:var(--os-accent)] focus:shadow-[0_0_0_3px_var(--os-accent-soft)] transition-all"
+          disabled={pending}
+          className="flex-1 px-3 py-2 bg-[color:var(--os-bg-3)] border border-[color:var(--os-line-2)] rounded-os-inner text-sm text-[color:var(--os-fg-1)] placeholder:text-[color:var(--os-fg-5)] focus:outline-none focus:border-[color:var(--os-accent)] focus:shadow-[0_0_0_3px_var(--os-accent-soft)] transition-all disabled:opacity-60"
         />
         <button
           type="submit"
-          className="px-4 py-2 bg-[color:var(--os-accent)] text-[color:var(--os-bg)] rounded-os-inner text-sm font-medium"
+          disabled={pending}
+          className="px-4 py-2 bg-[color:var(--os-accent)] text-[color:var(--os-bg)] rounded-os-inner text-sm font-medium disabled:opacity-60"
         >
           Send
         </button>
       </form>
+      {saved && (
+        <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.12em] text-[color:var(--os-accent)]">
+          ✓ captured to journal
+        </div>
+      )}
+      {error && (
+        <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.12em] text-[color:var(--os-rust)]">
+          {error}
+        </div>
+      )}
     </Card>
   );
 }

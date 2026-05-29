@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { getOperator } from "@/lib/operator";
 import { SessionCard } from "@/components/modules/SessionCard";
+import { FinancePulseCard } from "@/components/modules/FinancePulseCard";
+import { TasksCard } from "@/components/modules/TasksCard";
 import { HabitsCard } from "@/components/modules/HabitsCard";
 import { CalendarCard } from "@/components/modules/CalendarCard";
 import { NutritionCard } from "@/components/modules/NutritionCard";
@@ -16,6 +18,10 @@ export default async function DashboardPage() {
   return (
     <>
       <SessionCard first={operator.first} timezone={operator.timezone} />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <FinancePulseCard />
+        <TasksCard />
+      </div>
       <HabitsCard />
       <CalendarCard />
       <div className="grid gap-3 sm:grid-cols-3">
