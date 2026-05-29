@@ -58,14 +58,14 @@ export default async function TrainPage() {
   const priorVol = volumeSeries[volumeSeries.length - 2] ?? 0;
 
   const kpiItems: { value: string; label: string; accent?: boolean }[] = [
-    { value: `${latestVol.toLocaleString()} lb`, label: "This week", accent: true },
+    { value: `${latestVol.toLocaleString()} lb`, label: "Latest session", accent: true },
   ];
   if (volumeSeries.length >= 2) {
     const delta = latestVol - priorVol;
     const sign = delta >= 0 ? "+" : "−";
     kpiItems.push({
       value: `${sign}${Math.abs(delta).toLocaleString()} lb`,
-      label: "vs prior",
+      label: "vs prior session",
     });
   }
 
@@ -97,8 +97,7 @@ export default async function TrainPage() {
               <span className="font-mono text-[color:var(--os-fg-4)]">SET {i + 1}</span>
               <span className="text-sm">{lift.name}</span>
               <span className="font-mono text-[color:var(--os-fg-1)]">
-                {Number(lift.reps)} × {Number(lift.weight)}
-                {lift.weight_unit}
+                {Number(lift.reps)} × {Number(lift.weight)} {lift.weight_unit}
               </span>
               <span className="text-[color:var(--os-honey)]">{lift.is_pr ? "★ PR" : ""}</span>
             </div>

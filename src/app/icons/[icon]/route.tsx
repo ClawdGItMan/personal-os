@@ -7,6 +7,7 @@ export const dynamicParams = false;
 const ICONS: Record<string, { size: number; maskable: boolean }> = {
   "icon-180.png": { size: 180, maskable: false },
   "icon-192.png": { size: 192, maskable: false },
+  "icon-192-maskable.png": { size: 192, maskable: true },
   "icon-512.png": { size: 512, maskable: false },
   "icon-512-maskable.png": { size: 512, maskable: true },
 };

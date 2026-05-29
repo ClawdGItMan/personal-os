@@ -34,7 +34,7 @@ export function InstallPrompt() {
 
   return (
     <div
-      role="dialog"
+      role="region"
       aria-label="Install Personal OS"
       className="fixed inset-x-3 bottom-3 z-50 flex items-center gap-3 rounded-os-card border border-[color:var(--os-line-2)] bg-[color:var(--os-bg-2)] p-3"
     >
