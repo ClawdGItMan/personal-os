@@ -12,7 +12,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   return (
     <AppShell
       web={<WebLayout operator={operator}>{children}</WebLayout>}
-      mobile={<MobileLayout>{children}</MobileLayout>}
+      mobile={<MobileLayout initials={operator.initials}>{children}</MobileLayout>}
     />
   );
 }

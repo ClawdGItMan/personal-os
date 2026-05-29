@@ -59,9 +59,13 @@ export function TopBar({ operator }: { operator: Operator }) {
             "--:--"
           )}
         </span>
-        <span className="w-7 h-7 rounded-os-pill bg-[color:var(--os-bg-3)] border border-[color:var(--os-line-2)] flex items-center justify-center text-[10px] text-[color:var(--os-fg-2)]">
+        <Link
+          href="/settings"
+          aria-label="Settings"
+          className="w-7 h-7 rounded-os-pill bg-[color:var(--os-bg-3)] border border-[color:var(--os-line-2)] flex items-center justify-center text-[10px] text-[color:var(--os-fg-2)] hover:border-[color:var(--os-line-3)] transition-colors"
+        >
           {operator.initials}
-        </span>
+        </Link>
       </div>
     </header>
   );

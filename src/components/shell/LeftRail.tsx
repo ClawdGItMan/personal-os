@@ -37,6 +37,16 @@ export function LeftRail({ operator }: { operator: Operator }) {
               </Link>
             );
           })}
+          <Link
+            href="/settings"
+            className={`px-2 py-1.5 rounded-os-inner font-mono text-[11px] uppercase tracking-[0.1em] ${
+              pathname === "/settings"
+                ? "bg-[color:var(--os-bg-3)] text-[color:var(--os-fg-1)]"
+                : "text-[color:var(--os-fg-4)] hover:text-[color:var(--os-fg-2)]"
+            }`}
+          >
+            SETTINGS
+          </Link>
         </nav>
       </Card>
     </>
