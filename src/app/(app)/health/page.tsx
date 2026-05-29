@@ -106,7 +106,7 @@ export default async function HealthPage() {
             )}
           </Card>
 
-          <Card num="03" title="WEIGHT" meta={latest.weight_unit || "lb"}>
+          <Card num="03" title="WEIGHT" meta={latest.weight_unit || "lbs"}>
             {latest.weight != null ? (
               <>
                 <BigValue value={String(latest.weight)} />
