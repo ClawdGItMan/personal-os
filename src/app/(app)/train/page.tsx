@@ -107,7 +107,7 @@ export default async function TrainPage() {
       </Card>
 
       {session && hasVolume && (
-        <Card num="02" title="VOLUME · 8 WEEKS">
+        <Card num="02" title="VOLUME · LAST 8 SESSIONS">
           <Sparkbars
             data={volumeSeries}
             height={90}
@@ -126,7 +126,7 @@ export default async function TrainPage() {
               key={i}
               icon="PR"
               name={pr.name}
-              value={`${Number(pr.weight)}${pr.weight_unit}`}
+              value={`${Number(pr.weight)} ${pr.weight_unit}`}
               sub={fmtDate(new Date(pr.created_at))}
             />
           ))
