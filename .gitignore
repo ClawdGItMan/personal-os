@@ -45,6 +45,10 @@ pnpm-debug.log*
 coverage/
 playwright-report/
 test-results/
+.playwright-mcp/
+
+# Screenshots / scratch captures
+/personal-os-login.png
 
 # Temporary / disposable
 .tmp/
