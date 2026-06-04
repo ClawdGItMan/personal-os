@@ -56,3 +56,9 @@ export function initialsFrom(name: string): string {
 export function isoDaysAgo(days: number): string {
   return new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
 }
+
+/** Current instant as a full ISO timestamp — for "from now" query bounds.
+ *  Module scope (not a component) so the impure `Date.now()` is allowed (see `isoDaysAgo`). */
+export function nowISO(): string {
+  return new Date(Date.now()).toISOString();
+}

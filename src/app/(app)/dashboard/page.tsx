@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getOperator } from "@/lib/operator";
+import { ConnectionBanner } from "@/components/primitives/ConnectionBanner";
 import { SessionCard } from "@/components/modules/SessionCard";
 import { FinancePulseCard } from "@/components/modules/FinancePulseCard";
 import { TasksCard } from "@/components/modules/TasksCard";
@@ -17,6 +18,7 @@ export default async function DashboardPage() {
 
   return (
     <>
+      <ConnectionBanner />
       <SessionCard first={operator.first} timezone={operator.timezone} />
       <div className="grid gap-3 sm:grid-cols-2">
         <FinancePulseCard />
