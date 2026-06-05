@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       agent_messages: {
@@ -720,6 +695,60 @@ export type Database = {
         }
         Relationships: []
       }
+      workouts: {
+        Row: {
+          avg_hr: number | null
+          created_at: string
+          distance_m: number | null
+          duration_sec: number | null
+          ended_at: string | null
+          energy_kj: number | null
+          external_id: string | null
+          id: string
+          max_hr: number | null
+          source: string
+          source_metadata: Json
+          sport: string
+          started_at: string
+          strain: number | null
+          user_id: string
+        }
+        Insert: {
+          avg_hr?: number | null
+          created_at?: string
+          distance_m?: number | null
+          duration_sec?: number | null
+          ended_at?: string | null
+          energy_kj?: number | null
+          external_id?: string | null
+          id?: string
+          max_hr?: number | null
+          source?: string
+          source_metadata?: Json
+          sport?: string
+          started_at: string
+          strain?: number | null
+          user_id: string
+        }
+        Update: {
+          avg_hr?: number | null
+          created_at?: string
+          distance_m?: number | null
+          duration_sec?: number | null
+          ended_at?: string | null
+          energy_kj?: number | null
+          external_id?: string | null
+          id?: string
+          max_hr?: number | null
+          source?: string
+          source_metadata?: Json
+          sport?: string
+          started_at?: string
+          strain?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -854,9 +883,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },
