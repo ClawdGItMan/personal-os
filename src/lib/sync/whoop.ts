@@ -170,6 +170,10 @@ export async function syncWhoop(client: Client, userId: string): Promise<SyncWho
    * it to the AUTH-EXPIRED path instead of the DATA-error path. We never refresh
    * more than once for 401s: if the retried fetch 401s again it propagates as a
    * normal error.
+   *
+   * Correctness relies on the two streams running SEQUENTIALLY (step 6 then step
+   * 7): the shared `refreshedFor401` flag and the `token`/`rt` mutation are not
+   * concurrency-safe. Do NOT wrap the streams in `Promise.all`.
    */
   let refreshedFor401 = false;
   async function withAuthRetry<T>(run: (accessToken: string) => Promise<T>): Promise<T> {
@@ -230,7 +234,8 @@ export async function syncWhoop(client: Client, userId: string): Promise<SyncWho
   }
 
   // 6. Stream A — health snapshots (per-day individual upsert; each row's column
-  //    set differs, so they must NOT be batched into one array upsert).
+  //    set differs, so they must NOT be batched into one array upsert). The loop
+  //    is sequential by design (~30 rows max on backfill, fewer incrementally).
   if (!authExpiredMessage) {
     try {
       const raw = await withAuthRetry((t) => fetchHealthWindow(t, window));
