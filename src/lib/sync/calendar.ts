@@ -5,6 +5,7 @@ import type { Database } from "@/lib/supabase/database.types";
 import {
   getGoogleIntegration,
   markStatus,
+  persistRefreshedTokens,
   readTokens,
   touchLastSynced,
 } from "@/lib/integrations/store";
@@ -15,7 +16,6 @@ import {
   type FetchEventsWindow,
 } from "@/lib/google/calendar";
 import { GoogleAuthError, refreshAccessToken } from "@/lib/google/oauth";
-import { encryptToken } from "@/lib/crypto/tokens";
 
 /** Shared client type — satisfied by both the cookie client (`@/lib/supabase/server`)
  * and the service-role admin client (`@/lib/supabase/admin`), so both the inline
@@ -181,13 +181,7 @@ async function persistAccessToken(
   accessToken: string,
   expiresAt: number,
 ): Promise<void> {
-  const { error } = await client
-    .from("integrations")
-    .update({
-      access_token: encryptToken(accessToken),
-      metadata: { expires_at: expiresAt },
-    })
-    .eq("user_id", userId)
-    .eq("provider", "google");
-  if (error) throw new Error(error.message);
+  // Google does NOT rotate refresh tokens — omit refreshToken. persistRefreshedTokens
+  // reads the current row to MERGE metadata (fixes the prior clobber that replaced it).
+  await persistRefreshedTokens(client, userId, "google", { accessToken, expiresAt });
 }
