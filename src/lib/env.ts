@@ -32,6 +32,18 @@ export function getGoogleOauthRedirectUri(): string {
   return requireEnv("GOOGLE_OAUTH_REDIRECT_URI");
 }
 
+export function getWhoopClientId(): string {
+  return requireEnv("WHOOP_CLIENT_ID");
+}
+
+export function getWhoopClientSecret(): string {
+  return requireEnv("WHOOP_CLIENT_SECRET");
+}
+
+export function getWhoopOauthRedirectUri(): string {
+  return requireEnv("WHOOP_OAUTH_REDIRECT_URI");
+}
+
 export function getCronSecret(): string {
   return requireEnv("CRON_SECRET");
 }
