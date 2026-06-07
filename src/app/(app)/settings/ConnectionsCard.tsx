@@ -1,14 +1,14 @@
 import { getCurrentUserId } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { getGoogleIntegration } from "@/lib/integrations/store";
+import { getGoogleIntegration, getIntegration } from "@/lib/integrations/store";
 import { staleAgeLabel } from "@/lib/sync/stale";
 import { StatRow } from "@/components/primitives/StatRow";
 import { GoogleConnectionRow } from "./GoogleConnectionRow";
+import { ProviderConnectionRow } from "./ProviderConnectionRow";
 
 /** Providers still awaiting their Phase 1B slice — shown as static placeholders. */
 const PENDING_PROVIDERS = [
   { icon: "PL", name: "Plaid", sub: "FINANCE" },
-  { icon: "WH", name: "Whoop", sub: "HEALTH" },
   { icon: "HA", name: "Health Auto Export", sub: "APPLE HEALTH" },
 ] as const;
 
@@ -20,12 +20,26 @@ export async function ConnectionsCard() {
     ? staleAgeLabel(integration.last_synced_at)
     : null;
 
+  const whoop = userId ? await getIntegration(supabase, userId, "whoop") : null;
+  const whoopSyncedLabel = whoop?.last_synced_at
+    ? staleAgeLabel(whoop.last_synced_at)
+    : null;
+
   return (
     <div className="mt-3">
       <GoogleConnectionRow
         status={integration?.status ?? null}
         syncedLabel={syncedLabel}
         lastError={integration?.last_error ?? null}
+      />
+      <ProviderConnectionRow
+        provider="whoop"
+        label="Whoop"
+        sub="HEALTH"
+        connectPath="/api/whoop/connect"
+        status={whoop?.status ?? null}
+        syncedLabel={whoopSyncedLabel}
+        lastError={whoop?.last_error ?? null}
       />
       {PENDING_PROVIDERS.map((p) => (
         <StatRow key={p.name} icon={p.icon} name={p.name} sub={p.sub} value="NOT CONNECTED" />

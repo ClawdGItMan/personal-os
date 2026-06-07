@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getOperator } from "@/lib/operator";
 import { PageHeader } from "@/components/primitives/PageHeader";
 import { Card } from "@/components/primitives/Card";
 import { Sparkbars } from "@/components/primitives/Sparkbars";
@@ -6,6 +7,7 @@ import { KpiRow } from "@/components/primitives/KpiRow";
 import { StatRow } from "@/components/primitives/StatRow";
 import { EmptyState } from "@/components/primitives/EmptyState";
 import { fmtDate } from "@/lib/format";
+import { ActivityList, type ActivityWorkout } from "@/components/modules/train/ActivityList";
 
 type Lift = {
   name: string;
@@ -20,6 +22,8 @@ type RecentLift = { weight: number; reps: number; sets: number };
 
 export default async function TrainPage() {
   const supabase = await createClient();
+  const operator = await getOperator();
+  const timeZone = operator?.timezone?.trim() || "UTC";
 
   const { data: session } = await supabase
     .from("training_sessions")
@@ -77,6 +81,12 @@ export default async function TrainPage() {
     .limit(6);
   const prs = prData ?? [];
 
+  const { data: workouts } = await supabase
+    .from("workouts")
+    .select("sport, started_at, duration_sec, strain, avg_hr")
+    .order("started_at", { ascending: false })
+    .limit(10);
+
   return (
     <>
       <PageHeader
@@ -131,6 +141,14 @@ export default async function TrainPage() {
           ))
         ) : (
           <EmptyState caption="No PRs logged yet" />
+        )}
+      </Card>
+
+      <Card num="04" title="ACTIVITY">
+        {(workouts ?? []).length > 0 ? (
+          <ActivityList workouts={(workouts ?? []) as ActivityWorkout[]} timeZone={timeZone} />
+        ) : (
+          <EmptyState caption="No workouts yet" />
         )}
       </Card>
     </>

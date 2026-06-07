@@ -7,51 +7,104 @@ import { decryptToken, encryptToken } from "@/lib/crypto/tokens";
 type Client = SupabaseClient<Database>;
 
 type IntegrationRow = Database["public"]["Tables"]["integrations"]["Row"];
+type IntegrationInsert = Database["public"]["Tables"]["integrations"]["Insert"];
+type IntegrationUpdate = Database["public"]["Tables"]["integrations"]["Update"];
 
-/** The only provider this store handles for 1B.1a. Gmail (1B.1b) reuses the same shape. */
+/** The Google provider literal. Gmail (1B.1b) reuses the same shape. */
 export const GOOGLE_PROVIDER = "google" as const;
 
-export type GoogleTokens = {
+/** Providers this store handles. Whoop rotates refresh tokens + stores extra metadata. */
+export type Provider = "google" | "whoop";
+
+export type ProviderTokens = {
   accessToken: string;
   refreshToken: string;
   /** Absolute expiry as epoch milliseconds. */
   expiresAt: number;
 };
 
-/** Fetch the Google integration row for a user (RLS-scoped via `user_id`). Returns null when absent. */
-export async function getGoogleIntegration(
+/** Back-compat alias (no existing call site imports this by name). */
+export type GoogleTokens = ProviderTokens;
+
+/** Pure: builds the INSERT/UPSERT payload for saving tokens. MUST keep status + last_error:null. */
+export function buildSaveUpsert(
+  userId: string,
+  provider: Provider,
+  tokens: ProviderTokens,
+  extraMetadata: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    user_id: userId,
+    provider,
+    access_token: encryptToken(tokens.accessToken),
+    refresh_token: encryptToken(tokens.refreshToken),
+    status: "connected",
+    last_error: null, // clears any stale error on (re)connect — preserves the live saveGoogleTokens behavior
+    metadata: { ...extraMetadata, expires_at: tokens.expiresAt }, // authoritative expires_at always wins
+  };
+}
+
+/** Pure: builds the UPDATE payload for a refreshed token, merging metadata. */
+export function buildRefreshUpdate(
+  currentMetadata: Record<string, unknown> | null | undefined,
+  refreshed: { accessToken: string; refreshToken?: string; expiresAt: number },
+): Record<string, unknown> {
+  const update: Record<string, unknown> = {
+    access_token: encryptToken(refreshed.accessToken),
+    metadata: { ...(currentMetadata ?? {}), expires_at: refreshed.expiresAt },
+  };
+  if (refreshed.refreshToken) update.refresh_token = encryptToken(refreshed.refreshToken);
+  return update;
+}
+
+/** Fetch a provider's integration row for a user (RLS-scoped via `user_id`). Returns null when absent. */
+export async function getIntegration(
   client: Client,
   userId: string,
+  provider: Provider,
 ): Promise<IntegrationRow | null> {
   const { data, error } = await client
     .from("integrations")
     .select("*")
     .eq("user_id", userId)
-    .eq("provider", GOOGLE_PROVIDER)
+    .eq("provider", provider)
     .maybeSingle();
   if (error) throw new Error(error.message);
   return data;
 }
 
-/** Encrypt + persist Google tokens, marking the integration `connected`.
+/** Encrypt + persist provider tokens, marking the integration `connected`.
  * Upserts on `(user_id, provider)` so reconnects overwrite in place. */
-export async function saveGoogleTokens(
+export async function saveTokens(
   client: Client,
   userId: string,
-  tokens: GoogleTokens,
+  provider: Provider,
+  tokens: ProviderTokens,
+  extraMetadata: Record<string, unknown> = {},
 ): Promise<void> {
-  const { error } = await client.from("integrations").upsert(
-    {
-      user_id: userId,
-      provider: GOOGLE_PROVIDER,
-      access_token: encryptToken(tokens.accessToken),
-      refresh_token: encryptToken(tokens.refreshToken),
-      status: "connected",
-      last_error: null,
-      metadata: { expires_at: tokens.expiresAt },
-    },
-    { onConflict: "user_id,provider" },
-  );
+  const { error } = await client
+    .from("integrations")
+    .upsert(buildSaveUpsert(userId, provider, tokens, extraMetadata) as IntegrationInsert, {
+      onConflict: "user_id,provider",
+    });
+  if (error) throw new Error(error.message);
+}
+
+/** Persist refreshed tokens in place; reads current row to MERGE metadata.
+ *  Pass refreshToken ONLY for providers that rotate it (Whoop); omit for Google. */
+export async function persistRefreshedTokens(
+  client: Client,
+  userId: string,
+  provider: Provider,
+  refreshed: { accessToken: string; refreshToken?: string; expiresAt: number },
+): Promise<void> {
+  const current = await getIntegration(client, userId, provider);
+  const update = buildRefreshUpdate(current?.metadata as Record<string, unknown> | undefined, refreshed);
+  const { error } = await client
+    .from("integrations")
+    .update(update as IntegrationUpdate)
+    .eq("user_id", userId)
+    .eq("provider", provider);
   if (error) throw new Error(error.message);
 }
 
@@ -67,9 +120,10 @@ export function readTokens(
 }
 
 /** Update connection status (e.g. `expired`, `error`), recording an optional last error message. */
-export async function markStatus(
+export async function markStatusFor(
   client: Client,
   userId: string,
+  provider: Provider,
   status: string,
   lastError?: string,
 ): Promise<void> {
@@ -77,16 +131,42 @@ export async function markStatus(
     .from("integrations")
     .update({ status, last_error: lastError ?? null })
     .eq("user_id", userId)
-    .eq("provider", GOOGLE_PROVIDER);
+    .eq("provider", provider);
   if (error) throw new Error(error.message);
 }
 
 /** Stamp `last_synced_at` to now after a successful sync. */
-export async function touchLastSynced(client: Client, userId: string): Promise<void> {
+export async function touchLastSyncedFor(
+  client: Client,
+  userId: string,
+  provider: Provider,
+): Promise<void> {
   const { error } = await client
     .from("integrations")
     .update({ last_synced_at: new Date().toISOString() })
     .eq("user_id", userId)
-    .eq("provider", GOOGLE_PROVIDER);
+    .eq("provider", provider);
   if (error) throw new Error(error.message);
+}
+
+// --- Backwards-compatible Google wrappers (identical signatures to today) ---
+
+/** Fetch the Google integration row for a user (RLS-scoped via `user_id`). Returns null when absent. */
+export async function getGoogleIntegration(client: Client, userId: string) {
+  return getIntegration(client, userId, "google");
+}
+
+/** Encrypt + persist Google tokens, marking the integration `connected`. */
+export async function saveGoogleTokens(client: Client, userId: string, tokens: ProviderTokens) {
+  return saveTokens(client, userId, "google", tokens);
+}
+
+/** Update Google connection status, recording an optional last error message. */
+export async function markStatus(client: Client, userId: string, status: string, lastError?: string) {
+  return markStatusFor(client, userId, "google", status, lastError);
+}
+
+/** Stamp `last_synced_at` to now after a successful Google sync. */
+export async function touchLastSynced(client: Client, userId: string) {
+  return touchLastSyncedFor(client, userId, "google");
 }
