@@ -31,9 +31,16 @@ export async function GET(request: NextRequest) {
   let synced = 0;
   let failed = 0;
   for (const row of integrations ?? []) {
-    const result = await syncWhoop(admin, row.user_id);
-    if (result.ok) synced += 1;
-    else failed += 1;
+    try {
+      const result = await syncWhoop(admin, row.user_id);
+      if (result.ok) synced += 1;
+      else failed += 1;
+    } catch {
+      // syncWhoop early-returns on auth failures rather than wrapping its whole
+      // body, so a few awaits (token persist, profiles query, touch_last_synced)
+      // can still throw. Isolate per user — one throw must not abort the batch.
+      failed += 1;
+    }
   }
   return Response.json({ ok: true, synced, failed });
 }
