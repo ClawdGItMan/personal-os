@@ -200,3 +200,23 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+// ---------------------------------------------------------------------------
+// NOTES / DEVIATIONS
+//
+// Rate limiting — Option B (in-route DB-counted window) implemented:
+//   After auth (step 4), count this user's sync_runs rows for
+//   provider='apple_health' in the last 10 minutes. If >= 30 → 429.
+//   Chosen over Option A (Vercel Firewall rule) because it is self-contained
+//   and testable without a dashboard dependency.
+//
+// IMPORTANT: bad-token floods are rejected at step 2 (one indexed integrations
+//   lookup + hash compare) BEFORE any sync_runs write, so the DB window only
+//   meters AUTHENTICATED traffic. Unauthenticated abuse protection is NOT
+//   provided by the DB window.
+//
+// RECOMMENDED ACTION for Max: Add a Vercel Firewall rate-limit rule on path
+//   /api/apple-health/ingest (e.g. ≤ 30 req / 10 min per IP) in the Vercel
+//   dashboard. This covers unauthenticated floods at the edge before the
+//   function runs, complementing the in-route authenticated-traffic window.
+// ---------------------------------------------------------------------------
