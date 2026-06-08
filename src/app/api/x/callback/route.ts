@@ -64,7 +64,14 @@ export async function GET(request: Request) {
   }
 
   const userId = await getCurrentUserId();
-  if (!userId) return NextResponse.redirect(new URL("/login", request.url));
+  if (!userId) {
+    // Signed-out exit path still clears both OAuth cookies (keeps the /login
+    // destination) so no exit path leaves a stale state/verifier behind.
+    const response = NextResponse.redirect(new URL("/login", request.url));
+    response.cookies.delete("x_oauth_state");
+    response.cookies.delete("x_pkce_verifier");
+    return response;
+  }
 
   try {
     const tokens = await exchangeCode(code, storedVerifier);
