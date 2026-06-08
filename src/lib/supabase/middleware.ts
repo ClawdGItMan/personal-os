@@ -34,8 +34,19 @@ export async function updateSession(request: NextRequest) {
   // the WHOOP/Google OAuth consent screens (an external user must be able to read
   // it). Unlike auth routes, these do NOT bounce a logged-in user to /dashboard.
   const isPublicRoute = pathname === "/privacy";
+  // Vercel Cron sync endpoints (e.g. /api/whoop/sync, /api/google-calendar/sync,
+  // and any future integration's */sync). Vercel invokes these with an
+  // `Authorization: Bearer $CRON_SECRET` header and NO Supabase session cookie,
+  // so the session check below would 307-redirect them to /login. Because Vercel
+  // Cron does not follow redirects, the scheduled sync would never run. We let
+  // these fall through to their own route handler, which enforces a constant-time
+  // CRON_SECRET Bearer check (returns 401 on any non-matching request). The
+  // startsWith("/api/") + endsWith("/sync") shape auto-covers future crons
+  // (Strava / Apple Health / Plaid), so this class of bug cannot silently recur.
+  const isCronSyncRoute =
+    pathname.startsWith("/api/") && pathname.endsWith("/sync");
 
-  if (!user && !isAuthRoute && !isPublicRoute) {
+  if (!user && !isAuthRoute && !isPublicRoute && !isCronSyncRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
