@@ -71,3 +71,17 @@ export function getSiteUrl(): string {
 export function getSupabaseUrl(): string {
   return requireEnv("NEXT_PUBLIC_SUPABASE_URL");
 }
+
+export function getXClientId(): string {
+  return requireEnv("X_CLIENT_ID");
+}
+
+/** Optional: a PUBLIC OAuth client has no secret. Returns undefined when unset
+ * (the oauth lib then uses public-client token requests). NEVER throws on absence. */
+export function getXClientSecret(): string | undefined {
+  return process.env.X_CLIENT_SECRET || undefined;
+}
+
+export function getXOauthRedirectUri(): string {
+  return requireEnv("X_OAUTH_REDIRECT_URI");
+}
