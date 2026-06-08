@@ -1,5 +1,11 @@
 # Phase 1B · Slice — X (Twitter) follower count → Social module
 
+> ℹ **2026-06-08 — also surfaces in the native iOS mobile app.** Personal OS is adding a full native
+> iOS app (React Native + Swift) as the primary mobile surface. This integration's backend (OAuth2-
+> PKCE, token store, sync, schema) is **client-agnostic and reused unchanged** — the native app is a
+> new client. The native-app delta is UI + a mobile OAuth flow, not new backend. See
+> `2026-06-08-personal-os-native-mobile-app-design.md`.
+
 **Status:** Design (2026-06-08) — smallest possible integration slice. Auto-populates Max's **X follower count** into the existing Social module. Builds on the **merged** provider-aware OAuth + token-store foundation (Google / Whoop).
 **Date:** 2026-06-08
 **Parent spec:** `docs/superpowers/specs/2026-05-21-personal-os-design.md` (§6 Integrations)

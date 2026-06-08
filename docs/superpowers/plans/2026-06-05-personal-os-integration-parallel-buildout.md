@@ -1,5 +1,10 @@
 # Personal OS — Parallel Integration Build-Out (Strava · Apple Health · Plaid)
 
+> ℹ **2026-06-08 update.** The integrations below feed the shared backend, which is **reused by the
+> new native iOS mobile app** (React Native + Swift) — see
+> `2026-06-08-personal-os-native-mobile-app-design.md`. **Apple Health's portion of this plan is
+> deprecated** (HAE → native HealthKit); Strava/Plaid backend work is unchanged.
+
 > **Orchestration plan, not a product spec.** This coordinates how the next three integrations get
 > designed in parallel *now* (while Whoop 1B.2 is built in a separate session) and built sequentially
 > *later* (after the Whoop foundation merges). Each integration gets its own design spec + implementation

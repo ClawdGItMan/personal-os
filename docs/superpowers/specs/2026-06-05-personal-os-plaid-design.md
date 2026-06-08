@@ -1,5 +1,11 @@
 # Phase 1B · Slice — Plaid (Finance: Balances + Transactions)
 
+> ℹ **2026-06-08 — also surfaces in the native iOS mobile app.** Personal OS is adding a full native
+> iOS app (React Native + Swift) as the primary mobile surface. This integration's backend (OAuth/
+> Plaid Link, token store, sync, schema) is **client-agnostic and reused** — the native app is a new
+> client (Plaid Link has a native iOS SDK). Max is building Plaid himself; this is just a pointer.
+> See `2026-06-08-personal-os-native-mobile-app-design.md`.
+
 **Status:** Design (drafted 2026-06-05; pending reviewed spec + plan)
 **Date:** 2026-06-05
 **Parent spec:** `docs/superpowers/specs/2026-05-21-personal-os-design.md` (§6 Integrations)

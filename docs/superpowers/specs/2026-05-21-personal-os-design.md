@@ -7,6 +7,15 @@ status: Draft pending review
 
 # Personal OS — Design Spec
 
+> ⚠ **PLATFORM DIRECTION UPDATE — 2026-06-08.** This spec describes the **Phase-1 web/PWA product**,
+> which is **live in production and remains the source of truth**. As of 2026-06-08 the platform
+> direction **expanded to a second surface: a full native iOS mobile app** (React Native + Swift),
+> which becomes the primary mobile surface and carries the planned integrations. See the dedicated
+> direction doc: **`2026-06-08-personal-os-native-mobile-app-design.md`**. Consequences for *this*
+> document: the "native iOS app" non-goal in §1.3 is **reversed** (now committed), the Health Auto
+> Export integration in §6.5 is **deprecated** (replaced by native HealthKit), and the Phase-3
+> "iOS-native app" line in §7 is **promoted from stretch to committed**. Inline ⚠ notes mark each.
+
 ## 0. Context
 
 **Personal OS** (internal codename: Max OS) is a personal operating system for one user — finances, health, training, calendar, social, journal, inbox, and a Telegram-fed agent that triages everything. It is the source of truth for Max's life.
@@ -36,7 +45,7 @@ Personal OS is Max's daily-driver tool — one place to log, view, and reason ab
 
 - Multi-user, sharing, invites (data model is multi-tenant-ready; only one user enabled)
 - Structured agent memory ("facts about Max" long-term store) — defer to Phase 3
-- Native iOS app, App Store presence
+- ~~Native iOS app, App Store presence~~ — ⚠ **REVERSED 2026-06-08:** a full native iOS app (React Native + Swift) is now committed as the primary mobile surface. See `2026-06-08-personal-os-native-mobile-app-design.md`.
 - Search / command palette (⌘K chip stays decorative)
 - Real Cream and Warm themes (token system in place, values filled in Phase 3)
 - Integrations beyond the agreed five (Coinbase, GitHub social, X, LinkedIn, Substack, IG, training-app APIs)
@@ -362,6 +371,13 @@ Five integrations. Each ships as a vertical slice. **Ship one before starting th
 
 ### 6.5 Health Auto Export → Webhook (Apple HealthKit)
 
+> ⚠ **DEPRECATED 2026-06-08.** Health Auto Export is being replaced by **direct HealthKit access in
+> the native iOS app** (Swift), which becomes the sole Apple Health route. The HAE ingest path stays
+> in prod only until the native HealthKit module ships, then it's removed. See
+> `2026-06-08-personal-os-native-mobile-app-design.md` §3. The data landing zones
+> (`health_snapshots`, `workouts`, source-tagged `apple_health`) are unchanged — only the transport
+> changes (on-device HealthKit read instead of HAE REST push).
+
 | Concern | Decision |
 |---|---|
 | Auth | Shared HMAC secret. iOS app POSTs JSON with `X-Signature: hmac-sha256(body, secret)`; verified on receipt |
@@ -496,7 +512,7 @@ No commitment to ship. Decided based on Phase 1C dogfood + Phase 2 actual usage.
 - Web Push for agent alerts ("Plaid item needs reauth")
 - Long-running agent jobs (weekly review, monthly summary) — Vercel Workflow if needed
 - "No-API" modules: Hevy or CSV import for training; scraping/paid tiers for X/LinkedIn/Substack/IG
-- iOS-native app (if PWA limits prove painful)
+- ~~iOS-native app (if PWA limits prove painful)~~ — ⚠ **PROMOTED 2026-06-08:** this materialized and is now a committed direction (full native iOS app, React Native + Swift), not a stretch item. See `2026-06-08-personal-os-native-mobile-app-design.md`.
 
 ---
 

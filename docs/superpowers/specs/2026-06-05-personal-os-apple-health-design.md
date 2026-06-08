@@ -1,5 +1,15 @@
 # Phase 1B · Slice — Apple Health (Health Metrics + Workouts via Health Auto Export)
 
+> ⚠ **DEPRECATED 2026-06-08 — superseded by native HealthKit.** This slice (Health Auto Export REST
+> push → ingest endpoint) shipped to prod but is now **end-of-life**. Apple Health moves to **direct
+> HealthKit access in the native iOS app** (Swift), which becomes the sole Apple Health route — see
+> `2026-06-08-personal-os-native-mobile-app-design.md` §3. The HAE ingest route + token UI stay in
+> prod only until the native HealthKit module ships, then they're removed. **What carries forward:**
+> the metric set, the `health_snapshots` partial-merge + `workouts` upsert contracts, the
+> `apple_health` source tag, and multi-source coexistence with Whoop — all reused by the native
+> module (only the transport changes). The HAE-specific design below (ingest token, public route,
+> HAE payload parser, rate-limiting) is **historical** once removal lands.
+
 **Status:** Design (drafted 2026-06-05; pending reviewed spec + plan)
 **Date:** 2026-06-05
 **Parent spec:** `docs/superpowers/specs/2026-05-21-personal-os-design.md` (§6 Integrations)
