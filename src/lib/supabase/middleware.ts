@@ -30,8 +30,12 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
   const isAuthRoute = pathname.startsWith("/login") || pathname.startsWith("/callback");
+  // Public pages viewable without a session — e.g. the privacy policy linked from
+  // the WHOOP/Google OAuth consent screens (an external user must be able to read
+  // it). Unlike auth routes, these do NOT bounce a logged-in user to /dashboard.
+  const isPublicRoute = pathname === "/privacy";
 
-  if (!user && !isAuthRoute) {
+  if (!user && !isAuthRoute && !isPublicRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
