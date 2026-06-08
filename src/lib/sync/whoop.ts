@@ -306,7 +306,6 @@ export async function upsertHealthSnapshots(
   rows: Array<Record<string, unknown>>,
 ): Promise<void> {
   for (const row of rows) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await client
       .from("health_snapshots")
       // Cast required: callers supply partial rows (varying key sets per source).

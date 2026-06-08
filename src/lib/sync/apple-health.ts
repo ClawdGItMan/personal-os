@@ -124,10 +124,7 @@ export async function ingestAppleHealth(
   }
 
   // --- Finish: touch last_synced_at + write sync_runs row ---
-  // touchLastSyncedFor accepts Provider type ("google" | "whoop"); cast required
-  // because apple_health is a valid DB string but not yet in the Provider union.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await touchLastSyncedFor(client, userId, PROVIDER as any);
+  await touchLastSyncedFor(client, userId, PROVIDER);
 
   const status = anyStreamFailed ? "partial" : "ok";
   await writeSyncRun(
