@@ -14,7 +14,7 @@ type IntegrationUpdate = Database["public"]["Tables"]["integrations"]["Update"];
 export const GOOGLE_PROVIDER = "google" as const;
 
 /** Providers this store handles. Whoop rotates refresh tokens + stores extra metadata. */
-export type Provider = "google" | "whoop";
+export type Provider = "google" | "whoop" | "strava";
 
 export type ProviderTokens = {
   accessToken: string;

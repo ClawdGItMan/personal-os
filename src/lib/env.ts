@@ -44,6 +44,18 @@ export function getWhoopOauthRedirectUri(): string {
   return requireEnv("WHOOP_OAUTH_REDIRECT_URI");
 }
 
+export function getStravaClientId(): string {
+  return requireEnv("STRAVA_CLIENT_ID");
+}
+
+export function getStravaClientSecret(): string {
+  return requireEnv("STRAVA_CLIENT_SECRET");
+}
+
+export function getStravaOauthRedirectUri(): string {
+  return requireEnv("STRAVA_OAUTH_REDIRECT_URI");
+}
+
 export function getCronSecret(): string {
   return requireEnv("CRON_SECRET");
 }
