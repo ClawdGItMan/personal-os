@@ -203,7 +203,7 @@ export async function syncX(client: Client, userId: string): Promise<SyncXResult
       // best-effort — swallow logging failure
     }
     await writeSyncRun(client, userId, startedAt, 0, "partial", message);
-    return { ok: false, status: "error", synced: 0 };
+    return { ok: false, status: "partial", synced: 0 };
   }
 
   // 5. One scalar. Pass `getMe`'s result STRAIGHT into `mapFollowerCount` — the
@@ -256,7 +256,7 @@ export async function syncX(client: Client, userId: string): Promise<SyncXResult
       // best-effort — swallow logging failure
     }
     await writeSyncRun(client, userId, startedAt, 0, "partial", message);
-    return { ok: false, status: "error", synced: 0 };
+    return { ok: false, status: "partial", synced: 0 };
   }
 
   // 6. Success.
