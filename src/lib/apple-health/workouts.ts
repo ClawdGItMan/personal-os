@@ -42,10 +42,12 @@ function round(n: number, decimals: number): number {
  */
 function parseHaeTimestamp(ts: string): string {
   // "2026-06-05 12:00:00 -0700" → "2026-06-05T12:00:00-07:00"
-  // Replace space separator, then coerce offset from "-0700" to "-07:00" if needed.
-  const withT = ts.replace(" ", "T");
-  // Insert colon in timezone offset if absent: "-0700" → "-07:00"
-  return withT.replace(/([+-])(\d{2})(\d{2})$/, "$1$2:$3");
+  // HAE uses TWO spaces: date|time and time|offset. Replace the first with "T",
+  // strip the second, then insert a colon in the offset → valid ISO timestamptz.
+  return ts
+    .replace(" ", "T") // date|time separator
+    .replace(" ", "") // strip space before tz offset
+    .replace(/([+-])(\d{2})(\d{2})$/, "$1$2:$3"); // -0700 → -07:00
 }
 
 /**
@@ -94,10 +96,11 @@ export function mapWorkout(raw: RawWorkout): WorkoutRow | null {
   const startStr = typeof rawStart === "string" ? rawStart : null;
   const endStr = typeof rawEnd === "string" ? rawEnd : null;
 
-  // started_at is required for a meaningful row (and for id synthesis).
-  // If we got here via the rawId path, we may still be missing start.
-  // We include it as an empty string fallback — the insert will handle validation.
-  const started_at = startStr ? parseHaeTimestamp(startStr) : "";
+  // started_at is `timestamptz NOT NULL` — a workout with no parseable start
+  // can never produce a valid row, so drop it even if a raw HAE id was present
+  // (the rawId path above does NOT guarantee a start).
+  if (!startStr) return null;
+  const started_at = parseHaeTimestamp(startStr);
 
   const row: Partial<WorkoutRow> & { source: "apple_health"; external_id: string; strain: null; source_metadata: Record<string, unknown> } = {
     source: "apple_health",

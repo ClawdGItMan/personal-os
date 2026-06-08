@@ -10,7 +10,15 @@ describe("mapWorkout", () => {
     });
     expect(row).toMatchObject({ source: "apple_health", external_id: "ABC-123", duration_sec: 2700, avg_hr: 143, max_hr: 171, strain: null });
     expect(typeof row!.sport).toBe("string");
-    expect(typeof row!.started_at).toBe("string"); // ISO
+    // started_at / ended_at must be VALID ISO timestamps (Postgres timestamptz),
+    // not just strings — `new Date(...)` must not be Invalid Date.
+    expect(typeof row!.started_at).toBe("string");
+    expect(Number.isNaN(new Date(row!.started_at).getTime())).toBe(false);
+    expect(typeof row!.ended_at).toBe("string");
+    expect(Number.isNaN(new Date(row!.ended_at!).getTime())).toBe(false);
+  });
+  it("drops a workout with a raw id but no start (started_at is NOT NULL)", () => {
+    expect(mapWorkout({ id: "X", name: "Run", duration: 100 })).toBeNull();
   });
   it("synthesizes a deterministic ah_ id when HAE id is absent (same input → same id)", () => {
     const input = { name: "Functional Strength Training", start: "2026-06-05 06:00:00 -0700", duration: 1800 };
