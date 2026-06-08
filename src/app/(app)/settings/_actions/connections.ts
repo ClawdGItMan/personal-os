@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { GOOGLE_PROVIDER } from "@/lib/integrations/store";
 import { syncCalendar } from "@/lib/sync/calendar";
 import { syncWhoop } from "@/lib/sync/whoop";
+import { syncStrava } from "@/lib/sync/strava";
 import type { ActionResult } from "@/lib/action-result";
 
 /**
@@ -80,6 +81,47 @@ export async function syncWhoopNow(): Promise<ActionResult> {
 
   const supabase = await createClient();
   const result = await syncWhoop(supabase, userId);
+
+  revalidatePath("/dashboard");
+  revalidatePath("/train");
+  revalidatePath("/settings");
+
+  if (!result.ok) return { ok: false, error: `Sync ${result.status}` };
+  return { ok: true };
+}
+
+/**
+ * Disconnect Strava: deletes the integration row (removing the encrypted tokens
+ * entirely) so status reverts to NOT CONNECTED. RLS-scoped + explicit user_id.
+ */
+export async function disconnectStrava(): Promise<ActionResult> {
+  const userId = await getCurrentUserId();
+  if (!userId) return { ok: false, error: "Not signed in" };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("integrations")
+    .delete()
+    .eq("user_id", userId)
+    .eq("provider", "strava");
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/settings");
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
+/**
+ * Run a Strava sync immediately. Used by the post-connect "Syncing…" trigger so
+ * activities show up on the train page right after the OAuth round-trip.
+ * Revalidates /train + /dashboard + /settings.
+ */
+export async function syncStravaNow(): Promise<ActionResult> {
+  const userId = await getCurrentUserId();
+  if (!userId) return { ok: false, error: "Not signed in" };
+
+  const supabase = await createClient();
+  const result = await syncStrava(supabase, userId);
 
   revalidatePath("/dashboard");
   revalidatePath("/train");

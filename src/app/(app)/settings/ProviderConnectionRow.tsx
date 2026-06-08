@@ -8,6 +8,8 @@ import {
   syncGoogleNow,
   disconnectWhoop,
   syncWhoopNow,
+  disconnectStrava,
+  syncStravaNow,
 } from "./_actions/connections";
 import type { Provider } from "@/lib/integrations/store";
 
@@ -44,8 +46,18 @@ export function ProviderConnectionRow({
   const [syncing, setSyncing] = useState(false);
   const triggered = useRef(false);
 
-  const disconnectFn = provider === "whoop" ? disconnectWhoop : disconnectGoogle;
-  const syncFn = provider === "whoop" ? syncWhoopNow : syncGoogleNow;
+  const disconnectFn =
+    provider === "whoop"
+      ? disconnectWhoop
+      : provider === "strava"
+        ? disconnectStrava
+        : disconnectGoogle;
+  const syncFn =
+    provider === "whoop"
+      ? syncWhoopNow
+      : provider === "strava"
+        ? syncStravaNow
+        : syncGoogleNow;
 
   // Returning from the provider sets ?connected=<provider> — kick an immediate
   // sync so the dashboard populates right away, then strip the query param.
