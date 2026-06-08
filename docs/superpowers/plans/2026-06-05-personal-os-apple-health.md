@@ -1,5 +1,12 @@
 # Apple Health Integration Implementation Plan
 
+> ⚠ **DEPRECATED 2026-06-08 — do not execute.** This plan builds the Health Auto Export REST-ingest
+> path, which is superseded by **direct HealthKit access in the native iOS app** (Swift). The HAE
+> build already shipped to prod (PR #4) but is now end-of-life. Apple Health's native replacement is
+> designed in `2026-06-08-personal-os-native-mobile-app-design.md` §3; the data contracts
+> (`health_snapshots` partial-merge, `workouts` upsert, source `apple_health`) carry forward. Treat
+> this plan as historical.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 >
 > **Fresh session. The Whoop slice is merged and supplies the health_snapshots partial-merge + workouts upsert you reuse. This is NOT OAuth — it ingests JSON pushed by the Health Auto Export iOS app to an inbound endpoint, authed by a per-user ingest token. Before locking the parser, capture ONE real HAE push and verify field names/units (training data is stale).**

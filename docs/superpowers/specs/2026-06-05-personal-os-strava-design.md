@@ -1,5 +1,11 @@
 # Phase 1B · Slice — Strava (Workouts)
 
+> ℹ **2026-06-08 — also surfaces in the native iOS mobile app.** Personal OS is adding a full native
+> iOS app (React Native + Swift) as the primary mobile surface. This integration's backend (OAuth
+> token store, sync engine, schema, observability) is **client-agnostic and reused unchanged** — the
+> native app is a new client. The native-app delta is UI + a mobile OAuth flow, not new backend. See
+> `2026-06-08-personal-os-native-mobile-app-design.md`.
+
 **Status:** Design (2026-06-05) — near-clone of the Whoop slice; assumes the **merged** Whoop foundation.
 **Date:** 2026-06-05
 **Parent spec:** `docs/superpowers/specs/2026-05-21-personal-os-design.md` (§6 Integrations)
