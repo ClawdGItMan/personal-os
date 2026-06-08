@@ -3,6 +3,7 @@
   "crons": [
     { "path": "/api/google-calendar/sync", "schedule": "*/5 * * * *" },
     { "path": "/api/whoop/sync", "schedule": "0 * * * *" },
-    { "path": "/api/strava/sync", "schedule": "0 * * * *" }
+    { "path": "/api/strava/sync", "schedule": "0 * * * *" },
+    { "path": "/api/x/sync", "schedule": "0 7 * * *" }
   ]
 }

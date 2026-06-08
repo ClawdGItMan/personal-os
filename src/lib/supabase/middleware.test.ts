@@ -61,6 +61,9 @@ describe("updateSession — unauthenticated routing", () => {
     "/api/google-calendar/sync",
     // Future integration crons must auto-pass via the general */sync shape.
     "/api/strava/sync",
+    // X (Twitter) daily follower-count cron — explicit case so the pass-through
+    // is self-documenting and regression-locked, not just covered by the predicate.
+    "/api/x/sync",
   ])("does NOT redirect cron route %s to /login", async (path) => {
     const res = await updateSession(requestFor(path));
     expect(
