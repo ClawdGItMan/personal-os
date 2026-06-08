@@ -12,6 +12,7 @@ const PENDING_PROVIDERS = [
   { icon: "PL", name: "Plaid", sub: "FINANCE" },
 ] as const;
 
+
 export async function ConnectionsCard() {
   const userId = await getCurrentUserId();
   const supabase = await createClient();
@@ -23,6 +24,11 @@ export async function ConnectionsCard() {
   const whoop = userId ? await getIntegration(supabase, userId, "whoop") : null;
   const whoopSyncedLabel = whoop?.last_synced_at
     ? staleAgeLabel(whoop.last_synced_at)
+    : null;
+
+  const strava = userId ? await getIntegration(supabase, userId, "strava") : null;
+  const stravaSyncedLabel = strava?.last_synced_at
+    ? staleAgeLabel(strava.last_synced_at)
     : null;
 
   const appleHealth = userId ? await getIntegration(supabase, userId, "apple_health") : null;
@@ -45,6 +51,15 @@ export async function ConnectionsCard() {
         status={whoop?.status ?? null}
         syncedLabel={whoopSyncedLabel}
         lastError={whoop?.last_error ?? null}
+      />
+      <ProviderConnectionRow
+        provider="strava"
+        label="Strava"
+        sub="FITNESS"
+        connectPath="/api/strava/connect"
+        status={strava?.status ?? null}
+        syncedLabel={stravaSyncedLabel}
+        lastError={strava?.last_error ?? null}
       />
       <AppleHealthConnectionRow
         hasToken={Boolean(appleHealth)}
