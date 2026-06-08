@@ -8,6 +8,7 @@ import { GOOGLE_PROVIDER } from "@/lib/integrations/store";
 import { syncCalendar } from "@/lib/sync/calendar";
 import { syncWhoop } from "@/lib/sync/whoop";
 import { syncStrava } from "@/lib/sync/strava";
+import { syncX } from "@/lib/sync/x";
 import { mintIngestToken } from "@/lib/apple-health/ingest-token";
 import type { ActionResult } from "@/lib/action-result";
 
@@ -181,6 +182,46 @@ export async function syncStravaNow(): Promise<ActionResult> {
 
   revalidatePath("/dashboard");
   revalidatePath("/train");
+  revalidatePath("/settings");
+
+  if (!result.ok) return { ok: false, error: `Sync ${result.status}` };
+  return { ok: true };
+}
+
+/**
+ * Disconnect X: deletes the integration row (removing the encrypted tokens
+ * entirely) so status reverts to NOT CONNECTED. RLS-scoped + explicit user_id.
+ */
+export async function disconnectX(): Promise<ActionResult> {
+  const userId = await getCurrentUserId();
+  if (!userId) return { ok: false, error: "Not signed in" };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("integrations")
+    .delete()
+    .eq("user_id", userId)
+    .eq("provider", "x");
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/settings");
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
+/**
+ * Run an X sync immediately. Used by the post-connect "Syncing…" trigger so the
+ * follower count shows up right after the OAuth round-trip. Revalidates
+ * /dashboard (the Social card renders there) + /settings.
+ */
+export async function syncXNow(): Promise<ActionResult> {
+  const userId = await getCurrentUserId();
+  if (!userId) return { ok: false, error: "Not signed in" };
+
+  const supabase = await createClient();
+  const result = await syncX(supabase, userId);
+
+  revalidatePath("/dashboard");
   revalidatePath("/settings");
 
   if (!result.ok) return { ok: false, error: `Sync ${result.status}` };

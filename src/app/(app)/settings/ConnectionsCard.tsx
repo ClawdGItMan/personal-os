@@ -31,6 +31,9 @@ export async function ConnectionsCard() {
     ? staleAgeLabel(strava.last_synced_at)
     : null;
 
+  const x = userId ? await getIntegration(supabase, userId, "x") : null;
+  const xSyncedLabel = x?.last_synced_at ? staleAgeLabel(x.last_synced_at) : null;
+
   const appleHealth = userId ? await getIntegration(supabase, userId, "apple_health") : null;
   const appleHealthSyncedLabel = appleHealth?.last_synced_at
     ? staleAgeLabel(appleHealth.last_synced_at)
@@ -60,6 +63,15 @@ export async function ConnectionsCard() {
         status={strava?.status ?? null}
         syncedLabel={stravaSyncedLabel}
         lastError={strava?.last_error ?? null}
+      />
+      <ProviderConnectionRow
+        provider="x"
+        label="X"
+        sub="SOCIAL"
+        connectPath="/api/x/connect"
+        status={x?.status ?? null}
+        syncedLabel={xSyncedLabel}
+        lastError={x?.last_error ?? null}
       />
       <AppleHealthConnectionRow
         hasToken={Boolean(appleHealth)}
