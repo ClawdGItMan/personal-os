@@ -8,6 +8,7 @@ import { GOOGLE_PROVIDER } from "@/lib/integrations/store";
 import { syncCalendar } from "@/lib/sync/calendar";
 import { syncWhoop } from "@/lib/sync/whoop";
 import { syncStrava } from "@/lib/sync/strava";
+import { mintIngestToken } from "@/lib/apple-health/ingest-token";
 import type { ActionResult } from "@/lib/action-result";
 
 /**
@@ -67,6 +68,61 @@ export async function disconnectWhoop(): Promise<ActionResult> {
 
   revalidatePath("/settings");
   revalidatePath("/dashboard");
+  return { ok: true };
+}
+
+/**
+ * Generate (or rotate) the Apple Health ingest token. Upserts the integrations
+ * row with ONLY the secret hash — the plaintext token is returned once and never
+ * persisted. Rotating overwrites the stored hash so the old token instantly 401s.
+ */
+export async function regenerateAppleHealthToken(): Promise<
+  { ok: true; token: string } | { ok: false; error: string }
+> {
+  const userId = await getCurrentUserId();
+  if (!userId) return { ok: false, error: "Not signed in" };
+
+  const { token, secretHash } = mintIngestToken(userId);
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("integrations").upsert(
+    {
+      user_id: userId,
+      provider: "apple_health",
+      status: "connected",
+      last_error: null,
+      metadata: {
+        token_hash: secretHash,
+        token_created_at: new Date().toISOString(),
+      },
+    },
+    { onConflict: "user_id,provider" },
+  );
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/settings");
+  return { ok: true, token };
+}
+
+/**
+ * Disconnect Apple Health: deletes the integration row (removing the stored
+ * token hash) so status reverts to NOT CONNECTED.
+ */
+export async function disconnectAppleHealth(): Promise<ActionResult> {
+  const userId = await getCurrentUserId();
+  if (!userId) return { ok: false, error: "Not signed in" };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("integrations")
+    .delete()
+    .eq("user_id", userId)
+    .eq("provider", "apple_health");
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/settings");
+  revalidatePath("/dashboard");
+  revalidatePath("/train");
   return { ok: true };
 }
 

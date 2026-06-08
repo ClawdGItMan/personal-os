@@ -233,21 +233,15 @@ export async function syncWhoop(client: Client, userId: string): Promise<SyncWho
     }
   }
 
-  // 6. Stream A — health snapshots (per-day individual upsert; each row's column
-  //    set differs, so they must NOT be batched into one array upsert). The loop
-  //    is sequential by design (~30 rows max on backfill, fewer incrementally).
+  // 6. Stream A — health snapshots (per-day individual upsert via shared helper;
+  //    each row's column set differs, so upsertHealthSnapshots loops individually).
   if (!authExpiredMessage) {
     try {
       const raw = await withAuthRetry((t) => fetchHealthWindow(t, window));
       const days = assembleHealthDays(raw, timeZone);
-      for (const day of days) {
-        const partialRow = { ...mapHealthDay(day), user_id: userId };
-        const { error } = await client
-          .from("health_snapshots")
-          .upsert(partialRow, { onConflict: "user_id,date" });
-        if (error) throw new Error(error.message);
-        healthRows += 1;
-      }
+      const partialRows = days.map((day) => ({ ...mapHealthDay(day), user_id: userId }));
+      await upsertHealthSnapshots(client, partialRows);
+      healthRows = partialRows.length;
     } catch (err) {
       if (err instanceof WhoopAuthExpired) {
         authExpiredMessage = err.message;
@@ -257,19 +251,14 @@ export async function syncWhoop(client: Client, userId: string): Promise<SyncWho
     }
   }
 
-  // 7. Stream B — workouts (single batch upsert; all rows share one shape).
+  // 7. Stream B — workouts (single batch upsert via shared helper).
   if (!authExpiredMessage) {
     try {
       const rows = (await withAuthRetry((t) => fetchWorkouts(t, window))).map((r) => ({
         ...r,
         user_id: userId,
       }));
-      if (rows.length > 0) {
-        const { error } = await client
-          .from("workouts")
-          .upsert(rows, { onConflict: "user_id,source,external_id" });
-        if (error) throw new Error(error.message);
-      }
+      await upsertWorkouts(client, rows);
       workoutRows = rows.length;
     } catch (err) {
       if (err instanceof WhoopAuthExpired) {
@@ -303,6 +292,46 @@ export async function syncWhoop(client: Client, userId: string): Promise<SyncWho
   );
 
   return { ok: true, status, healthRows, workoutRows };
+}
+
+/**
+ * Partial column-merge upsert into `health_snapshots`.
+ * Each row carries ONLY user_id, date, source, and the present metric columns.
+ * ON CONFLICT DO UPDATE sets only the supplied columns — other sources' columns
+ * survive untouched (Supabase upsert sends only the keys present in the row object).
+ * No-op when rows is empty.
+ */
+export async function upsertHealthSnapshots(
+  client: Client,
+  rows: Array<Record<string, unknown>>,
+): Promise<void> {
+  for (const row of rows) {
+    const { error } = await client
+      .from("health_snapshots")
+      // Cast required: callers supply partial rows (varying key sets per source).
+      // The partial-merge contract is enforced by the caller, not TS generics here.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .upsert(row as any, { onConflict: "user_id,date" });
+    if (error) throw new Error(error.message);
+  }
+}
+
+/**
+ * Single-source-owned rows; blind upsert into `workouts`.
+ * Caller is responsible for filtering out any rows with a null external_id.
+ * No-op when rows is empty.
+ */
+export async function upsertWorkouts(
+  client: Client,
+  rows: Array<Record<string, unknown>>,
+): Promise<void> {
+  if (rows.length === 0) return;
+  const { error } = await client
+    .from("workouts")
+    // Cast required: callers supply rows assembled at runtime from multiple sources.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .upsert(rows as any, { onConflict: "user_id,source,external_id" });
+  if (error) throw new Error(error.message);
 }
 
 /** Insert a sync_runs row (status ∈ {ok,partial,failed}); user_id is NOT NULL. */

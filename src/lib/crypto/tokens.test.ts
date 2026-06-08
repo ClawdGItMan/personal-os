@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { randomBytes } from "node:crypto";
 import { encryptToken, decryptToken } from "./tokens";
+import { hashToken, compareToken } from "./tokens";
 
 beforeAll(() => {
   process.env.TOKEN_ENCRYPTION_KEY = randomBytes(32).toString("base64");
@@ -18,5 +19,27 @@ describe("token encryption", () => {
     const enc = encryptToken("x");
     const tampered = enc.slice(0, -4) + (enc.endsWith("A") ? "B" : "A") + enc.slice(-3);
     expect(() => decryptToken(tampered)).toThrow();
+  });
+});
+
+describe("token hashing", () => {
+  it("hashToken is deterministic and hex-encoded sha256 (64 hex chars)", () => {
+    const h = hashToken("secret-abc");
+    expect(h).toBe(hashToken("secret-abc"));
+    expect(h).toMatch(/^[0-9a-f]{64}$/);
+  });
+  it("compareToken returns true for the matching secret, false otherwise", () => {
+    const stored = hashToken("secret-abc");
+    expect(compareToken("secret-abc", stored)).toBe(true);
+    expect(compareToken("secret-xyz", stored)).toBe(false);
+  });
+  it("compareToken does NOT throw on a wrong-length presented token (digests are fixed length)", () => {
+    const stored = hashToken("secret-abc");
+    expect(() => compareToken("", stored)).not.toThrow();
+    expect(compareToken("", stored)).toBe(false);
+  });
+  it("compareToken returns false for a malformed stored hash without throwing", () => {
+    expect(() => compareToken("secret-abc", "not-a-hash")).not.toThrow();
+    expect(compareToken("secret-abc", "not-a-hash")).toBe(false);
   });
 });

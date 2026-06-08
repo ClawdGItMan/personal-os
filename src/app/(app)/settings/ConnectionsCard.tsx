@@ -5,11 +5,11 @@ import { staleAgeLabel } from "@/lib/sync/stale";
 import { StatRow } from "@/components/primitives/StatRow";
 import { GoogleConnectionRow } from "./GoogleConnectionRow";
 import { ProviderConnectionRow } from "./ProviderConnectionRow";
+import { AppleHealthConnectionRow } from "./AppleHealthConnectionRow";
 
 /** Providers still awaiting their Phase 1B slice — shown as static placeholders. */
 const PENDING_PROVIDERS = [
   { icon: "PL", name: "Plaid", sub: "FINANCE" },
-  { icon: "HA", name: "Health Auto Export", sub: "APPLE HEALTH" },
 ] as const;
 
 
@@ -29,6 +29,11 @@ export async function ConnectionsCard() {
   const strava = userId ? await getIntegration(supabase, userId, "strava") : null;
   const stravaSyncedLabel = strava?.last_synced_at
     ? staleAgeLabel(strava.last_synced_at)
+    : null;
+
+  const appleHealth = userId ? await getIntegration(supabase, userId, "apple_health") : null;
+  const appleHealthSyncedLabel = appleHealth?.last_synced_at
+    ? staleAgeLabel(appleHealth.last_synced_at)
     : null;
 
   return (
@@ -55,6 +60,11 @@ export async function ConnectionsCard() {
         status={strava?.status ?? null}
         syncedLabel={stravaSyncedLabel}
         lastError={strava?.last_error ?? null}
+      />
+      <AppleHealthConnectionRow
+        hasToken={Boolean(appleHealth)}
+        connected={Boolean(appleHealth?.last_synced_at)}
+        syncedLabel={appleHealthSyncedLabel}
       />
       {PENDING_PROVIDERS.map((p) => (
         <StatRow key={p.name} icon={p.icon} name={p.name} sub={p.sub} value="NOT CONNECTED" />

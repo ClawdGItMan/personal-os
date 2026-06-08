@@ -13,8 +13,10 @@ type IntegrationUpdate = Database["public"]["Tables"]["integrations"]["Update"];
 /** The Google provider literal. Gmail (1B.1b) reuses the same shape. */
 export const GOOGLE_PROVIDER = "google" as const;
 
-/** Providers this store handles. Whoop rotates refresh tokens + stores extra metadata. */
-export type Provider = "google" | "whoop" | "strava";
+/** Providers this store handles. Whoop + Strava rotate refresh tokens + store extra metadata.
+ *  Apple Health is inbound-push (no OAuth tokens) but shares the integrations row
+ *  for its token hash + last_synced_at stamp. */
+export type Provider = "google" | "whoop" | "apple_health" | "strava";
 
 export type ProviderTokens = {
   accessToken: string;
