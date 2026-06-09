@@ -24,7 +24,9 @@ relates_to: 2026-05-21-personal-os-design.md (web design system — the DNA this
 > — full path `/Users/me/Projects/Personal OS/.superpowers/brainstorm/43623-1780955811/`
 > (relative: `.superpowers/brainstorm/43623-1780955811/`) — `home-v3.html`, `body-v2.html`, `money.html`,
 > `focus-v2.html`, `detail-pages.html`, `capture-v1.html`, `capture-type.html`,
-> `capture-states.html`. These are **direction-only** (HTML/CSS); they become React Native via
+> `capture-states.html`, plus **`fable-pass.html`** (the approved motion/ambient-personal layer over
+> all five screens) and **`interactions.html`** (completion moment + anticipatory Capture).
+> These are **direction-only** (HTML/CSS); they become React Native via
 > Figma. Where this doc and a mockup disagree, this doc wins (it records the reconciled decisions).
 
 ---
@@ -142,9 +144,10 @@ Three families, already in the codebase. Loaded via Google Fonts in mockups; bun
 | `blur.nav` | backdrop-blur 16px over `rgba(14,16,20,.82–.9)` |
 | Icon stroke | 1.7px, round cap/join (nav/UI); 1.6–2.0 for inline glyphs |
 
-**Motion (light, purposeful):** the "now" node carries a soft blue pulse-ring; the voice state
-pulses concentric rings + an animated waveform. Otherwise transitions are quiet (sheet slide-up,
-tab cross-fade). No bouncy/elastic motion.
+**Motion:** the full motion-and-interaction system (approved 2026-06-09, "Fable pass") is specified
+in §6.4. Hard constraints up front: animate **transform/opacity only** (GPU-composited), entrances
+play **once**, at most three slow ambient loops per screen, honor `prefers-reduced-motion`. No
+bouncy/elastic motion anywhere except the deliberate checkbox pop (§6.4).
 
 ---
 
@@ -217,6 +220,11 @@ Each is a reusable component → becomes a Figma component + an RN component. To
 | **Voice/dictation state** | pulsing mic orb (concentric blue rings) + animated waveform + "Listening…" + live transcript (committed `fg.2` / pending `fg.4` + blue caret); dock = Cancel · Stop · Keyboard | Capture |
 | **Bottom nav + center FAB** | see §3 | Every primary screen |
 | **Ambient gradient bg** | see §2.2 | Fixed, every screen |
+| **Whisper line** | agent dot + one Newsreader-italic sentence under the Home greeting, `fg.3` | The agent speaking quietly — stitches modules into one human sentence (§6.4) |
+| **Day-progress hairline** | 2px track, blue gradient fill to "now," glowing end dot | Under the Home greeting; % of day elapsed |
+| **Avatar status ring** | 2px conic ring around the avatar, green sweep = recovery % | Every screen header — body state ambient |
+| **Live-data dot** | 5px pulsing dot (green/blue) before a source meta label | `WHOOP` / `GOOGLE CAL` / `Plaid` — "synced and fresh" at a glance |
+| **Suggestion chip row** | leading line-icon + title + mono "why" line + ⊕ go-button; blue-tinted border, dims with rank | Anticipatory Capture (§6.4); max 3, ranked |
 
 ---
 
@@ -353,7 +361,48 @@ the **Phase-2 agent** (the ⊕ spine). Until that agent is live:
 - Capture can still do **deterministic** parses (log a workout, add a task) without rich
   recommendations; the conversational prep/insight lights up when the agent lands.
 
-### 6.4 Color semantics recap
+### 6.4 Motion & interaction layer ("Fable pass", approved 2026-06-09)
+
+**Budget rules (hard):** animate `transform`/`opacity` only; entrances play once then cost zero;
+≤3 slow ambient loops per screen; `prefers-reduced-motion` disables everything. Maps 1:1 to
+Reanimated in RN.
+
+**Entrances (one-time, per screen open):** sections rise in staggered (translateY 10px → 0, ~0.6s,
+50–90ms steps). Data draws itself: rings sweep from zero (~1.3s); the net-worth line draws
+left-to-right then its endpoint emits one soft pulse; sleep stages / allocation segments / macro
+bars / progress fills scale in (origin left), sparkbars scale up (origin bottom), habit week-dots
+pop in sequence.
+
+**Ambient loops (the only persistent motion):** the top glow breathes (12s opacity), the ⊕ FAB
+halo pulses (3.2s), live-data dots shimmer (2.6s), carets blink. The "now" node/dot keeps its
+pulse-ring (2.2s).
+
+**Living numbers:** mono metric values count up to their value on screen-open and on data refresh
+(tabular numerals hold layout). Net worth may roll digits.
+
+**Collapsing serif header:** on long screens (Body), the large serif title shrinks into the top bar
+beside the brand mark as you scroll — iOS large-title behavior in the editorial type system.
+
+**The completion moment (signature interaction):** tapping a task checkbox runs a ~1s choreography —
+checkbox compresses (scale .86), fills green and pops (scale 1.14 → 1, the system's only overshoot),
+the check scales in, the strike-through draws across the title (origin left), the title fades to
+`fg.4`, the section progress bar nudges up, and a **light haptic tick** lands. Reference:
+`interactions.html`.
+
+**Haptics map (touch as a token):** complete task → light tick · capture confirmed → soft tap ·
+PR logged → double tick · streak kept (7th dot) → light tick · permission granted → success thud.
+No haptic on scroll/navigation.
+
+**Anticipatory Capture:** the ⊕ sheet opens already contextual — up to **3 suggestion chip rows**
+ranked by context strength (calendar block just ended > time-of-day pattern > upcoming need), each
+with a mono "why" line and one-tap accept; visual weight dims with rank. The serif intro adapts to
+context ("Back from the gym?"). The free-text field and mic always remain. Requires the Phase-2
+agent for ranked suggestions; degrades to plain quick-intent chips (§5.6) until then.
+
+**Ambient-personal elements (approved with this layer):** the Home **whisper line**, the
+**avatar recovery ring**, the **day-progress hairline**, and **live-data dots** — see §4 inventory.
+
+### 6.5 Color semantics recap
 Up = green ▲ · Down = muted neutral ▼ (`fg.3`) · Flat/held = dim — (`fg.4`). Intensity ramp
 blue→green→yellow. Attention = yellow (incl. permission gate). **No red anywhere.**
 
@@ -383,6 +432,12 @@ OAuth token store + sync engines). Cloud-API integrations need **mobile OAuth fl
 - **Settings / Social / Inbox** secondary screens (off Home header). Not yet designed.
 - **"Agent off" empty states** for Recommended panels (§6.3).
 - **Per-day Calendar navigation** (tapping a week-strip day) — interaction detail.
+- **Day map on Focus** — a thin horizontal band under the Calendar header: the day as a strip,
+  blocked time solid, free time empty, "now" as the glowing dot. Makes "two deep blocks left" visual.
+- **Trend-on-tap** — any metric (HRV, sleep, strain, an account) tap-opens a 30-day mini-trend
+  sheet, reusing the Money area-chart component.
+- **iOS home-screen / lock-screen widgets** — the vitals strip and the gradient ring are
+  practically pre-designed for WidgetKit. Post-launch.
 - **Android** — out of scope (iOS-first; RN keeps the door open).
 - Mobile auth (token session), HealthKit module build-vs-library — **build-time**, per the native-app
   direction doc §7.
