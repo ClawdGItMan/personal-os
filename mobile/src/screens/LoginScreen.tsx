@@ -24,7 +24,12 @@ export function LoginScreen() {
     if (!valid) return;
     setStatus("sending");
     setError("");
-    const emailRedirectTo = Linking.createURL("auth-callback");
+    // Web: return to the app root (the Expo dev server always serves it) with the
+    // token in the query. Native: the `personalos://auth-callback` deep link.
+    const emailRedirectTo =
+      Platform.OS === "web" && typeof window !== "undefined"
+        ? window.location.origin
+        : Linking.createURL("auth-callback");
     const { error: err } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: { emailRedirectTo },
