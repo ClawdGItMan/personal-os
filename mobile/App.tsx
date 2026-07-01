@@ -17,6 +17,7 @@ import { StatusBar } from "expo-status-bar";
 import type { ReactNode } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 
+import { SessionProvider, useSession } from "./src/auth/SessionProvider";
 import { AmbientBackground } from "./src/components/AmbientBackground";
 import { BottomNav } from "./src/components/BottomNav";
 import { NavProvider, useNav } from "./src/navigation/NavContext";
@@ -25,6 +26,7 @@ import { CaptureSheet } from "./src/screens/CaptureSheet";
 import { DetailScreen } from "./src/screens/DetailScreen";
 import { FocusScreen } from "./src/screens/FocusScreen";
 import { HomeScreen } from "./src/screens/HomeScreen";
+import { LoginScreen } from "./src/screens/LoginScreen";
 import { MoneyScreen } from "./src/screens/MoneyScreen";
 import { color } from "./src/theme/tokens";
 
@@ -69,6 +71,18 @@ function Shell() {
   );
 }
 
+/** Auth gate: splash while resolving the session, login when signed out, app when in. */
+function Root() {
+  const { session, loading } = useSession();
+  if (loading) return <View style={styles.loading} />;
+  if (!session) return <LoginScreen />;
+  return (
+    <NavProvider>
+      <Shell />
+    </NavProvider>
+  );
+}
+
 export default function App() {
   const [fontsLoaded] = useFonts({
     InstrumentSerif_400Regular,
@@ -85,9 +99,10 @@ export default function App() {
 
   return (
     <DeviceFrame>
-      <NavProvider>
-        <Shell />
-      </NavProvider>
+      <SessionProvider>
+        <Root />
+      </SessionProvider>
+      <StatusBar style="light" />
     </DeviceFrame>
   );
 }

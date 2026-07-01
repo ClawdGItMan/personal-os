@@ -6,7 +6,8 @@ import { SectionEnter } from "../components/SectionEnter";
 import { SectionHeader } from "../components/SectionHeader";
 import { TimelineRow } from "../components/TimelineRow";
 import { VitalsStrip } from "../components/VitalsStrip";
-import { homeData } from "../data/home";
+import { applyLiveHome, homeData } from "../data/home";
+import { useHealthToday, useHomeHabits } from "../lib/queries";
 import { space } from "../theme/tokens";
 
 /**
@@ -15,6 +16,21 @@ import { space } from "../theme/tokens";
  * The shared AmbientBackground + BottomNav are owned by App (the nav shell).
  */
 export function HomeScreen() {
+  // Merge live Whoop recovery/sleep + the real habit tally over the mock in
+  // place; net worth stays mock. Either hook resolving re-renders this screen
+  // and VitalsStrip, which reads the merged `homeData.vitals.*` on render.
+  const { data: health } = useHealthToday();
+  const { data: habits } = useHomeHabits();
+  if (health || habits) {
+    applyLiveHome({
+      recoveryScore: health?.recoveryScore ?? null,
+      hrv: health?.hrv ?? null,
+      sleepHours: health?.sleepHours ?? null,
+      sleepScore: health?.sleepScore ?? null,
+      habits: habits ?? null,
+    });
+  }
+
   return (
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <AppHeader recoveryPct={homeData.recoveryPct} />

@@ -7,7 +7,8 @@ import { RecoverySection } from "../components/body/RecoverySection";
 import { SleepSection } from "../components/body/SleepSection";
 import { StrainSection } from "../components/body/StrainSection";
 import { TrainingSection } from "../components/body/TrainingSection";
-import { bodyData } from "../data/body";
+import { applyLiveBody, bodyData } from "../data/body";
+import { useHealthToday } from "../lib/queries";
 import { color, font, space, type } from "../theme/tokens";
 
 /**
@@ -16,6 +17,21 @@ import { color, font, space, type } from "../theme/tokens";
  * only; the shared AmbientBackground + BottomNav are owned by the App shell.
  */
 export function BodyScreen() {
+  // Merge live Whoop metrics over the mock in place; null/loading keeps the mock.
+  // The hook's state change re-renders this screen and its sections, which read
+  // the (now-merged) `bodyData.*` in their render bodies.
+  const { data: health } = useHealthToday();
+  if (health) {
+    applyLiveBody({
+      recoveryScore: health.recoveryScore,
+      hrv: health.hrv,
+      rhr: health.rhr,
+      sleepHours: health.sleepHours,
+      sleepScore: health.sleepScore,
+      strain: health.strain,
+    });
+  }
+
   const { eyebrow, title } = bodyData;
   return (
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>

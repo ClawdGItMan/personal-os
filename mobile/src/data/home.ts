@@ -34,3 +34,50 @@ export const homeData = {
     { time: "19:00", state: "up", title: "Wind-down · journal", sub: "Focus · habit", showConnector: false },
   ] satisfies TimelineItem[],
 };
+
+/** Live Home vitals — Whoop recovery/sleep + real habit tally. Net worth stays mock (Plaid skipped). */
+export type LiveHome = {
+  recoveryScore: number | null;
+  hrv: number | null;
+  sleepHours: number | null;
+  sleepScore: number | null;
+  /** Habit tally for today; null while the query is still loading. */
+  habits: { done: number; total: number } | null;
+};
+
+/** Split decimal hours (7.2) into whole hours + zero-padded minutes ("7", "12"). */
+function splitHours(decimalHours: number): { hours: string; minutes: string } {
+  const totalMinutes = Math.round(decimalHours * 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return { hours: String(hours), minutes: String(minutes).padStart(2, "0") };
+}
+
+/**
+ * Merge live values over the Home mock in place (VitalsStrip reads
+ * `homeData.vitals.*` at render time). Idempotent + null-safe: any null field
+ * keeps its mock value. Net worth is never touched.
+ */
+export function applyLiveHome(live: LiveHome): void {
+  const { recoveryScore, hrv, sleepHours, sleepScore, habits } = live;
+
+  if (recoveryScore != null) {
+    homeData.recoveryPct = recoveryScore / 100;
+    homeData.vitals.recovery.value = String(Math.round(recoveryScore));
+  }
+  if (hrv != null) homeData.vitals.recovery.sub = `HRV ${Math.round(hrv)}`;
+
+  if (sleepHours != null) {
+    const { hours, minutes } = splitHours(sleepHours);
+    homeData.vitals.sleep.hours = hours;
+    homeData.vitals.sleep.minutes = minutes;
+  }
+  if (sleepScore != null) homeData.vitals.sleep.sub = `${Math.round(sleepScore)}% QUALITY`;
+
+  // `habits` is null only while loading; an empty result ({done:0,total:0}) must
+  // write through, else a user with no habits keeps the mock tally forever.
+  if (habits) {
+    homeData.vitals.habits.done = habits.done;
+    homeData.vitals.habits.total = habits.total;
+  }
+}

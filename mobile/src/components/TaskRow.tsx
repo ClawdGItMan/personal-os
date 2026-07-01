@@ -18,6 +18,12 @@ type TaskRowProps = {
   last?: boolean;
   /** Detail payload opened on tap. Defaults to a task built from title. */
   detail?: DetailItem;
+  /**
+   * Optional checkbox handler. When set, the checkbox becomes its own tap
+   * target that toggles `done` (receiving the next value); the row body still
+   * opens Detail. Omit it and the whole row simply opens Detail (legacy).
+   */
+  onToggle?: (next: boolean) => void;
 };
 
 /**
@@ -25,14 +31,24 @@ type TaskRowProps = {
  * done) + sub (blue when time-blocked) + optional yellow flag + chevron.
  * Tappable → useNav().openDetail. Focus + Capture.
  */
-export function TaskRow({ title, sub, done = false, timeBlocked = false, priority = false, last = false, detail }: TaskRowProps) {
+export function TaskRow({ title, sub, done = false, timeBlocked = false, priority = false, last = false, detail, onToggle }: TaskRowProps) {
   const { openDetail } = useNav();
   const item: DetailItem = detail ?? { kind: "task", title, sub, done };
+  const checkbox = <View style={[styles.checkbox, done && styles.checkboxDone]}>{done ? <CheckIcon color={color.bg} /> : null}</View>;
   return (
     <Pressable style={[styles.row, last && styles.rowLast]} onPress={() => openDetail(item)}>
-      <View style={[styles.checkbox, done && styles.checkboxDone]}>
-        {done ? <CheckIcon color={color.bg} /> : null}
-      </View>
+      {onToggle ? (
+        <Pressable
+          onPress={() => onToggle(!done)}
+          hitSlop={8}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: done }}
+        >
+          {checkbox}
+        </Pressable>
+      ) : (
+        checkbox
+      )}
       <View style={styles.body}>
         <Text style={[type.rowTitle, done && styles.titleDone]}>{title}</Text>
         <Text style={[type.rowSub, styles.sub, timeBlocked && styles.blueText]}>{sub}</Text>

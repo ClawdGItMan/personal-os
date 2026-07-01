@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
-import { AccessibilityInfo, Animated, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import type { TextInput as RNTextInput } from "react-native";
+import { AccessibilityInfo, Animated, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { color, font, radius, type } from "../../theme/tokens";
 
@@ -8,6 +9,13 @@ type JournalFieldProps = {
   prompt: string;
   /** Muted "tap to write" affordance text. */
   placeholder: string;
+  /**
+   * Optional submit handler. When set, tapping the "write" row opens an inline
+   * TextInput; submitting calls this with the text and returns whether the
+   * insert succeeded (true clears + collapses the field). Omit for a static
+   * "tap to write" affordance.
+   */
+  onSubmit?: (text: string) => Promise<boolean>;
 };
 
 /**
@@ -52,14 +60,73 @@ function BlinkingCaret() {
  * serif-italic prompt, a hairline, then a "tap to write" row led by a blinking
  * blue caret. The one deliberate contained surface in Focus.
  */
-export function JournalField({ prompt, placeholder }: JournalFieldProps) {
+export function JournalField({ prompt, placeholder, onSubmit }: JournalFieldProps) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState("");
+  const [saving, setSaving] = useState(false);
+  const inputRef = useRef<RNTextInput>(null);
+  // Synchronous guard: onSubmitEditing + onBlur can both fire on native, and the
+  // async `saving` state flips too late to dedupe — this blocks the second call.
+  const submittingRef = useRef(false);
+
+  const open = () => {
+    if (!onSubmit) return;
+    setEditing(true);
+    // Focus after the input mounts.
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
+  const submit = async () => {
+    if (!onSubmit || submittingRef.current) return;
+    if (!text.trim()) {
+      setEditing(false);
+      return;
+    }
+    submittingRef.current = true;
+    setSaving(true);
+    try {
+      const ok = await onSubmit(text);
+      if (ok) {
+        setText("");
+        setEditing(false);
+      }
+    } finally {
+      submittingRef.current = false;
+      setSaving(false);
+    }
+  };
+
   return (
     <View style={styles.field}>
       <Text style={styles.prompt}>{prompt}</Text>
-      <View style={styles.write}>
-        <BlinkingCaret />
-        <Text style={styles.placeholder}>{placeholder}</Text>
-      </View>
+      {editing ? (
+        <View style={styles.write}>
+          <TextInput
+            ref={inputRef}
+            style={styles.input}
+            value={text}
+            onChangeText={setText}
+            placeholder={placeholder}
+            placeholderTextColor={color.fg4}
+            multiline
+            editable={!saving}
+            onSubmitEditing={submit}
+            onBlur={submit}
+            blurOnSubmit
+            returnKeyType="done"
+          />
+        </View>
+      ) : (
+        <Pressable
+          style={styles.write}
+          onPress={open}
+          disabled={!onSubmit}
+          accessibilityRole="button"
+        >
+          <BlinkingCaret />
+          <Text style={styles.placeholder}>{placeholder}</Text>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -99,5 +166,14 @@ const styles = StyleSheet.create({
     fontFamily: font.sansSemi,
     fontSize: 12,
     color: color.fg4,
+  },
+  input: {
+    flex: 1,
+    fontFamily: font.sansSemi,
+    fontSize: 13.5,
+    lineHeight: 19,
+    color: color.fg1,
+    minHeight: 20,
+    padding: 0,
   },
 });

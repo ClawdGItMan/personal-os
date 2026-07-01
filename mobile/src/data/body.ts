@@ -21,6 +21,25 @@ export type Macro = {
   tone: "green" | "blue" | "yellow";
 };
 
+/**
+ * Live body metrics (Whoop `health_snapshots`). Any field may be null when that
+ * day's sync didn't cover it — `applyLiveBody` leaves the mock in place for nulls.
+ */
+export type LiveBody = {
+  recoveryScore: number | null;
+  hrv: number | null;
+  rhr: number | null;
+  sleepHours: number | null;
+  sleepScore: number | null;
+  strain: number | null;
+};
+
+/**
+ * Mutable at runtime so a live sync can override the mock in place (the Body
+ * sections read `bodyData.*` inside their render bodies — see `applyLiveBody`).
+ * Sleep STAGES, SpO₂, training lifts + PR count, and nutrition stay mock: no
+ * columns for them yet. `as const` is intentionally dropped so fields are writable.
+ */
 export const bodyData = {
   eyebrow: "Body · Friday, May 8",
   title: { lead: "Well ", emphasis: "recovered." },
@@ -84,4 +103,47 @@ export const bodyData = {
       { label: "Fat", grams: "56g", pct: 0.48, tone: "yellow" },
     ] satisfies Macro[],
   },
-} as const;
+};
+
+/** Whoop recovery band → the serif read-out under the ring (spec §5.2 voice). */
+function recoveryReadout(pct: number): string {
+  if (pct >= 67) return "Green to push — your body's ready for strain today.";
+  if (pct >= 34) return "Amber — build steady, keep the intensity honest.";
+  return "Red — prioritise recovery; go light and rebuild.";
+}
+
+/** Split decimal hours (7.2) into whole hours + zero-padded minutes ("7", "12"). */
+function splitHours(decimalHours: number): { hours: string; minutes: string } {
+  const totalMinutes = Math.round(decimalHours * 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return { hours: String(hours), minutes: String(minutes).padStart(2, "0") };
+}
+
+/**
+ * Merge live Whoop values over the mock in place. Idempotent and null-safe:
+ * called each render, it re-derives every live field from `live` and leaves the
+ * mock untouched wherever `live.*` is null. Keeps the Body sections' APIs intact.
+ */
+export function applyLiveBody(live: LiveBody): void {
+  const { recoveryScore, hrv, rhr, sleepHours, sleepScore, strain } = live;
+
+  if (recoveryScore != null) {
+    const pct = Math.round(recoveryScore);
+    bodyData.recovery.pct = pct;
+    bodyData.recoveryPct = recoveryScore / 100;
+    bodyData.recovery.readout = recoveryReadout(pct);
+  }
+  if (hrv != null) bodyData.recovery.stats[0].value = String(Math.round(hrv));
+  if (rhr != null) bodyData.recovery.stats[1].value = String(Math.round(rhr));
+
+  if (sleepHours != null) {
+    const { hours, minutes } = splitHours(sleepHours);
+    bodyData.sleep.hours = hours;
+    bodyData.sleep.minutes = minutes;
+    bodyData.sleep.meta = `${hours}H${minutes} / 8H00 NEED`;
+  }
+  if (sleepScore != null) bodyData.sleep.quality = `${Math.round(sleepScore)}%`;
+
+  if (strain != null) bodyData.strain.value = strain.toFixed(1);
+}
