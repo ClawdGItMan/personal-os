@@ -16,7 +16,11 @@ export type DetailItem = {
   [key: string]: unknown;
 };
 
-export type Overlay = null | { kind: "capture" } | { kind: "detail"; item: DetailItem };
+export type Overlay =
+  | null
+  | { kind: "capture" }
+  | { kind: "assistant" }
+  | { kind: "detail"; item: DetailItem };
 
 export type NavValue = {
   /** The active primary tab (drives which screen renders). */
@@ -26,6 +30,8 @@ export type NavValue = {
   overlay: Overlay;
   /** Open the ⊕ Capture sheet over the current screen. */
   openCapture: () => void;
+  /** Open the Assistant sheet (spark button, design README §Assistant). */
+  openAssistant: () => void;
   /** Open the shared Detail page for a tapped event/task row. */
   openDetail: (item: DetailItem) => void;
   /** Dismiss whatever overlay is open. */
@@ -39,12 +45,13 @@ export function NavProvider({ children }: { children: ReactNode }) {
   const [overlay, setOverlay] = useState<Overlay>(null);
 
   const openCapture = useCallback(() => setOverlay({ kind: "capture" }), []);
+  const openAssistant = useCallback(() => setOverlay({ kind: "assistant" }), []);
   const openDetail = useCallback((item: DetailItem) => setOverlay({ kind: "detail", item }), []);
   const close = useCallback(() => setOverlay(null), []);
 
   const value = useMemo<NavValue>(
-    () => ({ tab, setTab, overlay, openCapture, openDetail, close }),
-    [tab, overlay, openCapture, openDetail, close],
+    () => ({ tab, setTab, overlay, openCapture, openAssistant, openDetail, close }),
+    [tab, overlay, openCapture, openAssistant, openDetail, close],
   );
 
   return <NavContext.Provider value={value}>{children}</NavContext.Provider>;

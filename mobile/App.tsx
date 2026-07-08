@@ -4,22 +4,18 @@ import {
   GeistMono_600SemiBold,
 } from "@expo-google-fonts/geist-mono";
 import {
-  HankenGrotesk_400Regular,
-  HankenGrotesk_500Medium,
-  HankenGrotesk_600SemiBold,
-} from "@expo-google-fonts/hanken-grotesk";
-import {
-  InstrumentSerif_400Regular,
-  InstrumentSerif_400Regular_Italic,
-  useFonts,
-} from "@expo-google-fonts/instrument-serif";
+  Manrope_400Regular,
+  Manrope_500Medium,
+  Manrope_600SemiBold,
+  Manrope_700Bold,
+} from "@expo-google-fonts/manrope";
+import { useFonts } from "expo-font";
 import { StatusBar } from "expo-status-bar";
 import type { ReactNode } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 
 import { SessionProvider, useSession } from "./src/auth/SessionProvider";
-import { AmbientBackground } from "./src/components/AmbientBackground";
-import { BottomNav } from "./src/components/BottomNav";
+import { TabBar } from "./src/components/spec/TabBar";
 import { NavProvider, useNav } from "./src/navigation/NavContext";
 import { BodyScreen } from "./src/screens/BodyScreen";
 import { CaptureSheet } from "./src/screens/CaptureSheet";
@@ -28,16 +24,29 @@ import { FocusScreen } from "./src/screens/FocusScreen";
 import { HomeScreen } from "./src/screens/HomeScreen";
 import { LoginScreen } from "./src/screens/LoginScreen";
 import { MoneyScreen } from "./src/screens/MoneyScreen";
-import { color } from "./src/theme/tokens";
+import { ThemeProvider, useTheme } from "./src/theme/ThemeContext";
 
 /** On web, preview inside a phone-width column so localhost mirrors the device. */
 function DeviceFrame({ children }: { children: ReactNode }) {
+  const { c } = useTheme();
   if (Platform.OS !== "web") return <>{children}</>;
   return (
     <View style={styles.webStage}>
-      <View style={styles.webPhone}>{children}</View>
+      <View style={[styles.webPhone, { borderColor: c.hairSection }]}>{children}</View>
     </View>
   );
+}
+
+/** Status bar follows the active mode (Porcelain = dark glyphs, Ivy = light). */
+function ThemedStatusBar() {
+  const { mode } = useTheme();
+  return <StatusBar style={mode === "dark" ? "light" : "dark"} />;
+}
+
+/** Themed solid screen fill — the spec has no ambient texture, just bg. */
+function ThemedFill() {
+  const { c } = useTheme();
+  return <View style={[styles.fill, { backgroundColor: c.bg }]} />;
 }
 
 /** Renders the active tab's screen. */
@@ -50,23 +59,25 @@ function ActiveScreen() {
 }
 
 /**
- * Nav shell (spec §3): a fixed AmbientBackground, the active screen, then the
- * BottomNav. The overlay host layers on top — Detail sits *under* the nav so the
- * tab bar persists (spec §5.5), while the Capture sheet sits *over* the nav so
- * its scrim covers the whole screen (spec §5.6). State-based, no nav library.
+ * Nav shell: themed solid background, the active screen, then the TabBar. The
+ * overlay host layers on top — Detail sits *under* the nav so the tab bar
+ * persists, while the Capture/Assistant sheets sit *over* the nav so their
+ * scrims cover the whole screen. State-based, no nav library.
  */
 function Shell() {
-  const { tab, setTab, openCapture, overlay } = useNav();
+  const { c } = useTheme();
+  const { overlay } = useNav();
   const detailOverlay = overlay?.kind === "detail" ? overlay.item : null;
   const captureOpen = overlay?.kind === "capture";
+
   return (
-    <View style={styles.shell}>
-      <AmbientBackground />
+    <View style={[styles.fill, { backgroundColor: c.bg }]}>
       <ActiveScreen />
       {detailOverlay ? <DetailScreen item={detailOverlay} /> : null}
-      <BottomNav active={tab} onTab={setTab} onCapture={openCapture} />
+      <TabBar />
       {captureOpen ? <CaptureSheet /> : null}
-      <StatusBar style="light" />
+      {/* overlay.kind === "assistant": AssistantSheet renders here (screen task B5). */}
+      {overlay?.kind === "assistant" ? null : null}
     </View>
   );
 }
@@ -74,7 +85,7 @@ function Shell() {
 /** Auth gate: splash while resolving the session, login when signed out, app when in. */
 function Root() {
   const { session, loading } = useSession();
-  if (loading) return <View style={styles.loading} />;
+  if (loading) return <ThemedFill />;
   if (!session) return <LoginScreen />;
   return (
     <NavProvider>
@@ -85,39 +96,38 @@ function Root() {
 
 export default function App() {
   const [fontsLoaded] = useFonts({
-    InstrumentSerif_400Regular,
-    InstrumentSerif_400Regular_Italic,
-    HankenGrotesk_400Regular,
-    HankenGrotesk_500Medium,
-    HankenGrotesk_600SemiBold,
+    Manrope_400Regular,
+    Manrope_500Medium,
+    Manrope_600SemiBold,
+    Manrope_700Bold,
     GeistMono_400Regular,
     GeistMono_500Medium,
     GeistMono_600SemiBold,
   });
 
-  if (!fontsLoaded) return <View style={styles.loading} />;
-
   return (
-    <DeviceFrame>
-      <SessionProvider>
-        <Root />
-      </SessionProvider>
-      <StatusBar style="light" />
-    </DeviceFrame>
+    <ThemeProvider>
+      <DeviceFrame>
+        {fontsLoaded ? (
+          <SessionProvider>
+            <Root />
+          </SessionProvider>
+        ) : (
+          <ThemedFill />
+        )}
+        <ThemedStatusBar />
+      </DeviceFrame>
+    </ThemeProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  shell: {
+  fill: {
     flex: 1,
-  },
-  loading: {
-    flex: 1,
-    backgroundColor: color.bg,
   },
   webStage: {
     flex: 1,
-    backgroundColor: "#08090C",
+    backgroundColor: "#1A1A17", // web preview stage chrome (outside the app surface)
     alignItems: "center",
   },
   webPhone: {
@@ -126,7 +136,6 @@ const styles = StyleSheet.create({
     maxWidth: 390,
     borderLeftWidth: 1,
     borderRightWidth: 1,
-    borderColor: color.line2,
     overflow: "hidden",
   },
 });
