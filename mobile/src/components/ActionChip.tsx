@@ -1,7 +1,8 @@
 import type { ComponentType } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { color, font } from "../theme/tokens";
+import { useTheme } from "../theme/ThemeContext";
+import { fonts } from "../theme/typeRoles";
 
 type IconComponent = ComponentType<{ size?: number; color: string }>;
 
@@ -12,16 +13,19 @@ type ActionChipProps = {
   onPress?: () => void;
 };
 
-/** Action chip (spec §4): mono 9 uppercase, blue .4 border + blue text. Detail recs + Capture. */
+/** Action chip (spec §4): mono 9 uppercase, accent-tint border + accent text. Detail recs + Capture. */
 export function ActionChip({ label, Icon, onPress }: ActionChipProps) {
+  const { c, mode } = useTheme();
+  // Accent-tint border isn't a shared palette role — mirrors the SparkButton ring pattern.
+  const ring = mode === "light" ? "rgba(30,122,82,0.4)" : "rgba(108,171,134,0.4)";
   return (
-    <Pressable style={styles.chip} onPress={onPress}>
+    <Pressable style={[styles.chip, { borderColor: ring }]} onPress={onPress}>
       {Icon ? (
         <View style={styles.icon}>
-          <Icon size={11} color={color.blue} />
+          <Icon size={11} color={c.accent} />
         </View>
       ) : null}
-      <Text style={styles.text}>{label}</Text>
+      <Text style={[styles.text, { color: c.accent }]}>{label}</Text>
     </Pressable>
   );
 }
@@ -35,17 +39,15 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 11,
     borderWidth: 1,
-    borderColor: "rgba(58,112,168,0.4)",
     borderRadius: 9,
   },
   icon: {
     marginLeft: -1,
   },
   text: {
-    fontFamily: font.monoSemi,
+    fontFamily: fonts.mono500,
     fontSize: 9,
     letterSpacing: 0.7,
-    color: color.blue,
     textTransform: "uppercase",
   },
 });

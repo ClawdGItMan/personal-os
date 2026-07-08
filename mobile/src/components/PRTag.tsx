@@ -1,12 +1,15 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { color, font } from "../theme/tokens";
+import { useTheme } from "../theme/ThemeContext";
+import { fonts } from "../theme/typeRoles";
 
-/** PR tag (spec §4): mono 8 green on a .4-alpha green hairline. Body + Capture. */
+/** PR tag (spec §4): mono 8 accent on a .4-alpha accent hairline. Body + Capture. */
 export function PRTag({ label = "PR" }: { label?: string }) {
+  const { c, mode } = useTheme();
+  const ring = mode === "light" ? "rgba(30,122,82,0.4)" : "rgba(108,171,134,0.4)";
   return (
-    <View style={styles.tag}>
-      <Text style={styles.text}>{label}</Text>
+    <View style={[styles.tag, { borderColor: ring }]}>
+      <Text style={[styles.text, { color: c.accent }]}>{label}</Text>
     </View>
   );
 }
@@ -14,16 +17,14 @@ export function PRTag({ label = "PR" }: { label?: string }) {
 const styles = StyleSheet.create({
   tag: {
     borderWidth: 1,
-    borderColor: "rgba(47,102,71,0.4)",
     borderRadius: 5,
     paddingHorizontal: 5,
     paddingVertical: 2,
   },
   text: {
-    fontFamily: font.monoBold,
+    fontFamily: fonts.mono600,
     fontSize: 8,
     letterSpacing: 0.8,
-    color: color.green,
     textTransform: "uppercase",
   },
 });

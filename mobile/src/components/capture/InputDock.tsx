@@ -1,16 +1,17 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { captureData } from "../../data/capture";
+import { useTheme } from "../../theme/ThemeContext";
+import { fonts } from "../../theme/typeRoles";
 import { MicIcon, SendIcon } from "../icons";
 import { QuickIntentChips } from "./QuickIntentChips";
-import { captureData } from "../../data/capture";
-import { color, font, glow } from "../../theme/tokens";
 
 /**
  * Input dock (spec §5.6) — bottom of the sheet: quick-intent chips + a text
- * field ("Log anything…") with a blue caret, a mic button (taps into the voice
- * Listening state), and a blue send button. Static placeholder field — real
- * keyboard input is wired when the agent pipeline lands; the mic is the live
- * affordance here.
+ * field ("Log anything…") with an accent caret, a mic button (taps into the
+ * voice Listening state), and an accent send button. Static placeholder field
+ * — real keyboard input is wired when the agent pipeline lands; the mic is the
+ * live affordance here.
  */
 type InputDockProps = {
   onMic?: () => void;
@@ -19,17 +20,18 @@ type InputDockProps = {
 };
 
 export function InputDock({ onMic, onSend, onIntent }: InputDockProps) {
+  const { c } = useTheme();
   return (
     <View style={styles.dock}>
       <QuickIntentChips intents={captureData.quickIntents} onIntent={onIntent} />
-      <View style={styles.field}>
-        <Text style={styles.placeholder}>{captureData.placeholder}</Text>
-        <View style={styles.caret} />
+      <View style={[styles.field, { borderColor: c.hairSection, backgroundColor: c.surface }]}>
+        <Text style={[styles.placeholder, { color: c.ink38 }]}>{captureData.placeholder}</Text>
+        <View style={[styles.caret, { backgroundColor: c.accent }]} />
         <Pressable onPress={onMic} hitSlop={8} style={styles.micBtn}>
-          <MicIcon size={20} color={color.fg3} strokeWidth={1.8} />
+          <MicIcon size={20} color={c.ink50} strokeWidth={1.8} />
         </Pressable>
-        <Pressable style={[styles.send, glow(color.blue, 16, 0.32)]} onPress={onSend}>
-          <SendIcon size={17} color={color.bg} strokeWidth={2.2} />
+        <Pressable style={[styles.send, { backgroundColor: c.accent }]} onPress={onSend}>
+          <SendIcon size={17} color={c.onAccent} strokeWidth={2.2} />
         </Pressable>
       </View>
     </View>
@@ -50,20 +52,16 @@ const styles = StyleSheet.create({
     paddingRight: 9,
     paddingVertical: 9,
     borderWidth: 1,
-    borderColor: color.line2,
     borderRadius: 18,
-    backgroundColor: "rgba(20,23,28,0.6)",
   },
   placeholder: {
     flex: 1,
-    fontFamily: font.sans,
+    fontFamily: fonts.sans500,
     fontSize: 14,
-    color: color.fg4,
   },
   caret: {
     width: 1.5,
     height: 16,
-    backgroundColor: color.blue,
     marginRight: -7,
   },
   micBtn: {
@@ -74,7 +72,6 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: color.blue,
     alignItems: "center",
     justifyContent: "center",
   },

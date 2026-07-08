@@ -1,15 +1,17 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { captureData } from "../../data/capture";
+import { useTheme } from "../../theme/ThemeContext";
+import { fonts } from "../../theme/typeRoles";
 import { MicOrb } from "./MicOrb";
 import { Waveform } from "./Waveform";
-import { captureData } from "../../data/capture";
-import { color, font } from "../../theme/tokens";
 
 /**
  * Voice / dictation Listening state (spec §5.6 · §6.2). Pulsing mic orb +
- * animated waveform + "Listening…" + a live transcript (committed text fg2,
- * in-flight text fg4 + a blue caret). The dock is Cancel · Stop · Keyboard:
- * Stop returns to the conversation, Cancel/Keyboard dismiss the voice state.
+ * animated waveform + "Listening…" + a live transcript (committed text at ink
+ * .72, in-flight text at ink .38 + an accent caret). The dock is
+ * Cancel · Stop · Keyboard: Stop returns to the conversation, Cancel/Keyboard
+ * dismiss the voice state.
  */
 type VoiceStateProps = {
   onStop?: () => void;
@@ -18,29 +20,31 @@ type VoiceStateProps = {
 };
 
 export function VoiceState({ onStop, onCancel, onKeyboard }: VoiceStateProps) {
+  const { c, mode } = useTheme();
+  const stopWash = mode === "light" ? "rgba(30,122,82,0.14)" : "rgba(108,171,134,0.14)";
   const { status, committed, pending, cancel, keyboard } = captureData.voice;
   return (
     <View style={styles.wrap}>
       <View style={styles.stage}>
         <MicOrb />
         <Waveform />
-        <Text style={styles.status}>{status}</Text>
-        <Text style={styles.transcript}>
+        <Text style={[styles.status, { color: c.accent }]}>{status}</Text>
+        <Text style={[styles.transcript, { color: c.ink72 }]}>
           {committed}
-          <Text style={styles.pending}>{pending}</Text>
-          <Text style={styles.caret}>|</Text>
+          <Text style={{ color: c.ink38 }}>{pending}</Text>
+          <Text style={[styles.caret, { color: c.accent }]}>|</Text>
         </Text>
       </View>
 
       <View style={styles.dock}>
         <Pressable onPress={onCancel} hitSlop={10}>
-          <Text style={styles.side}>{cancel}</Text>
+          <Text style={[styles.side, { color: c.ink38 }]}>{cancel}</Text>
         </Pressable>
-        <Pressable style={styles.stop} onPress={onStop}>
-          <View style={styles.stopGlyph} />
+        <Pressable style={[styles.stop, { backgroundColor: stopWash, borderColor: c.accent }]} onPress={onStop}>
+          <View style={[styles.stopGlyph, { backgroundColor: c.accent }]} />
         </Pressable>
         <Pressable onPress={onKeyboard} hitSlop={10}>
-          <Text style={styles.side}>{keyboard}</Text>
+          <Text style={[styles.side, { color: c.ink38 }]}>{keyboard}</Text>
         </Pressable>
       </View>
     </View>
@@ -58,27 +62,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   status: {
-    fontFamily: font.monoBold,
+    fontFamily: fonts.mono600,
     fontSize: 9,
     letterSpacing: 1.8,
-    color: color.blue,
     textTransform: "uppercase",
     marginBottom: 16,
   },
   transcript: {
-    fontFamily: font.sans,
+    fontFamily: fonts.sans500,
     fontSize: 16,
     lineHeight: 22,
-    color: color.fg2,
     textAlign: "center",
     paddingHorizontal: 8,
   },
-  pending: {
-    color: color.fg4,
-  },
   caret: {
-    color: color.blue,
-    fontFamily: font.sansSemi,
+    fontFamily: fonts.sans600,
   },
   dock: {
     flexDirection: "row",
@@ -90,19 +88,16 @@ const styles = StyleSheet.create({
     paddingBottom: 22,
   },
   side: {
-    fontFamily: font.monoBold,
+    fontFamily: fonts.mono600,
     fontSize: 10,
     letterSpacing: 1.1,
-    color: color.fg4,
     textTransform: "uppercase",
   },
   stop: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: "rgba(58,112,168,0.14)",
     borderWidth: 1.5,
-    borderColor: color.blue,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -110,6 +105,5 @@ const styles = StyleSheet.create({
     width: 19,
     height: 19,
     borderRadius: 5,
-    backgroundColor: color.blue,
   },
 });

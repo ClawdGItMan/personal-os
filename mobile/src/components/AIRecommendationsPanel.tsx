@@ -1,17 +1,15 @@
 import { StyleSheet, Text, View } from "react-native";
 import Svg, { Defs, RadialGradient, Rect, Stop } from "react-native-svg";
 
-import { color, font, type } from "../theme/tokens";
+import { useTheme } from "../theme/ThemeContext";
+import { fonts } from "../theme/typeRoles";
 import { ActionChip } from "./ActionChip";
 import { SparkIcon } from "./icons";
-
-/** Panel glow reads from the token palette so it tracks the Max-tuned blue. */
-const BLUE = color.blue;
 
 export type Recommendation = {
   /** Rec body — pass a string, or pre-styled nodes if you need an em span. */
   text: string;
-  /** Optional muted-emphasis tail appended in fg3 (e.g. context phrase). */
+  /** Optional muted-emphasis tail appended in a dim ink (e.g. context phrase). */
   emphasis?: string;
   /** Action chip label (e.g. "Open draft"). Omit for a text-only rec. */
   action?: string;
@@ -24,14 +22,14 @@ type AIRecommendationsPanelProps = {
   count?: number;
 };
 
-/** Faint blue top-glow filling the bleed-to-edge panel header (spec §4). */
-function TopGlow() {
+/** Faint accent top-glow filling the bleed-to-edge panel header (spec §4). */
+function TopGlow({ accent }: { accent: string }) {
   return (
     <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
       <Defs>
         <RadialGradient id="recGlow" cx="50%" cy="0%" rx="120%" ry="60%" gradientUnits="objectBoundingBox">
-          <Stop offset="0" stopColor={BLUE} stopOpacity={0.08} />
-          <Stop offset="0.7" stopColor={BLUE} stopOpacity={0} />
+          <Stop offset="0" stopColor={accent} stopOpacity={0.08} />
+          <Stop offset="0.7" stopColor={accent} stopOpacity={0} />
         </RadialGradient>
       </Defs>
       <Rect width="100%" height="100%" fill="url(#recGlow)" />
@@ -41,32 +39,36 @@ function TopGlow() {
 
 /**
  * AI recommendations panel (spec §4 / §5.5) — the agent reaching into a detail
- * page. Bleed-to-edge block (negative horizontal margin), faint blue top-glow,
- * hairline top/bottom; header "Recommended" + blue agent dot + "AI · N"; rows =
- * spark glyph + text + ActionChip. For the agent-off state use
+ * page. Bleed-to-edge block (negative horizontal margin), faint accent
+ * top-glow, hairline top/bottom; header "Recommended" + accent agent dot +
+ * "AI · N"; rows = spark glyph + text + ActionChip. For the agent-off state use
  * <AIRecommendationsEmpty/> (spec §6.3).
  */
 export function AIRecommendationsPanel({ recommendations, count }: AIRecommendationsPanelProps) {
+  const { c } = useTheme();
   const n = count ?? recommendations.length;
   return (
-    <View style={styles.panel}>
-      <TopGlow />
+    <View style={[styles.panel, { borderColor: c.hairRow }]}>
+      <TopGlow accent={c.accent} />
       <View style={styles.header}>
         <View style={styles.headerName}>
-          <View style={styles.agentDot} />
-          <Text style={styles.headerTitle}>Recommended</Text>
+          <View style={[styles.agentDot, { backgroundColor: c.accent }]} />
+          <Text style={[styles.headerTitle, { color: c.ink }]}>Recommended</Text>
         </View>
-        <Text style={styles.headerMeta}>AI · {n}</Text>
+        <Text style={[styles.headerMeta, { color: c.accent }]}>AI · {n}</Text>
       </View>
       {recommendations.map((rec, i) => (
-        <View key={rec.text} style={[styles.rec, i === recommendations.length - 1 && styles.recLast]}>
+        <View
+          key={rec.text}
+          style={[styles.rec, { borderColor: c.hairRow }, i === recommendations.length - 1 && styles.recLast]}
+        >
           <View style={styles.spark}>
-            <SparkIcon color={color.blue} />
+            <SparkIcon color={c.accent} />
           </View>
           <View style={styles.recBody}>
-            <Text style={styles.recText}>
+            <Text style={[styles.recText, { color: c.ink }]}>
               {rec.text}
-              {rec.emphasis ? <Text style={styles.recEm}> {rec.emphasis}</Text> : null}
+              {rec.emphasis ? <Text style={{ color: c.ink50 }}> {rec.emphasis}</Text> : null}
             </Text>
             {rec.action ? (
               <View style={styles.chipWrap}>
@@ -82,17 +84,18 @@ export function AIRecommendationsPanel({ recommendations, count }: AIRecommendat
 
 /** Agent-off empty state (spec §6.3) — shown until the Phase-2 agent is live. */
 export function AIRecommendationsEmpty() {
+  const { c } = useTheme();
   return (
-    <View style={styles.panel}>
+    <View style={[styles.panel, { borderColor: c.hairRow }]}>
       <View style={styles.header}>
         <View style={styles.headerName}>
-          <View style={[styles.agentDot, styles.agentDotOff]} />
-          <Text style={styles.headerTitle}>Recommended</Text>
+          <View style={[styles.agentDot, { backgroundColor: c.ink38 }]} />
+          <Text style={[styles.headerTitle, { color: c.ink }]}>Recommended</Text>
         </View>
-        <Text style={styles.headerMetaOff}>AI · OFF</Text>
+        <Text style={[styles.headerMeta, { color: c.ink38 }]}>AI · OFF</Text>
       </View>
       <View style={styles.empty}>
-        <Text style={styles.emptyText}>
+        <Text style={[styles.emptyText, { color: c.ink50 }]}>
           The agent isn&apos;t connected yet. Recommendations will appear here once it&apos;s on.
         </Text>
       </View>
@@ -108,7 +111,6 @@ const styles = StyleSheet.create({
     paddingVertical: 22,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: color.line1,
     overflow: "hidden",
   },
   header: {
@@ -126,35 +128,17 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: color.blue,
-    shadowColor: color.blue,
-    shadowOffset: { width: 0, height: 0 },
-    shadowRadius: 8,
-    shadowOpacity: 0.7,
-  },
-  agentDotOff: {
-    backgroundColor: color.fg4,
-    shadowOpacity: 0,
   },
   headerTitle: {
-    fontFamily: font.monoBold,
+    fontFamily: fonts.mono600,
     fontSize: 11,
     letterSpacing: 1.5,
-    color: color.fg1,
     textTransform: "uppercase",
   },
   headerMeta: {
-    fontFamily: font.monoSemi,
+    fontFamily: fonts.mono500,
     fontSize: 9,
     letterSpacing: 0.8,
-    color: color.blue,
-    textTransform: "uppercase",
-  },
-  headerMetaOff: {
-    fontFamily: font.monoSemi,
-    fontSize: 9,
-    letterSpacing: 0.8,
-    color: color.fg4,
     textTransform: "uppercase",
   },
   rec: {
@@ -162,7 +146,6 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 13,
     borderBottomWidth: 1,
-    borderColor: color.line1,
   },
   recLast: {
     borderBottomWidth: 0,
@@ -175,13 +158,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   recText: {
-    fontFamily: font.sans,
+    fontFamily: fonts.sans500,
     fontSize: 13,
     lineHeight: 19.5,
-    color: color.fg1,
-  },
-  recEm: {
-    color: color.fg3,
   },
   chipWrap: {
     marginTop: 10,
@@ -190,7 +169,8 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
   },
   emptyText: {
-    ...type.serifReadout,
-    color: color.fg3,
+    fontFamily: fonts.sans400,
+    fontSize: 15,
+    lineHeight: 22,
   },
 });

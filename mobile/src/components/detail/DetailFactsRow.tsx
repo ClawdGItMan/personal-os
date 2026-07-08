@@ -1,7 +1,8 @@
 import { StyleSheet, Text, View } from "react-native";
 
 import type { Fact } from "../../data/detail";
-import { color, font, type } from "../../theme/tokens";
+import { useTheme } from "../../theme/ThemeContext";
+import { fonts } from "../../theme/typeRoles";
 import { AttendeeStack } from "./AttendeeStack";
 
 /**
@@ -10,13 +11,14 @@ import { AttendeeStack } from "./AttendeeStack";
  * The parent owns the list's top hairline; each row carries its own bottom one.
  */
 export function DetailFactsRow({ fact }: { fact: Fact }) {
+  const { c } = useTheme();
   return (
-    <View style={styles.row}>
-      <Text style={type.microLabel}>{fact.label}</Text>
+    <View style={[styles.row, { borderColor: c.hairRow }]}>
+      <Text style={[styles.label, { color: c.ink50 }]}>{fact.label}</Text>
       {fact.attendees ? (
         <AttendeeStack attendees={fact.attendees} />
       ) : (
-        <Text style={[styles.value, fact.muted && styles.valueMuted]}>{fact.value}</Text>
+        <Text style={[styles.value, { color: fact.muted ? c.ink50 : c.ink }]}>{fact.value}</Text>
       )}
     </View>
   );
@@ -29,14 +31,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderColor: color.line1,
+  },
+  label: {
+    fontFamily: fonts.mono500,
+    fontSize: 8,
+    letterSpacing: 0.9,
+    textTransform: "uppercase",
   },
   value: {
-    fontFamily: font.sansSemi,
+    fontFamily: fonts.sans600,
     fontSize: 13,
-    color: color.fg1,
-  },
-  valueMuted: {
-    color: color.fg3,
   },
 });

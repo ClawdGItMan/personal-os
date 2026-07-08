@@ -1,7 +1,8 @@
 import { StyleSheet, Text, View } from "react-native";
 
 import type { Attendee } from "../../data/detail";
-import { color, font } from "../../theme/tokens";
+import { useTheme } from "../../theme/ThemeContext";
+import { fonts } from "../../theme/typeRoles";
 
 /**
  * Overlapping circular initial avatars for the Detail "With" fact (spec §5.5 /
@@ -10,11 +11,15 @@ import { color, font } from "../../theme/tokens";
  * "+". Defined locally — these avatars are Detail-specific (rule 4).
  */
 export function AttendeeStack({ attendees }: { attendees: Attendee[] }) {
+  const { c } = useTheme();
   return (
     <View style={styles.row}>
       {attendees.map((person, i) => (
-        <View key={`${person.initials}-${i}`} style={[styles.avatar, i === 0 && styles.first]}>
-          <Text style={styles.initials}>{person.initials}</Text>
+        <View
+          key={`${person.initials}-${i}`}
+          style={[styles.avatar, { backgroundColor: c.surface, borderColor: c.hairSection }, i === 0 && styles.first]}
+        >
+          <Text style={[styles.initials, { color: c.ink72 }]}>{person.initials}</Text>
         </View>
       ))}
     </View>
@@ -33,9 +38,7 @@ const styles = StyleSheet.create({
     height: SIZE,
     borderRadius: SIZE / 2,
     marginLeft: -6,
-    backgroundColor: color.surface,
     borderWidth: 1,
-    borderColor: color.line2,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -43,8 +46,7 @@ const styles = StyleSheet.create({
     marginLeft: 0,
   },
   initials: {
-    fontFamily: font.monoSemi,
+    fontFamily: fonts.mono500,
     fontSize: 8,
-    color: color.fg2,
   },
 });

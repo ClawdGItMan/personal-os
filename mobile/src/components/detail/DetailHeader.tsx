@@ -1,24 +1,27 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { color, font } from "../../theme/tokens";
+import { useTheme } from "../../theme/ThemeContext";
+import { fonts } from "../../theme/typeRoles";
 import { BackChevronIcon } from "./detailIcons";
 
 /**
  * Pushed-detail header (spec §5.5 / mockup `.dt-head`): a "‹ FOCUS" back control
  * on the left (tap → close, returns to the Focus tab) and a passive overflow
- * ••• on the right. Detail's own header — AppHeader is not used here.
+ * ••• on the right. Detail's own header — the shared TabBar/ScreenHeader are
+ * not used here.
  */
 export function DetailHeader({ onBack }: { onBack: () => void }) {
+  const { c } = useTheme();
   return (
     <View style={styles.row}>
       <Pressable style={styles.back} onPress={onBack} hitSlop={10}>
-        <BackChevronIcon color={color.fg3} />
-        <Text style={styles.backLabel}>Focus</Text>
+        <BackChevronIcon color={c.ink50} />
+        <Text style={[styles.backLabel, { color: c.ink50 }]}>Focus</Text>
       </Pressable>
       <View style={styles.more}>
-        <View style={styles.dot} />
-        <View style={styles.dot} />
-        <View style={styles.dot} />
+        <View style={[styles.dot, { backgroundColor: c.ink38 }]} />
+        <View style={[styles.dot, { backgroundColor: c.ink38 }]} />
+        <View style={[styles.dot, { backgroundColor: c.ink38 }]} />
       </View>
     </View>
   );
@@ -38,10 +41,9 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   backLabel: {
-    fontFamily: font.monoBold,
+    fontFamily: fonts.mono600,
     fontSize: 10,
     letterSpacing: 1.4,
-    color: color.fg3,
     textTransform: "uppercase",
   },
   more: {
@@ -52,6 +54,5 @@ const styles = StyleSheet.create({
     width: 3.5,
     height: 3.5,
     borderRadius: 1.75,
-    backgroundColor: color.fg4,
   },
 });

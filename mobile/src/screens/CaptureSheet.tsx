@@ -9,16 +9,20 @@ import { VoiceState } from "../components/capture/VoiceState";
 import { CloseIcon } from "../components/icons";
 import { captureData } from "../data/capture";
 import { useNav } from "../navigation/NavContext";
-import { color, font, radius } from "../theme/tokens";
+import { useTheme } from "../theme/ThemeContext";
+import { fonts } from "../theme/typeRoles";
 
 /**
  * Capture sheet (spec §5.6) — the ⊕ agent spine. A full-screen blurred scrim
  * (tap → close) with a bottom sheet that gently rises in. The sheet holds the
  * agent conversation + input dock, and toggles into the voice Listening state
  * when the mic is tapped (Stop/Cancel/Keyboard return to the conversation).
- * Takes no props: App renders <CaptureSheet /> and it reads useNav().close.
+ * Retheme onto ivy/porcelain: same flow, blur tint now follows the active mode
+ * so the scrim reads correctly in both. Takes no props: App renders
+ * <CaptureSheet /> and it reads useNav().close.
  */
 export function CaptureSheet() {
+  const { c, mode } = useTheme();
   const { close } = useNav();
   const [voice, setVoice] = useState(false);
   const rise = useRef(new Animated.Value(0)).current;
@@ -40,22 +44,28 @@ export function CaptureSheet() {
   return (
     <View style={styles.host}>
       <Pressable style={StyleSheet.absoluteFill} onPress={close}>
-        <BlurView intensity={10} tint="dark" style={StyleSheet.absoluteFill} />
-        <View style={[StyleSheet.absoluteFill, styles.scrimTint]} />
+        <BlurView intensity={10} tint={mode === "dark" ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: c.scrim }]} />
       </Pressable>
 
-      <Animated.View style={[styles.sheet, { opacity: rise, transform: [{ translateY }] }]}>
+      <Animated.View
+        style={[
+          styles.sheet,
+          { backgroundColor: c.sheet, borderColor: c.hairSection },
+          { opacity: rise, transform: [{ translateY }] },
+        ]}
+      >
         <SheetGlow />
-        <View style={styles.grabber} />
+        <View style={[styles.grabber, { backgroundColor: c.hairSection }]} />
 
-        <View style={styles.header}>
+        <View style={[styles.header, { borderColor: c.hairRow }]}>
           <View style={styles.headerLeft}>
-            <View style={styles.dot} />
-            <Text style={styles.headerLabel}>CAPTURE</Text>
-            <Text style={styles.headerAgent}>{`· ${eyebrow.toUpperCase()}`}</Text>
+            <View style={[styles.dot, { backgroundColor: c.accent }]} />
+            <Text style={[styles.headerLabel, { color: c.ink72 }]}>CAPTURE</Text>
+            <Text style={[styles.headerAgent, { color: c.ink38 }]}>{`· ${eyebrow.toUpperCase()}`}</Text>
           </View>
-          <Pressable style={styles.close} onPress={close} hitSlop={8}>
-            <CloseIcon size={12} color={color.fg3} strokeWidth={2} />
+          <Pressable style={[styles.close, { borderColor: c.hairSection }]} onPress={close} hitSlop={8}>
+            <CloseIcon size={12} color={c.ink50} strokeWidth={2} />
           </Pressable>
         </View>
 
@@ -87,17 +97,12 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: "flex-end",
   },
-  scrimTint: {
-    backgroundColor: "rgba(8,9,12,0.55)",
-  },
   sheet: {
     height: SHEET_HEIGHT,
-    backgroundColor: color.sheet,
-    borderTopLeftRadius: radius.sheet,
-    borderTopRightRadius: radius.sheet,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     borderWidth: 1,
     borderBottomWidth: 0,
-    borderColor: color.line2,
     overflow: "hidden",
   },
   grabber: {
@@ -105,7 +110,6 @@ const styles = StyleSheet.create({
     width: 38,
     height: 4,
     borderRadius: 2,
-    backgroundColor: color.line2,
     marginTop: 10,
   },
   header: {
@@ -116,7 +120,6 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderColor: color.line1,
   },
   headerLeft: {
     flexDirection: "row",
@@ -127,23 +130,16 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: color.blue,
-    shadowColor: color.blue,
-    shadowOffset: { width: 0, height: 0 },
-    shadowRadius: 6,
-    shadowOpacity: 0.7,
   },
   headerLabel: {
-    fontFamily: font.monoBold,
+    fontFamily: fonts.mono600,
     fontSize: 11,
     letterSpacing: 1.9,
-    color: color.fg2,
   },
   headerAgent: {
-    fontFamily: font.monoSemi,
+    fontFamily: fonts.mono500,
     fontSize: 11,
     letterSpacing: 1.5,
-    color: color.fg4,
     marginLeft: -3,
   },
   close: {
@@ -151,7 +147,6 @@ const styles = StyleSheet.create({
     height: 26,
     borderRadius: 13,
     borderWidth: 1,
-    borderColor: color.line2,
     alignItems: "center",
     justifyContent: "center",
   },

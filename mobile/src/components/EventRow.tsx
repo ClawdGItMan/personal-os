@@ -2,7 +2,8 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useNav } from "../navigation/NavContext";
 import type { DetailItem } from "../navigation/NavContext";
-import { color, glow, type } from "../theme/tokens";
+import { useTheme } from "../theme/ThemeContext";
+import { fonts } from "../theme/typeRoles";
 import { ChevronIcon } from "./icons";
 
 export type EventState = "done" | "now" | "up";
@@ -21,29 +22,32 @@ type EventRowProps = {
 };
 
 /**
- * Event row (spec §4): time + status dot (done green / now blue-glow / up hollow)
- * + title + sub + chevron. Tappable → useNav().openDetail. Focus + Capture.
+ * Event row (spec §4): time + status dot (done accent / now accent-glow / up
+ * hollow) + title + sub + chevron. Tappable → useNav().openDetail. Kept for its
+ * exported `EventState` type — consumed by `useCalendarToday` — the row itself
+ * is superseded by `components/spec/LedgerRow` on the live screens.
  */
 export function EventRow({ time, state = "up", title, sub, last = false, detail }: EventRowProps) {
+  const { c } = useTheme();
   const { openDetail } = useNav();
   const item: DetailItem = detail ?? { kind: "event", title, time, sub, state };
+  const dotActive = state === "done" || state === "now";
   return (
-    <Pressable style={[styles.row, last && styles.rowLast]} onPress={() => openDetail(item)}>
-      <Text style={[styles.time, state === "now" && styles.blueText]}>{time}</Text>
-      <Dot state={state} />
+    <Pressable style={[styles.row, { borderColor: c.hairRow }, last && styles.rowLast]} onPress={() => openDetail(item)}>
+      <Text style={[styles.time, { color: state === "now" ? c.accent : c.ink50 }]}>{time}</Text>
+      <View
+        style={[
+          styles.dot,
+          { borderColor: dotActive ? c.accent : c.ink38, backgroundColor: dotActive ? c.accent : c.bg },
+        ]}
+      />
       <View style={styles.body}>
-        <Text style={[type.rowTitle, state === "done" && styles.titleDone]}>{title}</Text>
-        <Text style={[type.rowSub, styles.sub, state === "now" && styles.blueText]}>{sub}</Text>
+        <Text style={[styles.title, { color: state === "done" ? c.ink50 : c.ink }]}>{title}</Text>
+        <Text style={[styles.sub, { color: state === "now" ? c.accent : c.ink38 }]}>{sub}</Text>
       </View>
-      <ChevronIcon color={color.fg4} />
+      <ChevronIcon color={c.ink38} />
     </Pressable>
   );
-}
-
-function Dot({ state }: { state: EventState }) {
-  if (state === "done") return <View style={[styles.dot, styles.dotDone]} />;
-  if (state === "now") return <View style={[styles.dot, styles.dotNow, glow(color.blue, 6, 0.5)]} />;
-  return <View style={styles.dot} />;
 }
 
 const DOT = 9;
@@ -55,13 +59,13 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 11,
     borderBottomWidth: 1,
-    borderColor: color.line1,
   },
   rowLast: {
     borderBottomWidth: 0,
   },
   time: {
-    ...type.time,
+    fontFamily: fonts.mono500,
+    fontSize: 10,
     width: 42,
     textAlign: "right",
   },
@@ -70,27 +74,20 @@ const styles = StyleSheet.create({
     height: DOT,
     borderRadius: DOT / 2,
     borderWidth: 1.5,
-    borderColor: color.fg4,
-    backgroundColor: color.bg,
-  },
-  dotDone: {
-    backgroundColor: color.green,
-    borderColor: color.green,
-  },
-  dotNow: {
-    backgroundColor: color.blue,
-    borderColor: color.blue,
   },
   body: {
     flex: 1,
   },
+  title: {
+    fontFamily: fonts.sans600,
+    fontSize: 15,
+    letterSpacing: -0.15,
+  },
   sub: {
+    fontFamily: fonts.mono500,
+    fontSize: 9,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
     marginTop: 3,
-  },
-  blueText: {
-    color: color.blue,
-  },
-  titleDone: {
-    color: color.fg3,
   },
 });

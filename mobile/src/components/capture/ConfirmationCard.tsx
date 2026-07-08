@@ -1,18 +1,20 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import type { ConfirmationExchange } from "../../data/capture";
+import { useTheme } from "../../theme/ThemeContext";
+import { fonts } from "../../theme/typeRoles";
 import { LiftRow } from "../LiftRow";
 import { CheckIcon, UndoIcon } from "../icons";
 import { EditIcon } from "./captureIcons";
-import type { ConfirmationExchange } from "../../data/capture";
-import { color, font, type } from "../../theme/tokens";
 
 /**
  * Confirmation card (spec §4 · §5.6) — the most reusable cross-module piece.
- * Hairline card: module tag (tinted by destination) + ✓; the parsed entry
- * rendered in the destination module's OWN row grammar (a shared LiftRow for
- * Body, an inline time-change for Calendar); a one-line agent note; Undo +
- * Edit/View footer chips. Capture composes other modules' rows — almost no
- * bespoke UI of its own.
+ * Hairline card: module tag + ✓; the parsed entry rendered in the destination
+ * module's OWN row grammar (a shared LiftRow for Body, an inline time-change
+ * for Calendar); a one-line agent note; Undo + Edit/View footer chips. The
+ * legacy per-module green/blue accents collapse onto the single new-system
+ * accent — Capture composes other modules' rows — almost no bespoke UI of its
+ * own.
  */
 type ConfirmationCardProps = {
   exchange: ConfirmationExchange;
@@ -21,14 +23,14 @@ type ConfirmationCardProps = {
 };
 
 export function ConfirmationCard({ exchange, onUndo, onSecondary }: ConfirmationCardProps) {
-  const accent = exchange.accent === "blue" ? color.blue : color.green;
+  const { c } = useTheme();
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { borderColor: c.hairRow, backgroundColor: c.surface }]}>
       <View style={styles.tag}>
-        <Text style={[styles.module, { color: accent }]}>{exchange.module}</Text>
-        <Text style={styles.verb}>{exchange.verb}</Text>
+        <Text style={[styles.module, { color: c.accent }]}>{exchange.module}</Text>
+        <Text style={[styles.verb, { color: c.ink38 }]}>{exchange.verb}</Text>
         <View style={styles.check}>
-          <CheckIcon size={13} color={accent} strokeWidth={2.4} />
+          <CheckIcon size={13} color={c.accent} strokeWidth={2.4} />
         </View>
       </View>
 
@@ -46,26 +48,30 @@ export function ConfirmationCard({ exchange, onUndo, onSecondary }: Confirmation
       ) : (
         <View style={styles.changeRow}>
           <View>
-            <Text style={type.rowTitle}>{exchange.entry.title}</Text>
-            <Text style={[type.microLabel, styles.changeSub]}>{exchange.entry.sub}</Text>
+            <Text style={[styles.entryTitle, { color: c.ink }]}>{exchange.entry.title}</Text>
+            <Text style={[styles.changeSub, { color: c.ink38 }]}>{exchange.entry.sub}</Text>
           </View>
           <Text style={styles.change}>
-            <Text style={styles.from}>{exchange.entry.from}</Text>
-            <Text style={styles.to}>{`  → ${exchange.entry.to}`}</Text>
+            <Text style={[styles.from, { color: c.ink38, textDecorationColor: c.hairSection }]}>
+              {exchange.entry.from}
+            </Text>
+            <Text style={{ color: c.accent }}>{`  → ${exchange.entry.to}`}</Text>
           </Text>
         </View>
       )}
 
-      <Text style={styles.note}>{exchange.note}</Text>
+      <Text style={[styles.note, { color: c.ink72 }]}>{exchange.note}</Text>
 
       <View style={styles.chips}>
-        <Pressable style={styles.chip} onPress={onUndo} hitSlop={6}>
-          <UndoIcon size={11} color={color.fg3} />
-          <Text style={styles.chipLabel}>Undo</Text>
+        <Pressable style={[styles.chip, { borderColor: c.hairSection }]} onPress={onUndo} hitSlop={6}>
+          <UndoIcon size={11} color={c.ink50} />
+          <Text style={[styles.chipLabel, { color: c.ink50 }]}>Undo</Text>
         </Pressable>
-        <Pressable style={styles.chip} onPress={onSecondary} hitSlop={6}>
-          <EditIcon size={11} color={color.fg3} />
-          <Text style={styles.chipLabel}>{exchange.secondary === "view" ? "View" : "Edit"}</Text>
+        <Pressable style={[styles.chip, { borderColor: c.hairSection }]} onPress={onSecondary} hitSlop={6}>
+          <EditIcon size={11} color={c.ink50} />
+          <Text style={[styles.chipLabel, { color: c.ink50 }]}>
+            {exchange.secondary === "view" ? "View" : "Edit"}
+          </Text>
         </Pressable>
       </View>
     </View>
@@ -75,9 +81,7 @@ export function ConfirmationCard({ exchange, onUndo, onSecondary }: Confirmation
 const styles = StyleSheet.create({
   card: {
     borderWidth: 1,
-    borderColor: color.line1,
     borderRadius: 15,
-    backgroundColor: "rgba(20,23,28,0.5)",
     paddingHorizontal: 15,
     paddingVertical: 13,
     marginTop: 13,
@@ -88,16 +92,15 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   module: {
-    fontFamily: font.monoBold,
+    fontFamily: fonts.mono600,
     fontSize: 8,
     letterSpacing: 1.3,
     textTransform: "uppercase",
   },
   verb: {
-    fontFamily: font.monoBold,
+    fontFamily: fonts.mono600,
     fontSize: 8,
     letterSpacing: 1.3,
-    color: color.fg4,
     textTransform: "uppercase",
   },
   check: {
@@ -112,28 +115,30 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 12,
   },
+  entryTitle: {
+    fontFamily: fonts.sans600,
+    fontSize: 15,
+    letterSpacing: -0.15,
+  },
   changeSub: {
-    color: color.fg4,
+    fontFamily: fonts.mono500,
+    fontSize: 9,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
     marginTop: 3,
   },
   change: {
-    fontFamily: font.monoSemi,
+    fontFamily: fonts.mono500,
     fontSize: 13,
     fontVariant: ["tabular-nums"],
   },
   from: {
-    color: color.fg4,
     textDecorationLine: "line-through",
-    textDecorationColor: color.line2,
-  },
-  to: {
-    color: color.blue,
   },
   note: {
-    fontFamily: font.sans,
+    fontFamily: fonts.sans400,
     fontSize: 12.5,
     lineHeight: 19,
-    color: color.fg2,
     marginTop: 12,
   },
   chips: {
@@ -148,14 +153,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 11,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: color.line2,
     borderRadius: 9,
   },
   chipLabel: {
-    fontFamily: font.monoSemi,
+    fontFamily: fonts.mono500,
     fontSize: 9,
     letterSpacing: 0.7,
-    color: color.fg3,
     textTransform: "uppercase",
   },
 });

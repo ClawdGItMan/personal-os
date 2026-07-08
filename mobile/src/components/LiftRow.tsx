@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { color, font, type } from "../theme/tokens";
+import { useTheme } from "../theme/ThemeContext";
+import { fonts } from "../theme/typeRoles";
 import { PRTag } from "./PRTag";
 
 type LiftRowProps = {
@@ -12,7 +13,7 @@ type LiftRowProps = {
   weight: string;
   /** Weight unit (e.g. "lb"). */
   unit?: string;
-  /** Show a green PR tag. */
+  /** Show an accent PR tag. */
   pr?: boolean;
   /** Drop the bottom hairline (last row in a group). */
   last?: boolean;
@@ -20,16 +21,17 @@ type LiftRowProps = {
 
 /** Lift row (spec §4): name + scheme · weight (mono) + optional PR tag. Body + Capture. */
 export function LiftRow({ name, scheme, weight, unit = "lb", pr = false, last = false }: LiftRowProps) {
+  const { c } = useTheme();
   return (
-    <View style={[styles.row, last && styles.rowLast]}>
+    <View style={[styles.row, { borderColor: c.hairRow }, last && styles.rowLast]}>
       <View style={styles.left}>
-        <Text style={type.rowTitle}>{name}</Text>
-        <Text style={[type.microLabel, styles.scheme]}>{scheme}</Text>
+        <Text style={[styles.name, { color: c.ink }]}>{name}</Text>
+        <Text style={[styles.scheme, { color: c.ink38 }]}>{scheme}</Text>
       </View>
       <View style={styles.right}>
-        <Text style={styles.weight}>
+        <Text style={[styles.weight, { color: c.ink }]}>
           {weight}
-          <Text style={styles.unit}>{unit}</Text>
+          <Text style={[styles.unit, { color: c.ink38 }]}>{unit}</Text>
         </Text>
         {pr ? <PRTag /> : null}
       </View>
@@ -44,7 +46,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 11,
     borderBottomWidth: 1,
-    borderColor: color.line1,
   },
   rowLast: {
     borderBottomWidth: 0,
@@ -52,8 +53,17 @@ const styles = StyleSheet.create({
   left: {
     gap: 3,
   },
+  name: {
+    fontFamily: fonts.sans600,
+    fontSize: 15,
+    letterSpacing: -0.15,
+  },
   scheme: {
-    color: color.fg4,
+    fontFamily: fonts.mono500,
+    fontSize: 9,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+    marginTop: 3,
   },
   right: {
     flexDirection: "row",
@@ -61,14 +71,11 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   weight: {
-    fontFamily: font.monoSemi,
+    fontFamily: fonts.mono500,
     fontSize: 16,
-    color: color.fg1,
-    fontVariant: ["tabular-nums"],
     letterSpacing: -0.16,
   },
   unit: {
     fontSize: 9,
-    color: color.fg4,
   },
 });
