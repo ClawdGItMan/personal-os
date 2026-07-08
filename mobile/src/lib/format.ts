@@ -17,3 +17,17 @@ export function time12(d: Date | string): string {
 export function pct(n: number): string {
   return `${Math.round(n)}%`;
 }
+
+const WEEKDAYS = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
+const MONTHS = [
+  "JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
+];
+
+/**
+ * Eyebrow date, e.g. "FRIDAY · MAY 8" (design README: weekday/date eyebrow
+ * row shown on every screen). Shared by Home/Body/Focus/Money — hand-rolled
+ * (not `toLocaleDateString`) so output is locale-stable across platforms.
+ */
+export function eyebrowDate(d: Date = new Date()): string {
+  return `${WEEKDAYS[d.getDay()]} · ${MONTHS[d.getMonth()]} ${d.getDate()}`;
+}

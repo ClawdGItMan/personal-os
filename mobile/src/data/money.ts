@@ -4,6 +4,7 @@
  * ever overwritten by a live hook (contrast Home/Body's `applyLive*`).
  */
 import type { StatusSegment } from "../components/spec/TitleBlock";
+import { eyebrowDate } from "../lib/format";
 
 export type LedgerTone = "pos" | "neg";
 
@@ -27,7 +28,7 @@ export type AccountStat = {
 };
 
 export const moneyData = {
-  eyebrow: { left: "FRIDAY · MAY 8", right: "RUNWAY 34 MO" }, // mock — Plaid deferred
+  eyebrow: { left: eyebrowDate(new Date()), right: "RUNWAY 34 MO" }, // right stays mock — Plaid deferred
   title: "Money",
   status: ["Net worth's ", { b: "steady" }, " and May spend is on pace."] satisfies StatusSegment[],
   netWorth: {

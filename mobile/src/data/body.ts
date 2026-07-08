@@ -94,13 +94,6 @@ export function isoWeek(d: Date): number {
   return 1 + Math.round((date.getTime() - firstThursday.getTime()) / (7 * 86400000));
 }
 
-/** "FRIDAY · MAY 8" — today's weekday + date, live (design README eyebrow row). */
-export function eyebrowDate(d: Date): string {
-  const weekday = d.toLocaleDateString("en-US", { weekday: "long" }).toUpperCase();
-  const month = d.toLocaleDateString("en-US", { month: "short" }).toUpperCase();
-  return `${weekday} · ${month} ${d.getDate()}`;
-}
-
 /** Sleep state rule (design README): >7h accent green, 6–7h amber, <6h red. */
 export function sleepColor(c: Palette, hours: number): string {
   if (hours > 7) return c.accent;

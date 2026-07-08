@@ -1,11 +1,10 @@
 import type { StatusSegment } from "../components/spec/TitleBlock";
 
 /**
- * Home mock data (design README §Home) + the live-merge contract. HomeScreen
- * reads `homeData.*` at render time; `applyLiveHome` writes Whoop
- * recovery/sleep/HRV/rest-HR and the real habit tally over the mock in place
- * (idempotent, null-safe — a field only updates once its live value has
- * resolved). Net worth and the TODAY ledger stay mock — Plaid and the
+ * Home mock data (design README §Home). HomeScreen merges live Whoop
+ * recovery/sleep/HRV/rest-HR and the real habit tally over these mock
+ * fallbacks at render time (locals, not a mutation of this module — see
+ * HomeScreen.tsx). Net worth and the TODAY ledger stay mock — Plaid and the
  * calendar/task providers aren't wired into Home (design README §State
  * Management; constraints.md).
  */
@@ -65,16 +64,6 @@ export const homeData = {
   ] satisfies TimelineItem[],
 };
 
-const WEEKDAYS = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
-const MONTHS = [
-  "JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
-];
-
-/** Eyebrow date, e.g. "FRIDAY · MAY 8" (design README §Home). */
-export function eyebrowDate(d: Date = new Date()): string {
-  return `${WEEKDAYS[d.getDay()]} · ${MONTHS[d.getMonth()]} ${d.getDate()}`;
-}
-
 /** Day progress 0–100 through the 6:00–23:00 wake window (design README §Home). */
 export function dayProgressPct(d: Date = new Date()): number {
   const wakeMin = 6 * 60;
@@ -92,48 +81,10 @@ export function greetingLead(d: Date = new Date()): string {
   return "Good evening";
 }
 
-/** Live Home vitals — Whoop recovery/sleep/HRV/rest-HR + real habit tally. Net worth stays mock. */
-export type LiveHome = {
-  recoveryScore: number | null;
-  hrv: number | null;
-  restHr: number | null;
-  sleepHours: number | null;
-  sleepScore: number | null;
-  /** Habit tally for today; null while the query is still loading. */
-  habits: { done: number; total: number } | null;
-};
-
-/** Split decimal hours (7.2) into whole hours + zero-padded minutes ("7", "12"). */
-function splitHours(decimalHours: number): { hours: string; minutes: string } {
+/** Split decimal hours (7.2) into whole hours + zero-padded minutes ("7", "12") for the sleep vital. */
+export function splitHours(decimalHours: number): { hours: string; minutes: string } {
   const totalMinutes = Math.round(decimalHours * 60);
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   return { hours: String(hours), minutes: String(minutes).padStart(2, "0") };
-}
-
-/**
- * Merge live values over the Home mock in place (HomeScreen reads
- * `homeData.*` at render time). Idempotent + null-safe: any null field keeps
- * its mock value. Net worth and the TODAY ledger are never touched.
- */
-export function applyLiveHome(live: LiveHome): void {
-  const { recoveryScore, hrv, restHr, sleepHours, sleepScore, habits } = live;
-
-  if (recoveryScore != null) homeData.recovery.score = Math.round(recoveryScore);
-  if (hrv != null) homeData.hrv.ms = Math.round(hrv);
-  if (restHr != null) homeData.hrv.restHr = Math.round(restHr);
-
-  if (sleepHours != null) {
-    const { hours, minutes } = splitHours(sleepHours);
-    homeData.vitals.sleep.hours = hours;
-    homeData.vitals.sleep.minutes = minutes;
-  }
-  if (sleepScore != null) homeData.vitals.sleep.sub = `${Math.round(sleepScore)}% QUAL`;
-
-  // `habits` is null only while loading; an empty result ({done:0,total:0}) must
-  // write through, else a user with no habits keeps the mock tally forever.
-  if (habits) {
-    homeData.vitals.habits.done = habits.done;
-    homeData.vitals.habits.total = habits.total;
-  }
 }

@@ -12,7 +12,6 @@ import { StatGrid } from "../components/spec/StatGrid";
 import type { StatItem } from "../components/spec/StatGrid";
 import { TitleBlock } from "../components/spec/TitleBlock";
 import {
-  eyebrowDate,
   formatSleepHero,
   hrvMock,
   isoWeek,
@@ -24,6 +23,7 @@ import {
   weekMock,
   weightMock,
 } from "../data/body";
+import { eyebrowDate } from "../lib/format";
 import { useHealthToday } from "../lib/queries";
 import { FadeUp } from "../motion/FadeUp";
 import { useTheme } from "../theme/ThemeContext";

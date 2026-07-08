@@ -13,7 +13,8 @@ import { ScreenHeader } from "../components/spec/ScreenHeader";
 import { StatGrid } from "../components/spec/StatGrid";
 import type { StatItem } from "../components/spec/StatGrid";
 import { TitleBlock } from "../components/spec/TitleBlock";
-import { applyLiveHome, dayProgressPct, eyebrowDate, greetingLead, homeData } from "../data/home";
+import { dayProgressPct, greetingLead, homeData, splitHours } from "../data/home";
+import { eyebrowDate } from "../lib/format";
 import { useHealthToday, useHomeHabits } from "../lib/queries";
 import { FadeUp } from "../motion/FadeUp";
 import { Shimmer } from "../motion/Shimmer";
@@ -31,21 +32,21 @@ export function HomeScreen() {
   const { mode, c, t } = useTheme();
 
   // Merge live Whoop recovery/HRV/sleep + the real habit tally over the mock
-  // in place; net worth and the TODAY ledger stay mock. Either hook
-  // resolving re-renders this screen, which reads the merged `homeData.*`
-  // fields below.
+  // fallback into locals (Body's pattern — no module-state mutation in
+  // render). Net worth and the TODAY ledger stay mock (no provider yet).
   const { data: health } = useHealthToday();
   const { data: habits } = useHomeHabits();
-  if (health || habits) {
-    applyLiveHome({
-      recoveryScore: health?.recoveryScore ?? null,
-      hrv: health?.hrv ?? null,
-      restHr: health?.rhr ?? null,
-      sleepHours: health?.sleepHours ?? null,
-      sleepScore: health?.sleepScore ?? null,
-      habits: habits ?? null,
-    });
-  }
+
+  const recoveryScore = health?.recoveryScore != null ? Math.round(health.recoveryScore) : homeData.recovery.score;
+  const hrv = health?.hrv != null ? Math.round(health.hrv) : homeData.hrv.ms;
+  const restHr = health?.rhr != null ? Math.round(health.rhr) : homeData.hrv.restHr;
+  const sleep = health?.sleepHours != null ? splitHours(health.sleepHours) : homeData.vitals.sleep;
+  const sleepSub =
+    health?.sleepScore != null ? `${Math.round(health.sleepScore)}% QUAL` : homeData.vitals.sleep.sub;
+  // `habits` is null only while loading; an empty result ({done:0,total:0}) must
+  // still win over the mock, else a user with no habits keeps the mock tally forever.
+  const habitsDone = habits ? habits.done : homeData.vitals.habits.done;
+  const habitsTotal = habits ? habits.total : homeData.vitals.habits.total;
 
   const now = new Date();
   const dayPct = dayProgressPct(now);
@@ -58,8 +59,8 @@ export function HomeScreen() {
   const statItems: StatItem[] = [
     {
       label: "SLEEP",
-      value: `${homeData.vitals.sleep.hours}:${homeData.vitals.sleep.minutes}`,
-      sub: homeData.vitals.sleep.sub,
+      value: `${sleep.hours}:${sleep.minutes}`,
+      sub: sleepSub,
     },
     {
       label: "NET WORTH",
@@ -69,12 +70,11 @@ export function HomeScreen() {
     },
     {
       label: "HABITS",
-      value: `${homeData.vitals.habits.done}/${homeData.vitals.habits.total}`,
+      value: `${habitsDone}/${habitsTotal}`,
       sub: "",
-      pips: { n: homeData.vitals.habits.done, of: homeData.vitals.habits.total },
+      pips: { n: habitsDone, of: habitsTotal },
       // State rule (spec): habits above half → green, else amber.
-      pipColor:
-        homeData.vitals.habits.done * 2 > homeData.vitals.habits.total ? c.accent : c.amberPip,
+      pipColor: habitsDone * 2 > habitsTotal ? c.accent : c.amberPip,
     },
   ];
 
@@ -122,8 +122,8 @@ export function HomeScreen() {
         <Band variant="recovery" index={3}>
           <Text style={t.statLabel}>RECOVERY</Text>
           <View style={styles.recoveryRow}>
-            <RecoveryDial score={homeData.recovery.score} />
-            <HrvBars label="HRV · 7D" sub={`${homeData.hrv.ms} MS · REST ${homeData.hrv.restHr}`} />
+            <RecoveryDial score={recoveryScore} />
+            <HrvBars label="HRV · 7D" sub={`${hrv} MS · REST ${restHr}`} />
           </View>
         </Band>
       </View>

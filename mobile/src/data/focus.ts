@@ -1,10 +1,13 @@
+import { time12 } from "../lib/format";
+
 /**
  * Focus (spec §7c) — content data + small time-formatting helpers. Deep-work
  * session tracking (the live timer, sessions/deep-hrs/streak stats, the week
  * strip) has no backing provider yet, so it's mock — see the `mock` comments
  * below. The QUEUE ledger itself is live (calendar/tasks/habits/journal,
- * wired in FocusScreen.tsx); the helpers here just reformat what those hooks
- * already return into the spec's 12-hour time style.
+ * wired in FocusScreen.tsx / useQueueRows.ts); the helpers here just reformat
+ * what those hooks already return into the spec's 12-hour time style, reusing
+ * `lib/format.ts::time12` for the actual 12-hour conversion.
  *
  * `Habit` / `HabitDot` stay exported from this file because useHabits.ts
  * builds its `FocusHabitItem` as `Habit & { id; todayDone }` — don't change
@@ -80,31 +83,10 @@ export const focusData = {
   },
 };
 
-/**
- * "FRIDAY · MAY 8" — today's weekday + date, live (design README eyebrow
- * row). Duplicated from data/body.ts's identical helper — each screen's data
- * module is self-contained by convention, so this stays a tiny local copy
- * rather than a cross-screen import.
- */
-export function eyebrowDate(d: Date): string {
-  const weekday = d.toLocaleDateString("en-US", { weekday: "long" }).toUpperCase();
-  const month = d.toLocaleDateString("en-US", { month: "short" }).toUpperCase();
-  return `${weekday} · ${month} ${d.getDate()}`;
-}
-
-/** "H:MM AM/PM" for a Date — the live clock in the LIVE band. */
-export function formatClock12h(d: Date): string {
-  let h = d.getHours();
-  const m = String(d.getMinutes()).padStart(2, "0");
-  const suffix = h >= 12 ? "PM" : "AM";
-  h = h % 12 || 12;
-  return `${h}:${m} ${suffix}`;
-}
-
 /** "HH:MM" 24h → "H:MM AM/PM" (design README: all times render 12-hour). */
 export function formatHHMM12h(hhmm: string): string {
   const [hStr, mStr] = hhmm.split(":");
-  return formatClock12h(new Date(2000, 0, 1, Number(hStr), Number(mStr)));
+  return time12(new Date(2000, 0, 1, Number(hStr), Number(mStr)));
 }
 
 /** Elapsed seconds → a count-up "mm:ss" label (e.g. "44:12"). */
