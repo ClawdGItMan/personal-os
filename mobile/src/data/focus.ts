@@ -1,110 +1,133 @@
 /**
- * Sample Focus data — content from the approved focus-v2 mockup, reconciled to
- * the locked screen brief. Replaced by Google Calendar (events) + the native
- * Supabase store (tasks/habits/journal) when the data layer lands (spec §7).
+ * Focus (spec §7c) — content data + small time-formatting helpers. Deep-work
+ * session tracking (the live timer, sessions/deep-hrs/streak stats, the week
+ * strip) has no backing provider yet, so it's mock — see the `mock` comments
+ * below. The QUEUE ledger itself is live (calendar/tasks/habits/journal,
+ * wired in FocusScreen.tsx); the helpers here just reformat what those hooks
+ * already return into the spec's 12-hour time style.
+ *
+ * `Habit` / `HabitDot` stay exported from this file because useHabits.ts
+ * builds its `FocusHabitItem` as `Habit & { id; todayDone }` — don't change
+ * their shape without updating that hook.
  */
-import type { EventState } from "../components/EventRow";
 
-export type FocusEvent = {
-  time: string;
-  state: EventState;
-  title: string;
-  sub: string;
-};
-
-export type FocusTask = {
-  title: string;
-  sub: string;
-  done?: boolean;
-  timeBlocked?: boolean;
-  priority?: boolean;
-};
-
-export type WeekDay = {
-  /** Single-letter weekday (M T W T F S S). */
-  letter: string;
-  /** Day-of-month number. */
-  date: string;
-  /** Has events that day → render the density dot. */
-  dense: boolean;
-  /** Today → blue tint + blue border. */
-  today?: boolean;
-};
-
-/** 7 week-dots per habit: done | empty | today (blue ring, may also be done). */
+/** 7-day dot state for a habit (consumed by useHabits.ts's FocusHabitItem). */
 export type HabitDot = "done" | "empty" | "today";
 
 export type Habit = {
   name: string;
   /** Streak read-out, e.g. "12-day streak" or "Streak reset · 0". */
   streak: string;
-  /** A reset streak reads in muted fg4 (never red). */
+  /** A reset streak reads in muted ink (never red). */
   reset?: boolean;
   dots: HabitDot[];
 };
 
+export type WeekCell = {
+  /** Single-letter weekday (M T W T F S S). */
+  letter: string;
+  /** Day-of-month number. */
+  date: string;
+  /** Deep-work hours logged that day ("2:05") — omit to render "—". */
+  hours?: string;
+  today?: boolean;
+};
+
 export const focusData = {
-  eyebrow: "Focus · Friday, May 8",
-  title: { lead: "Two deep blocks ", emphasis: "left." },
-  recoveryPct: 0.72,
+  title: "Focus",
+  status: [
+    "Two blocks left — ",
+    { b: "protect the afternoon." },
+  ],
 
-  calendar: {
-    meta: "GOOGLE CAL · 8 TODAY",
-    week: [
-      { letter: "M", date: "4", dense: true },
-      { letter: "T", date: "5", dense: true },
-      { letter: "W", date: "6", dense: false },
-      { letter: "T", date: "7", dense: true },
-      { letter: "F", date: "8", dense: true, today: true },
-      { letter: "S", date: "9", dense: false },
-      { letter: "S", date: "10", dense: true },
-    ] satisfies WeekDay[],
-    events: [
-      { time: "09:30", state: "done", title: "Standup", sub: "Ops · done" },
-      { time: "10:00", state: "done", title: "1:1 · Sarah K", sub: "Calendar · done" },
-      { time: "12:30", state: "up", title: "Lunch · Adam", sub: "Calendar · Cipriani" },
-      { time: "NOW", state: "now", title: "Deep work — pricing model", sub: "In progress · until 15:00" },
-      { time: "15:00", state: "up", title: "Investor call — Sequoia", sub: "Calendar · video · 45m" },
-      { time: "19:30", state: "up", title: "Dinner · Cipriani", sub: "Calendar · personal" },
-    ] satisfies FocusEvent[],
+  // mock — no provider yet: deep-work session tracking isn't in the schema.
+  // The 44:12 timer in FocusScreen ticks live off `elapsedAtLoadSec`.
+  session: {
+    label: "Deep work — pricing model",
+    elapsedAtLoadSec: 44 * 60 + 12,
+    /** Fixed block end, 24h "HH:MM" local. */
+    endsAt: "15:00",
+    /** Total planned block length in minutes — drives the ~42% fill. */
+    blockMinutes: 105,
   },
 
-  tasks: {
-    meta: "2 / 5 DONE",
-    donePct: 0.4,
-    today: [
-      { title: "Review compliance checklist", sub: "Ops · done 09:42", done: true },
-      { title: "Reply to Sarah — 1:1 notes", sub: "Inbox · done 10:38", done: true },
-      { title: "Ship Whoop sync fix", sub: "14:00–15:00 · blocked", timeBlocked: true, priority: true },
-    ] satisfies FocusTask[],
-    week: [
-      { title: "Draft Q3 board update", sub: "Strategy · Wed" },
-      { title: "Renew domain registrations", sub: "Admin · Thu" },
-    ] satisfies FocusTask[],
+  // mock — no provider yet
+  stats: {
+    sessions: { done: 3, total: 4, left: 1 },
+    deepHours: "3:12",
+    deepGoal: "4:00",
+    streakDays: 12,
   },
 
-  habits: [
-    {
-      name: "Meditate",
-      streak: "12-day streak",
-      dots: ["done", "done", "done", "done", "done", "done", "today"],
-    },
-    {
-      name: "Read 30 min",
-      streak: "5-day streak",
-      dots: ["empty", "empty", "done", "done", "done", "done", "today"],
-    },
-    {
-      name: "Cold plunge",
-      streak: "Streak reset · 0",
-      reset: true,
-      dots: ["done", "done", "empty", "empty", "empty", "empty", "today"],
-    },
-  ] satisfies Habit[],
+  // mock — no provider yet
+  week: {
+    rangeLabel: "MAY 4–10",
+    avgLabel: "AVG 2:54",
+    days: [
+      { letter: "M", date: "4", hours: "2:05" },
+      { letter: "T", date: "5", hours: "2:50" },
+      { letter: "W", date: "6", hours: "1:20" },
+      { letter: "T", date: "7", hours: "3:05" },
+      { letter: "F", date: "8", hours: "3:12", today: true },
+      { letter: "S", date: "9" },
+      { letter: "S", date: "10" },
+    ] satisfies WeekCell[],
+  },
 
   journal: {
     prompt: "What pulled your focus today?",
     placeholder: "Tap to write",
-    meta: "Last entry yesterday · 6-day streak",
   },
 };
+
+/**
+ * "FRIDAY · MAY 8" — today's weekday + date, live (design README eyebrow
+ * row). Duplicated from data/body.ts's identical helper — each screen's data
+ * module is self-contained by convention, so this stays a tiny local copy
+ * rather than a cross-screen import.
+ */
+export function eyebrowDate(d: Date): string {
+  const weekday = d.toLocaleDateString("en-US", { weekday: "long" }).toUpperCase();
+  const month = d.toLocaleDateString("en-US", { month: "short" }).toUpperCase();
+  return `${weekday} · ${month} ${d.getDate()}`;
+}
+
+/** "H:MM AM/PM" for a Date — the live clock in the LIVE band. */
+export function formatClock12h(d: Date): string {
+  let h = d.getHours();
+  const m = String(d.getMinutes()).padStart(2, "0");
+  const suffix = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  return `${h}:${m} ${suffix}`;
+}
+
+/** "HH:MM" 24h → "H:MM AM/PM" (design README: all times render 12-hour). */
+export function formatHHMM12h(hhmm: string): string {
+  const [hStr, mStr] = hhmm.split(":");
+  return formatClock12h(new Date(2000, 0, 1, Number(hStr), Number(mStr)));
+}
+
+/** Elapsed seconds → a count-up "mm:ss" label (e.g. "44:12"). */
+export function formatElapsed(totalSeconds: number): string {
+  const mm = Math.floor(totalSeconds / 60);
+  const ss = totalSeconds % 60;
+  return `${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
+}
+
+/** useCalendarToday's "HH:MM" (or the literal "NOW") → 12-hour, "NOW" passes through. */
+export function formatEventTime12h(time: string): string {
+  if (time === "NOW") return time;
+  return formatHHMM12h(time);
+}
+
+/**
+ * Pull a 12-hour clock time out of useTasks' pre-formatted `sub` string
+ * ("TAG · DUE 14:00"), or null when the task has no due time. Coupled to
+ * useTasks.ts's `buildSub` output on purpose — that hook is preserved as-is,
+ * so this reads what it already renders rather than re-deriving `due_at`.
+ */
+export function extractDueTime12h(sub: string): string | null {
+  const match = /DUE (\d{2}):(\d{2})/.exec(sub);
+  if (!match) return null;
+  return formatHHMM12h(`${match[1]}:${match[2]}`);
+}

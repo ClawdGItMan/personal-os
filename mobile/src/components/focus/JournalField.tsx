@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import type { TextInput as RNTextInput } from "react-native";
 import { AccessibilityInfo, Animated, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { color, font, radius, type } from "../../theme/tokens";
+import { useTheme } from "../../theme/ThemeContext";
+import { layout } from "../../theme/layout";
+import { fonts } from "../../theme/typeRoles";
 
 type JournalFieldProps = {
-  /** Serif-italic prompt (e.g. "What pulled your focus today?"). */
+  /** Reflective prompt (e.g. "What pulled your focus today?"). */
   prompt: string;
   /** Muted "tap to write" affordance text. */
   placeholder: string;
@@ -19,11 +21,11 @@ type JournalFieldProps = {
 };
 
 /**
- * Caret blink — an ambient loop (spec §6.4 "carets blink"). RN core Animated so
- * it runs on react-native-web (Max's review surface); honors reduce-motion by
- * holding the caret solid.
+ * Caret blink — an ambient loop (spec §Motion). RN core Animated so it runs on
+ * react-native-web (Max's review surface); honors reduce-motion by holding the
+ * caret solid.
  */
-function BlinkingCaret() {
+function BlinkingCaret({ color }: { color: string }) {
   const [opacity] = useState(() => new Animated.Value(1));
   const [reduceMotion, setReduceMotion] = useState(false);
 
@@ -52,15 +54,18 @@ function BlinkingCaret() {
     return () => loop.stop();
   }, [opacity, reduceMotion]);
 
-  return <Animated.View style={[styles.caret, { opacity }]} />;
+  return <Animated.View style={[styles.caret, { opacity, backgroundColor: color }]} />;
 }
 
 /**
- * Journal field (spec §4 / §5.4): a bordered block (radius.field) with a
- * serif-italic prompt, a hairline, then a "tap to write" row led by a blinking
- * blue caret. The one deliberate contained surface in Focus.
+ * Journal field (spec §7c QUEUE, journal-tagged row) — an inline reveal shown
+ * below the queue when that row is tapped (FocusScreen owns the show/hide).
+ * A bordered block with a quiet prompt, a hairline, then a "tap to write" row
+ * led by a blinking accent caret — the one deliberate contained surface in
+ * Focus, kept visually quiet to stay spec-adjacent.
  */
 export function JournalField({ prompt, placeholder, onSubmit }: JournalFieldProps) {
+  const { c } = useTheme();
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
@@ -97,17 +102,17 @@ export function JournalField({ prompt, placeholder, onSubmit }: JournalFieldProp
   };
 
   return (
-    <View style={styles.field}>
-      <Text style={styles.prompt}>{prompt}</Text>
+    <View style={[styles.field, { borderColor: c.hairSection }]}>
+      <Text style={[styles.prompt, { color: c.ink72 }]}>{prompt}</Text>
       {editing ? (
-        <View style={styles.write}>
+        <View style={[styles.write, { borderColor: c.hairSection }]}>
           <TextInput
             ref={inputRef}
-            style={styles.input}
+            style={[styles.input, { color: c.ink }]}
             value={text}
             onChangeText={setText}
             placeholder={placeholder}
-            placeholderTextColor={color.fg4}
+            placeholderTextColor={c.ink38}
             multiline
             editable={!saving}
             onSubmitEditing={submit}
@@ -118,13 +123,13 @@ export function JournalField({ prompt, placeholder, onSubmit }: JournalFieldProp
         </View>
       ) : (
         <Pressable
-          style={styles.write}
+          style={[styles.write, { borderColor: c.hairSection }]}
           onPress={open}
           disabled={!onSubmit}
           accessibilityRole="button"
         >
-          <BlinkingCaret />
-          <Text style={styles.placeholder}>{placeholder}</Text>
+          <BlinkingCaret color={c.accent} />
+          <Text style={[styles.placeholder, { color: c.ink50 }]}>{placeholder}</Text>
         </Pressable>
       )}
     </View>
@@ -133,46 +138,39 @@ export function JournalField({ prompt, placeholder, onSubmit }: JournalFieldProp
 
 const styles = StyleSheet.create({
   field: {
-    marginTop: 6,
+    marginTop: 14,
     borderWidth: 1,
-    borderColor: color.line1,
-    borderRadius: radius.field,
-    paddingHorizontal: 17,
-    paddingTop: 17,
-    paddingBottom: 15,
+    borderRadius: layout.radius.weekCell,
+    paddingHorizontal: 16,
+    paddingTop: 15,
+    paddingBottom: 13,
   },
   prompt: {
-    ...type.serifReadout,
-    fontFamily: font.serifItalic,
-    fontSize: 18,
-    lineHeight: 23,
-    color: color.fg2,
+    fontFamily: fonts.sans500,
+    fontSize: 14,
+    lineHeight: 20,
   },
   write: {
     flexDirection: "row",
     alignItems: "center",
     gap: 7,
-    marginTop: 14,
-    paddingTop: 13,
+    marginTop: 12,
+    paddingTop: 12,
     borderTopWidth: 1,
-    borderColor: color.line1,
   },
   caret: {
     width: 1.5,
     height: 14,
-    backgroundColor: color.blue,
   },
   placeholder: {
-    fontFamily: font.sansSemi,
+    fontFamily: fonts.sans600,
     fontSize: 12,
-    color: color.fg4,
   },
   input: {
     flex: 1,
-    fontFamily: font.sansSemi,
+    fontFamily: fonts.sans500,
     fontSize: 13.5,
     lineHeight: 19,
-    color: color.fg1,
     minHeight: 20,
     padding: 0,
   },

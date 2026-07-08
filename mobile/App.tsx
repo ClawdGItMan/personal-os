@@ -17,6 +17,7 @@ import { Platform, StyleSheet, View } from "react-native";
 import { SessionProvider, useSession } from "./src/auth/SessionProvider";
 import { TabBar } from "./src/components/spec/TabBar";
 import { NavProvider, useNav } from "./src/navigation/NavContext";
+import { AssistantSheet } from "./src/screens/AssistantSheet";
 import { BodyScreen } from "./src/screens/BodyScreen";
 import { CaptureSheet } from "./src/screens/CaptureSheet";
 import { DetailScreen } from "./src/screens/DetailScreen";
@@ -76,8 +77,7 @@ function Shell() {
       {detailOverlay ? <DetailScreen item={detailOverlay} /> : null}
       <TabBar />
       {captureOpen ? <CaptureSheet /> : null}
-      {/* overlay.kind === "assistant": AssistantSheet renders here (screen task B5). */}
-      {overlay?.kind === "assistant" ? null : null}
+      {overlay?.kind === "assistant" ? <AssistantSheet /> : null}
     </View>
   );
 }

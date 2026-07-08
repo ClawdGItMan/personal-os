@@ -1,149 +1,109 @@
 /**
- * Sample Body data — same content as the approved body-v2 mockup (spec §5.2).
- * Replaced by Whoop / HealthKit / Strava sync when the data layer lands.
+ * Body screen data — design README §Body (spec 7a). Recovery score, HRV, rest
+ * HR, sleep hours, and sleep quality are LIVE via `useHealthToday` in
+ * BodyScreen (Whoop `health_snapshots`); every export below has no data
+ * provider yet, so it's a fixed mock matching the locked spec verbatim
+ * (design_handoff_personal_os/README.md §Body, system-tokens.md). All times
+ * are already 12-hour.
  */
+import type { Palette } from "../theme/palette";
 
 export type SleepStage = {
+  key: "deep" | "rem" | "core";
   label: string;
-  /** Fraction of total sleep, 0–1 — drives both the stacked bar and legend. */
+  /** Fraction of total sleep, 0–1 — drives the stacked stage bar's width. */
   fraction: number;
-  /** Readable duration (e.g. "1h36"). */
+  /** Legend duration text, e.g. "1:12". */
   duration: string;
-  /** Token color key for this stage segment. */
-  tone: "green" | "blue" | "light" | "awake";
 };
 
-export type Macro = {
-  label: string;
-  grams: string;
-  /** 0–1 fill of the target bar. */
-  pct: number;
-  tone: "green" | "blue" | "yellow";
+export type WeekSessionState = "done" | "today" | "track";
+
+export type WeekDay = {
+  /** Single-letter weekday (M T W T F S S). */
+  letter: string;
+  state: WeekSessionState;
 };
+
+/** Recovery score shown before the first Whoop sync resolves. */
+export const recoveryFallback = { score: 72 };
+
+/** TRAINING · DONE band — no workout provider yet. */
+export const trainingMock = {
+  time: "11:00 AM",
+  title: "Push day — 4 PRs",
+  sub: "52 MIN · TONNAGE 12,480 LB",
+}; // mock — no provider yet
 
 /**
- * Live body metrics (Whoop `health_snapshots`). Any field may be null when that
- * day's sync didn't cover it — `applyLiveBody` leaves the mock in place for nulls.
+ * SLEEP · LAST NIGHT band. `hoursFallback`/`qualityFallback` back the live
+ * sleepHours/sleepScore when a day's sync doesn't cover them; `window` and
+ * `stages` stay mock always — Whoop sync gives total hours/score only, not a
+ * sleep-window timestamp or a stage breakdown.
  */
-export type LiveBody = {
-  recoveryScore: number | null;
-  hrv: number | null;
-  rhr: number | null;
-  sleepHours: number | null;
-  sleepScore: number | null;
-  strain: number | null;
-};
+export const sleepMock = {
+  window: "10:58 PM → 6:10 AM",
+  hoursFallback: 7.2,
+  qualityFallback: 87,
+  stages: [
+    { key: "deep", label: "DEEP", fraction: 0.167, duration: "1:12" },
+    { key: "rem", label: "REM", fraction: 0.25, duration: "1:48" },
+    { key: "core", label: "CORE", fraction: 0.583, duration: "4:12" },
+  ] satisfies SleepStage[],
+}; // mock — no provider yet
 
-/**
- * Mutable at runtime so a live sync can override the mock in place (the Body
- * sections read `bodyData.*` inside their render bodies — see `applyLiveBody`).
- * Sleep STAGES, SpO₂, training lifts + PR count, and nutrition stay mock: no
- * columns for them yet. `as const` is intentionally dropped so fields are writable.
- */
-export const bodyData = {
-  eyebrow: "Body · Friday, May 8",
-  title: { lead: "Well ", emphasis: "recovered." },
-  recoveryPct: 0.72,
-  recovery: {
-    pct: 72,
-    source: "WHOOP · 6:42 AM",
-    stats: [
-      { label: "HRV", value: "64", unit: "ms" },
-      { label: "Resting HR", value: "48", unit: "bpm" },
-      { label: "SpO₂", value: "97", unit: "%" },
-    ],
-    readout: "Green to push — your body's ready for strain today.",
-  },
-  sleep: {
-    meta: "7H12 / 8H00 NEED",
-    hours: "7",
-    minutes: "12",
-    quality: "87%",
-    stages: [
-      { label: "Deep", fraction: 0.22, duration: "1h36", tone: "green" },
-      { label: "REM", fraction: 0.24, duration: "1h44", tone: "blue" },
-      { label: "Light", fraction: 0.46, duration: "3h20", tone: "light" },
-      { label: "Awake", fraction: 0.08, duration: "0h32", tone: "awake" },
-    ] satisfies SleepStage[],
-  },
-  strain: {
-    meta: "DAY · TARGET 18",
-    value: "14.2",
-    state: "BUILDING",
-    pct: 0.79,
-    /** 7-day relative heights, 0–1; `peak` marks the yellow bar. */
-    week: [
-      { height: 0.4 },
-      { height: 0.55 },
-      { height: 0.35 },
-      { height: 0.7 },
-      { height: 0.48 },
-      { height: 0.88, peak: true },
-      { height: 0.62 },
-    ],
-  },
-  training: {
-    meta: "PUSH DAY · 11:00",
-    prCount: "4",
-    sessionTag: "SESSION ✓",
-    lifts: [
-      { name: "Bench Press", scheme: "3 × 5", weight: "185", pr: true },
-      { name: "Incline DB Press", scheme: "3 × 8", weight: "70", pr: false },
-      { name: "Overhead Press", scheme: "5 × 5", weight: "115", pr: true },
-    ],
-  },
-  nutrition: {
-    meta: "1,840 / 2,400 KCAL",
-    /** 0–1 of the calorie target — fills the ring sweep. */
-    kcalPct: 0.77,
-    kcalLabel: "77",
-    macros: [
-      { label: "Protein", grams: "142g", pct: 0.78, tone: "green" },
-      { label: "Carbs", grams: "180g", pct: 0.6, tone: "blue" },
-      { label: "Fat", grams: "56g", pct: 0.48, tone: "yellow" },
-    ] satisfies Macro[],
-  },
-};
+/** REST HR stat — 7-day delta has no trend provider yet (Whoop gives today's point value only). */
+export const restHRMock = { fallback: 48, delta: "−2 · 7D" }; // mock — no provider yet
 
-/** Whoop recovery band → the serif read-out under the ring (spec §5.2 voice). */
-function recoveryReadout(pct: number): string {
-  if (pct >= 67) return "Green to push — your body's ready for strain today.";
-  if (pct >= 34) return "Amber — build steady, keep the intensity honest.";
-  return "Red — prioritise recovery; go light and rebuild.";
-}
+/** HRV stat — "vs avg" delta has no trend provider yet. */
+export const hrvMock = { fallback: 64, delta: "↑ +6 VS AVG" }; // mock — no provider yet
 
-/** Split decimal hours (7.2) into whole hours + zero-padded minutes ("7", "12"). */
-function splitHours(decimalHours: number): { hours: string; minutes: string } {
+/** WEIGHT stat — no scale/HealthKit provider yet. */
+export const weightMock = { value: "182.4", delta: "−0.6 · 30D" }; // mock — no provider yet
+
+/** THIS WEEK session grid — no workout provider yet. */
+export const weekMock = {
+  sessions: 4,
+  days: [
+    { letter: "M", state: "done" },
+    { letter: "T", state: "done" },
+    { letter: "W", state: "track" },
+    { letter: "T", state: "done" },
+    { letter: "F", state: "today" },
+    { letter: "S", state: "track" },
+    { letter: "S", state: "track" },
+  ] satisfies WeekDay[],
+}; // mock — no provider yet
+
+/** Split decimal hours (7.2) into "H:MM" (e.g. "7:12") for the sleep hero value. */
+export function formatSleepHero(decimalHours: number): string {
   const totalMinutes = Math.round(decimalHours * 60);
   const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  return { hours: String(hours), minutes: String(minutes).padStart(2, "0") };
+  const minutes = String(totalMinutes % 60).padStart(2, "0");
+  return `${hours}:${minutes}`;
 }
 
-/**
- * Merge live Whoop values over the mock in place. Idempotent and null-safe:
- * called each render, it re-derives every live field from `live` and leaves the
- * mock untouched wherever `live.*` is null. Keeps the Body sections' APIs intact.
- */
-export function applyLiveBody(live: LiveBody): void {
-  const { recoveryScore, hrv, rhr, sleepHours, sleepScore, strain } = live;
+/** ISO-8601 week number (Mon-start, week 1 contains the year's first Thursday). */
+export function isoWeek(d: Date): number {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = (date.getUTCDay() + 6) % 7; // Mon = 0 … Sun = 6
+  date.setUTCDate(date.getUTCDate() - dayNum + 3); // nearest Thursday
+  const firstThursday = new Date(Date.UTC(date.getUTCFullYear(), 0, 4));
+  const firstDayNum = (firstThursday.getUTCDay() + 6) % 7;
+  firstThursday.setUTCDate(firstThursday.getUTCDate() - firstDayNum + 3);
+  return 1 + Math.round((date.getTime() - firstThursday.getTime()) / (7 * 86400000));
+}
 
-  if (recoveryScore != null) {
-    const pct = Math.round(recoveryScore);
-    bodyData.recovery.pct = pct;
-    bodyData.recoveryPct = recoveryScore / 100;
-    bodyData.recovery.readout = recoveryReadout(pct);
-  }
-  if (hrv != null) bodyData.recovery.stats[0].value = String(Math.round(hrv));
-  if (rhr != null) bodyData.recovery.stats[1].value = String(Math.round(rhr));
+/** "FRIDAY · MAY 8" — today's weekday + date, live (design README eyebrow row). */
+export function eyebrowDate(d: Date): string {
+  const weekday = d.toLocaleDateString("en-US", { weekday: "long" }).toUpperCase();
+  const month = d.toLocaleDateString("en-US", { month: "short" }).toUpperCase();
+  return `${weekday} · ${month} ${d.getDate()}`;
+}
 
-  if (sleepHours != null) {
-    const { hours, minutes } = splitHours(sleepHours);
-    bodyData.sleep.hours = hours;
-    bodyData.sleep.minutes = minutes;
-    bodyData.sleep.meta = `${hours}H${minutes} / 8H00 NEED`;
-  }
-  if (sleepScore != null) bodyData.sleep.quality = `${Math.round(sleepScore)}%`;
-
-  if (strain != null) bodyData.strain.value = strain.toFixed(1);
+/** Sleep state rule (design README): >7h accent green, 6–7h amber, <6h red. */
+export function sleepColor(c: Palette, hours: number): string {
+  if (hours > 7) return c.accent;
+  if (hours >= 6) return c.amber;
+  return c.red;
 }

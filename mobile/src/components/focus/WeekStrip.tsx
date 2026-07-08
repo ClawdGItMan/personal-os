@@ -1,27 +1,48 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import type { WeekDay } from "../../data/focus";
-import { color, font, radius } from "../../theme/tokens";
+import type { WeekCell } from "../../data/focus";
+import { useTheme } from "../../theme/ThemeContext";
+import { layout } from "../../theme/layout";
+import { fonts } from "../../theme/typeRoles";
 
 type WeekStripProps = {
-  days: WeekDay[];
+  days: WeekCell[];
 };
 
 /**
- * Focus calendar week strip (spec §4): 7 day-cells — single-letter weekday +
- * date + a small density dot (events that day). Today reads as a blue-tinted
- * cell with a blue border; its text + dot turn blue.
+ * Focus "THIS WEEK" strip (spec §7c): 7 ringed r8 cells — weekday letter,
+ * date, and deep-work hours in accent at ~80% opacity (or "—" for a day
+ * without hours). Today gets a full accent ring, an accent-tinted background
+ * (reusing the LIVE band's wash token), and full-opacity accent text.
  */
 export function WeekStrip({ days }: WeekStripProps) {
+  const { c } = useTheme();
   return (
-    <View style={styles.week}>
-      {days.map((day) => {
+    <View style={styles.row}>
+      {days.map((day, i) => {
         const on = day.today === true;
+        const hasHours = day.hours != null;
         return (
-          <View key={day.date} style={[styles.cell, on && styles.cellOn]}>
-            <Text style={[styles.letter, on && styles.textOn]}>{day.letter}</Text>
-            <Text style={[styles.date, on && styles.textOn]}>{day.date}</Text>
-            <View style={[styles.dot, !day.dense && styles.dotNone, on && styles.dotOn]} />
+          <View
+            key={`${day.letter}-${day.date}-${i}`}
+            style={[
+              styles.cell,
+              { borderColor: c.hairSection },
+              on && { borderColor: c.accent, backgroundColor: c.bandGrad0 },
+            ]}
+          >
+            <Text style={[styles.letter, { color: on ? c.accent : c.ink50 }]}>{day.letter}</Text>
+            <Text style={[styles.date, { color: on ? c.accent : hasHours ? c.ink : c.ink34 }]}>
+              {day.date}
+            </Text>
+            <Text
+              style={[
+                styles.hours,
+                hasHours ? { color: c.accent, opacity: on ? 1 : 0.8 } : { color: c.ink34 },
+              ]}
+            >
+              {day.hours ?? "—"}
+            </Text>
           </View>
         );
       })}
@@ -29,52 +50,35 @@ export function WeekStrip({ days }: WeekStripProps) {
   );
 }
 
-const DOT = 4;
-
 const styles = StyleSheet.create({
-  week: {
+  row: {
     flexDirection: "row",
-    gap: 6,
+    gap: 7,
+    marginTop: 12,
   },
   cell: {
     flex: 1,
     alignItems: "center",
     gap: 6,
-    paddingTop: 8,
-    paddingBottom: 7,
-    borderRadius: radius.card,
+    paddingTop: 9,
+    paddingBottom: 8,
+    borderRadius: layout.radius.weekCell,
     borderWidth: 1,
-    borderColor: "transparent",
-  },
-  cellOn: {
-    backgroundColor: "rgba(58,112,168,0.10)",
-    borderColor: "rgba(58,112,168,0.45)",
   },
   letter: {
-    fontFamily: font.monoBold,
+    fontFamily: fonts.mono500,
     fontSize: 8,
     letterSpacing: 1,
-    color: color.fg4,
+    textTransform: "uppercase",
   },
   date: {
-    fontFamily: font.monoSemi,
-    fontSize: 15,
-    color: color.fg2,
+    fontFamily: fonts.mono600,
+    fontSize: 13,
     fontVariant: ["tabular-nums"],
   },
-  textOn: {
-    color: color.blue,
-  },
-  dot: {
-    width: DOT,
-    height: DOT,
-    borderRadius: DOT / 2,
-    backgroundColor: color.fg4,
-  },
-  dotNone: {
-    backgroundColor: "transparent",
-  },
-  dotOn: {
-    backgroundColor: color.blue,
+  hours: {
+    fontFamily: fonts.mono500,
+    fontSize: 8,
+    fontVariant: ["tabular-nums"],
   },
 });

@@ -1,98 +1,129 @@
 import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import Animated from "react-native-reanimated";
 
-import { AppHeader } from "../components/AppHeader";
-import { SectionEnter } from "../components/SectionEnter";
-import { SectionHeader } from "../components/SectionHeader";
-import { AccountRow } from "../components/money/AccountRow";
-import { AllocationBar } from "../components/money/AllocationBar";
-import { AreaTrendChart } from "../components/money/AreaTrendChart";
-import { RangePills } from "../components/money/RangePills";
-import { TriUp } from "../components/money/icons";
+import { BandHeader } from "../components/money/BandHeader";
+import { MoneyLedgerRow } from "../components/money/MoneyLedgerRow";
+import { Band } from "../components/spec/Band";
+import { Eyebrow } from "../components/spec/Eyebrow";
+import { ScreenHeader } from "../components/spec/ScreenHeader";
+import { Sparkline } from "../components/spec/Sparkline";
+import { StatGrid } from "../components/spec/StatGrid";
+import type { StatItem } from "../components/spec/StatGrid";
+import { TitleBlock } from "../components/spec/TitleBlock";
 import { moneyData } from "../data/money";
-import { color, glow, space, type } from "../theme/tokens";
+import { useFillAnim } from "../motion/useFillAnim";
+import { layout } from "../theme/layout";
+import { useTheme } from "../theme/ThemeContext";
 
 /**
- * Money (spec §5.3) — net worth → trend → allocation → accounts. Same editorial
- * language as Home/Body: serif title, mono data, color-as-meaning (green up,
- * muted down — never red). Content only; App owns AmbientBackground + BottomNav.
+ * Money (design README §Money, spec 7b) — net worth hero → accounts →
+ * May burn → recent ledger. 100% mock (Plaid deferred, owner Max); content
+ * only, the shared themed shell + TabBar are owned by App.
  */
 export function MoneyScreen() {
-  const { netWorth, allocation, accounts, title, eyebrow, trend, ranges, activeRange } = moneyData;
+  const { c, t } = useTheme();
+  const { eyebrow, title, status, netWorth, accounts, burn, ledger } = moneyData;
+  const burnFill = useFillAnim(burn.pct);
+
+  const accountItems: StatItem[] = accounts.map((a) => ({
+    label: a.label,
+    value: a.value,
+    sub: a.sub,
+    valueColor: a.valueNegative ? c.red : undefined,
+    subColor: a.subAccent ? c.accent : undefined,
+  }));
+
   return (
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <AppHeader recoveryPct={moneyData.recoveryPct} tone={color.yellow} />
+      <ScreenHeader />
 
-      <SectionEnter index={0}>
-        <Text style={[type.eyebrow, styles.eyebrow]}>{eyebrow}</Text>
-        <Text style={type.screenTitle}>
-          {title.lead} <Text style={type.screenTitleItalic}>{title.emphasis}</Text>
-        </Text>
-      </SectionEnter>
+      <View style={styles.eyebrowWrap}>
+        <Eyebrow left={eyebrow.left} right={eyebrow.right} />
+      </View>
+      <View style={styles.titleWrap}>
+        <TitleBlock title={title} status={status} />
+      </View>
 
-      <SectionEnter index={1}>
-        <View style={styles.metaRow}>
-          <Text style={type.sectionMeta}>{netWorth.meta}</Text>
-          <View style={[styles.liveDot, glow(color.green, 6, 0.6)]} />
-        </View>
-        <Text style={[type.valueXL, styles.netValue]}>{netWorth.value}</Text>
-        <View style={styles.deltaRow}>
-          <TriUp size={8} color={color.green} />
-          <Text style={styles.deltaText}>{netWorth.delta}</Text>
-        </View>
-        <AreaTrendChart series={trend} />
-        <RangePills ranges={ranges} initial={activeRange} />
-      </SectionEnter>
+      <View style={styles.bandsWrap}>
+        <Band variant="plain" index={0}>
+          <BandHeader left={netWorth.label} right={netWorth.period} />
+          <View style={styles.netRow}>
+            <View>
+              <Text style={[t.heroValue, styles.netValue, { color: c.accent }]}>{netWorth.value}</Text>
+              <Text style={[t.bandSub, styles.netSub, { color: c.accent }]}>{netWorth.sub}</Text>
+            </View>
+            <Sparkline width={118} height={34} />
+          </View>
+        </Band>
 
-      <SectionEnter index={2}>
-        <SectionHeader title="Allocation" meta={allocation.meta} />
-        <AllocationBar classes={allocation.classes} />
-      </SectionEnter>
+        <StatGrid items={accountItems} index={1} />
 
-      <SectionEnter index={3}>
-        <SectionHeader title="Accounts" meta={accounts.meta} />
-        {accounts.rows.map((account, i) => (
-          <AccountRow key={account.name} account={account} last={i === accounts.rows.length - 1} />
-        ))}
-      </SectionEnter>
+        <Band variant="plain" index={2}>
+          <BandHeader left={burn.label} right={burn.status} rightColor={c.accent} />
+          <View style={styles.burnRow}>
+            <Text style={t.statValue}>
+              {burn.spent} <Text style={[t.bandSub, styles.burnOf]}>{burn.ofBudget}</Text>
+            </Text>
+            <Text style={t.bandSub}>{burn.left}</Text>
+          </View>
+          <View style={[styles.barTrack, { backgroundColor: c.dayTrack }]}>
+            <Animated.View style={[styles.barFill, { backgroundColor: c.accent }, burnFill]} />
+          </View>
+        </Band>
+
+        <Band variant="plain" index={3}>
+          <BandHeader left={ledger.label} right={ledger.period} />
+          {ledger.items.map((item) => (
+            <MoneyLedgerRow key={`${item.time}-${item.title}`} item={item} />
+          ))}
+        </Band>
+      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   content: {
-    paddingHorizontal: space.gutter,
     paddingTop: Platform.OS === "web" ? 28 : 62,
     paddingBottom: 110,
   },
-  eyebrow: {
-    marginBottom: 10,
+  eyebrowWrap: {
+    marginTop: 26,
   },
-  metaRow: {
+  titleWrap: {
+    marginTop: 20,
+  },
+  bandsWrap: {
+    marginTop: 20,
+  },
+  netRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 7,
-    marginTop: 22,
-  },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: color.green,
+    justifyContent: "space-between",
+    marginTop: 11,
   },
   netValue: {
-    marginTop: 8,
+    marginBottom: 9,
   },
-  deltaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    marginTop: 9,
-  },
-  deltaText: {
-    fontFamily: type.valueM.fontFamily,
-    fontSize: 11,
-    color: color.green,
-    fontVariant: ["tabular-nums"],
+  netSub: {
     letterSpacing: 0.2,
+  },
+  burnRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    marginTop: 11,
+    marginBottom: 12,
+  },
+  burnOf: {
+    letterSpacing: 0.2,
+  },
+  barTrack: {
+    height: 3,
+    borderRadius: layout.radius.pill,
+  },
+  barFill: {
+    height: 3,
+    borderRadius: layout.radius.pill,
   },
 });

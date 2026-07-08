@@ -29,14 +29,18 @@ function SegmentDots({ done, total }: { done: number; total: number }) {
   );
 }
 
-/** Home glance strip (spec §5.1): Recovery · Sleep · Net worth · Habits, hairline-bounded. */
+/**
+ * Home glance strip (spec §5.1, superseded by RecoveryDial/HrvBars/StatGrid —
+ * unused, kept for the migration sweep): Recovery · Sleep · Net worth · Habits.
+ */
 export function VitalsStrip() {
-  const { recovery, sleep, netWorth, habits } = homeData.vitals;
+  const { recovery, hrv } = homeData;
+  const { sleep, netWorth, habits } = homeData.vitals;
   return (
     <View style={styles.strip}>
       <Cell label="Recovery" first>
-        <Text style={[type.valueM, styles.green]}>{recovery.value}</Text>
-        <Text style={[type.microLabel, styles.sub]}>{recovery.sub}</Text>
+        <Text style={[type.valueM, styles.green]}>{recovery.score}</Text>
+        <Text style={[type.microLabel, styles.sub]}>HRV {hrv.ms}</Text>
       </Cell>
       <Cell label="Sleep">
         <Text style={type.valueM}>
@@ -47,10 +51,7 @@ export function VitalsStrip() {
         <Text style={[type.microLabel, styles.sub]}>{sleep.sub}</Text>
       </Cell>
       <Cell label="Net Worth">
-        <Text style={[type.valueM, styles.netWorth]}>
-          {netWorth.value}
-          <Text style={styles.suffixSm}>{netWorth.suffix}</Text>
-        </Text>
+        <Text style={[type.valueM, styles.netWorth]}>{netWorth.value}</Text>
         <Text style={[type.microLabel, styles.green]}>{netWorth.sub}</Text>
       </Cell>
       <Cell label="Habits">

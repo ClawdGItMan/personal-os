@@ -1,66 +1,63 @@
 /**
- * Sample Money data — same content as the approved money.html mockup (spec §5.3).
- * Replaced by the live Plaid/Supabase provider backend when the data layer lands.
+ * Money mock data — design README §Money (spec 7b). Plaid is Max-owned and
+ * deferred, so every value here is a static mock; nothing in this file is
+ * ever overwritten by a live hook (contrast Home/Body's `applyLive*`).
  */
-import { color } from "../theme/tokens";
+import type { StatusSegment } from "../components/spec/TitleBlock";
 
-export type DeltaTone = "up" | "muted" | "held";
+export type LedgerTone = "pos" | "neg";
 
-export type AllocationClass = {
-  name: string;
-  /** Bar/legend segment color — token reference, never raw hex at the call site. */
-  swatch: string;
-  /** 0–1 width of this segment in the stacked bar. */
-  fraction: number;
-  /** Right-side mono read-out, e.g. "$1.24M · 44%". */
-  value: string;
+export type MoneyLedgerItem = {
+  time: string;
+  title: string;
+  amount: string;
+  tone: LedgerTone;
+  /** "YDA" rows read at a fainter ink than same-day clock times (ink34 vs ink50). */
+  muted?: boolean;
 };
 
-export type Account = {
-  name: string;
-  /** Class sublabel, e.g. "EQUITIES" or "CASH · 4.4% APY". */
+export type AccountStat = {
+  label: string;
+  value: string;
   sub: string;
-  /** Mono tabular value, e.g. "$1,240,000". */
-  value: string;
-  /** Delta read-out — "1.2%" for up/muted, or the literal "held"/"flat" word. */
-  delta: string;
-  tone: DeltaTone;
+  /** Value reads red instead of ink (the DEBT cell). */
+  valueNegative?: boolean;
+  /** Sub reads accent instead of ink50 (the INVESTED 30D delta). */
+  subAccent?: boolean;
 };
-
-export type RangeKey = "1W" | "1M" | "3M" | "1Y" | "ALL";
 
 export const moneyData = {
-  recoveryPct: 0.72,
-  eyebrow: "Money · Friday, May 8",
-  title: { lead: "Up 8.9%", emphasis: "this month." },
+  eyebrow: { left: "FRIDAY · MAY 8", right: "RUNWAY 34 MO" }, // mock — Plaid deferred
+  title: "Money",
+  status: ["Net worth's ", { b: "steady" }, " and May spend is on pace."] satisfies StatusSegment[],
   netWorth: {
-    meta: "NET WORTH · PLAID",
-    value: "$2,828,350",
-    delta: "+$230,350 · +8.87% · 30D",
-  },
-  /** Gently rising net-worth series, normalized 0–1 (1 = top of the plot). */
-  trend: [0.18, 0.3, 0.26, 0.55, 0.5, 0.74, 0.86, 0.96],
-  ranges: ["1W", "1M", "3M", "1Y", "ALL"] as RangeKey[],
-  activeRange: "1M" as RangeKey,
-  allocation: {
-    meta: "5 CLASSES",
-    classes: [
-      { name: "Equities", swatch: color.blue, fraction: 0.44, value: "$1.24M · 44%" },
-      { name: "Retirement", swatch: color.green, fraction: 0.24, value: "$680K · 24%" },
-      { name: "Cash & HYSA", swatch: color.fg2, fraction: 0.18, value: "$509K · 18%" },
-      { name: "Crypto", swatch: color.yellow, fraction: 0.07, value: "$210K · 7%" },
-      { name: "Private · SAFE", swatch: color.fg4, fraction: 0.07, value: "$190K · 7%" },
-    ] satisfies AllocationClass[],
-  },
-  accounts: {
-    meta: "6 LINKED · PLAID",
-    rows: [
-      { name: "Schwab Brokerage", sub: "EQUITIES", value: "$1,240,000", delta: "1.2%", tone: "up" },
-      { name: "Fidelity 401(k)", sub: "RETIREMENT", value: "$680,000", delta: "0.9%", tone: "up" },
-      { name: "Marcus HYSA", sub: "CASH · 4.4% APY", value: "$420,000", delta: "0.4%", tone: "up" },
-      { name: "Chase Checking", sub: "CASH", value: "$89,000", delta: "flat", tone: "held" },
-      { name: "Coinbase", sub: "CRYPTO", value: "$210,500", delta: "3.4%", tone: "muted" },
-      { name: "AngelList SAFE", sub: "PRIVATE", value: "$190,000", delta: "held", tone: "held" },
-    ] satisfies Account[],
-  },
+    label: "NET WORTH",
+    period: "30D",
+    value: "$2.83M",
+    sub: "+$847 TODAY · +0.03% 30D",
+  }, // mock — Plaid deferred
+  accounts: [
+    { label: "CASH", value: "$412K", sub: "LIQUID" },
+    { label: "INVESTED", value: "$2.31M", sub: "+1.2% · 30D", subAccent: true },
+    { label: "DEBT", value: "-$104K", sub: "MORTGAGE", valueNegative: true },
+  ] satisfies AccountStat[], // mock — Plaid deferred
+  burn: {
+    label: "MAY BURN",
+    status: "ON PACE",
+    spent: "$8.4K",
+    ofBudget: "OF $12K",
+    left: "$3.6K LEFT",
+    /** 8.4K of 12K budget. */
+    pct: 70,
+  }, // mock — Plaid deferred
+  ledger: {
+    label: "RECENT",
+    period: "TODAY · YDA",
+    items: [
+      { time: "11:42 AM", title: "Acme Ltd · wire in", amount: "+$12,500", tone: "pos" },
+      { time: "9:15 AM", title: "Blue Bottle", amount: "-$7.40", tone: "neg" },
+      { time: "YDA", title: "Equinox", amount: "-$210", tone: "neg", muted: true },
+      { time: "YDA", title: "AWS", amount: "-$1,842", tone: "neg", muted: true },
+    ] satisfies MoneyLedgerItem[],
+  }, // mock — Plaid deferred
 };

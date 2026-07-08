@@ -1,65 +1,213 @@
-import { Platform, ScrollView, StyleSheet } from "react-native";
+import { useState } from "react";
+import type { LayoutChangeEvent } from "react-native";
+import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import Animated from "react-native-reanimated";
 
-import { AppHeader } from "../components/AppHeader";
-import { GreetingBlock } from "../components/GreetingBlock";
-import { SectionEnter } from "../components/SectionEnter";
-import { SectionHeader } from "../components/SectionHeader";
-import { TimelineRow } from "../components/TimelineRow";
-import { VitalsStrip } from "../components/VitalsStrip";
-import { applyLiveHome, homeData } from "../data/home";
+import { Band } from "../components/spec/Band";
+import { DayBar } from "../components/spec/DayBar";
+import { Eyebrow } from "../components/spec/Eyebrow";
+import { HrvBars } from "../components/spec/HrvBars";
+import { LedgerRow } from "../components/spec/LedgerRow";
+import { RecoveryDial } from "../components/spec/RecoveryDial";
+import { ScreenHeader } from "../components/spec/ScreenHeader";
+import { StatGrid } from "../components/spec/StatGrid";
+import type { StatItem } from "../components/spec/StatGrid";
+import { TitleBlock } from "../components/spec/TitleBlock";
+import { applyLiveHome, dayProgressPct, eyebrowDate, greetingLead, homeData } from "../data/home";
 import { useHealthToday, useHomeHabits } from "../lib/queries";
-import { space } from "../theme/tokens";
+import { FadeUp } from "../motion/FadeUp";
+import { Shimmer } from "../motion/Shimmer";
+import { useFillAnim } from "../motion/useFillAnim";
+import { layout } from "../theme/layout";
+import { useTheme } from "../theme/ThemeContext";
 
 /**
- * Home (spec §5.1) — the curated glance: greeting → vitals strip → TODAY
- * timeline. Capture lives in the ⊕ only; Focus owns the full working surface.
- * The shared AmbientBackground + BottomNav are owned by App (the nav shell).
+ * Home (design README §Home, spec 6b/6c) — eyebrow/day-bar, greeting, the
+ * live FOCUS band, RECOVERY band, 3-col vitals, and the TODAY ledger. Capture
+ * lives in the tab bar's ⊕; the Assistant sheet lives behind the spark button
+ * in ScreenHeader. TabBar is rendered by the shell (App.tsx).
  */
 export function HomeScreen() {
-  // Merge live Whoop recovery/sleep + the real habit tally over the mock in
-  // place; net worth stays mock. Either hook resolving re-renders this screen
-  // and VitalsStrip, which reads the merged `homeData.vitals.*` on render.
+  const { mode, c, t } = useTheme();
+
+  // Merge live Whoop recovery/HRV/sleep + the real habit tally over the mock
+  // in place; net worth and the TODAY ledger stay mock. Either hook
+  // resolving re-renders this screen, which reads the merged `homeData.*`
+  // fields below.
   const { data: health } = useHealthToday();
   const { data: habits } = useHomeHabits();
   if (health || habits) {
     applyLiveHome({
       recoveryScore: health?.recoveryScore ?? null,
       hrv: health?.hrv ?? null,
+      restHr: health?.rhr ?? null,
       sleepHours: health?.sleepHours ?? null,
       sleepScore: health?.sleepScore ?? null,
       habits: habits ?? null,
     });
   }
 
+  const now = new Date();
+  const dayPct = dayProgressPct(now);
+
+  const [focusTrackWidth, setFocusTrackWidth] = useState(0);
+  const focusFillStyle = useFillAnim(homeData.focusSession.fillPct);
+  // Times are always ink, never accent — except the dark-mode focus band time.
+  const focusTimeColor = mode === "dark" ? c.accent : c.ink;
+
+  const statItems: StatItem[] = [
+    {
+      label: "SLEEP",
+      value: `${homeData.vitals.sleep.hours}:${homeData.vitals.sleep.minutes}`,
+      sub: homeData.vitals.sleep.sub,
+    },
+    {
+      label: "NET WORTH",
+      value: homeData.vitals.netWorth.value,
+      sub: homeData.vitals.netWorth.sub,
+      subColor: c.accent,
+    },
+    {
+      label: "HABITS",
+      value: `${homeData.vitals.habits.done}/${homeData.vitals.habits.total}`,
+      sub: "",
+      pips: { n: homeData.vitals.habits.done, of: homeData.vitals.habits.total },
+      // State rule (spec): habits above half → green, else amber.
+      pipColor:
+        homeData.vitals.habits.done * 2 > homeData.vitals.habits.total ? c.accent : c.amberPip,
+    },
+  ];
+
   return (
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <AppHeader recoveryPct={homeData.recoveryPct} />
-      <SectionEnter index={0}>
-        <GreetingBlock
-          eyebrow={homeData.eyebrow}
-          lead={homeData.greeting.lead}
-          name={homeData.greeting.name}
-          whisper={homeData.whisper}
-          dayProgress={homeData.dayProgress}
-        />
-      </SectionEnter>
-      <SectionEnter index={1}>
-        <VitalsStrip />
-      </SectionEnter>
-      <SectionEnter index={2}>
-        <SectionHeader title="Today" meta={homeData.today.meta} />
+      <ScreenHeader />
+
+      <FadeUp index={0} style={styles.eyebrowGroup}>
+        <Eyebrow left={eyebrowDate(now)} right={`DAY ${dayPct}%`} />
+        <View style={styles.dayBarGap}>
+          <DayBar pct={dayPct} />
+        </View>
+      </FadeUp>
+
+      <FadeUp index={1} style={styles.titleGroup}>
+        <TitleBlock title={`${greetingLead(now)}, Max.`} status={homeData.status} />
+      </FadeUp>
+
+      <View style={styles.bandGap}>
+        <Band variant="accent" index={2}>
+          <View style={styles.focusHeaderRow}>
+            <Text style={t.bandLabel}>FOCUS</Text>
+            <Text style={[t.eyebrow, styles.focusTime, { color: focusTimeColor }]}>
+              {homeData.focusSession.time}
+            </Text>
+          </View>
+          <Text style={[t.bandTitle, styles.focusTitle]}>{homeData.focusSession.title}</Text>
+          <Text style={[t.bandSub, styles.focusSub]}>{homeData.focusSession.sub}</Text>
+          <View
+            onLayout={(e: LayoutChangeEvent) => setFocusTrackWidth(e.nativeEvent.layout.width)}
+            style={[styles.progressTrack, { backgroundColor: c.hrvBar }]}
+          >
+            <Animated.View
+              style={[styles.progressFill, { backgroundColor: c.accent }, focusFillStyle]}
+            >
+              {focusTrackWidth > 0 ? (
+                <Shimmer width={(focusTrackWidth * homeData.focusSession.fillPct) / 100} />
+              ) : null}
+            </Animated.View>
+          </View>
+        </Band>
+      </View>
+
+      <View style={styles.bandGap}>
+        <Band variant="recovery" index={3}>
+          <Text style={t.statLabel}>RECOVERY</Text>
+          <View style={styles.recoveryRow}>
+            <RecoveryDial score={homeData.recovery.score} />
+            <HrvBars label="HRV · 7D" sub={`${homeData.hrv.ms} MS · REST ${homeData.hrv.restHr}`} />
+          </View>
+        </Band>
+      </View>
+
+      <View style={styles.bandGap}>
+        <StatGrid items={statItems} index={4} />
+      </View>
+
+      <FadeUp index={5} style={[styles.bandGap, styles.todaySection]}>
+        <View style={styles.todayHeaderRow}>
+          <Text style={t.sectionHeader}>TODAY</Text>
+          <Text style={t.bandSub}>{homeData.today.meta}</Text>
+        </View>
         {homeData.timeline.map((item) => (
-          <TimelineRow key={`${item.time}-${item.title}`} item={item} />
+          <LedgerRow
+            key={`${item.time}-${item.title}`}
+            time={item.time}
+            title={item.title}
+            tag={item.tag}
+            state={item.state}
+          />
         ))}
-      </SectionEnter>
+      </FadeUp>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   content: {
-    paddingHorizontal: space.gutter,
+    // No safe-area lib in this app (constraints.md: no new deps) — ScreenHeader's own
+    // paddingTop is just breathing room, so the screen clears the status bar/notch itself
+    // (same values the old Home content used).
     paddingTop: Platform.OS === "web" ? 28 : 62,
-    paddingBottom: 110,
+    paddingBottom: 140,
+  },
+  eyebrowGroup: {
+    marginTop: 26,
+  },
+  dayBarGap: {
+    marginTop: 10,
+  },
+  titleGroup: {
+    marginTop: 21,
+  },
+  bandGap: {
+    marginTop: 22,
+  },
+  focusHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  focusTime: {
+    letterSpacing: 0.76, // .08em × 9.5 — matches Eyebrow's right-stat tracking
+  },
+  focusTitle: {
+    marginTop: 10,
+  },
+  focusSub: {
+    marginTop: 6,
+  },
+  progressTrack: {
+    height: 3,
+    borderRadius: layout.radius.pill,
+    overflow: "hidden",
+    marginTop: 14,
+  },
+  progressFill: {
+    height: 3,
+    borderRadius: layout.radius.pill,
+    overflow: "hidden",
+  },
+  recoveryRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    marginTop: 14,
+  },
+  todaySection: {
+    paddingHorizontal: layout.gutter,
+  },
+  todayHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
 });

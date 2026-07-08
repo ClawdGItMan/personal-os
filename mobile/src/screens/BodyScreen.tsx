@@ -1,85 +1,136 @@
 import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { AppHeader } from "../components/AppHeader";
-import { SectionEnter } from "../components/SectionEnter";
-import { NutritionSection } from "../components/body/NutritionSection";
-import { RecoverySection } from "../components/body/RecoverySection";
-import { SleepSection } from "../components/body/SleepSection";
-import { StrainSection } from "../components/body/StrainSection";
-import { TrainingSection } from "../components/body/TrainingSection";
-import { applyLiveBody, bodyData } from "../data/body";
+import { SleepStageBar } from "../components/body/SleepStageBar";
+import { TrainingBand } from "../components/body/TrainingBand";
+import { WeekCells } from "../components/body/WeekCells";
+import { Band } from "../components/spec/Band";
+import { Eyebrow } from "../components/spec/Eyebrow";
+import { HrvBars } from "../components/spec/HrvBars";
+import { RecoveryDial } from "../components/spec/RecoveryDial";
+import { ScreenHeader } from "../components/spec/ScreenHeader";
+import { StatGrid } from "../components/spec/StatGrid";
+import type { StatItem } from "../components/spec/StatGrid";
+import { TitleBlock } from "../components/spec/TitleBlock";
+import {
+  eyebrowDate,
+  formatSleepHero,
+  hrvMock,
+  isoWeek,
+  recoveryFallback,
+  restHRMock,
+  sleepColor,
+  sleepMock,
+  trainingMock,
+  weekMock,
+  weightMock,
+} from "../data/body";
 import { useHealthToday } from "../lib/queries";
-import { color, font, space, type } from "../theme/tokens";
+import { FadeUp } from "../motion/FadeUp";
+import { useTheme } from "../theme/ThemeContext";
 
 /**
- * Body (spec §5.2) — the health read: recovery → sleep → strain → training →
- * nutrition, opened by a serif "read" of state ("Well recovered."). Content
- * only; the shared AmbientBackground + BottomNav are owned by the App shell.
+ * Body (design README §Body, spec 7a) — recovery dial, today's training,
+ * last night's sleep, vitals, and this week's sessions. Recovery score, HRV,
+ * rest HR, sleep hours + quality are live via `useHealthToday`; everything
+ * else (training, sleep stages/window, weight, week grid) is mock — see
+ * `src/data/body.ts`.
  */
 export function BodyScreen() {
-  // Merge live Whoop metrics over the mock in place; null/loading keeps the mock.
-  // The hook's state change re-renders this screen and its sections, which read
-  // the (now-merged) `bodyData.*` in their render bodies.
+  const { c, t } = useTheme();
   const { data: health } = useHealthToday();
-  if (health) {
-    applyLiveBody({
-      recoveryScore: health.recoveryScore,
-      hrv: health.hrv,
-      rhr: health.rhr,
-      sleepHours: health.sleepHours,
-      sleepScore: health.sleepScore,
-      strain: health.strain,
-    });
-  }
 
-  const { eyebrow, title } = bodyData;
+  const recoveryScore = health?.recoveryScore ?? recoveryFallback.score;
+  const hrv = health?.hrv != null ? Math.round(health.hrv) : hrvMock.fallback;
+  const rhr = health?.rhr != null ? Math.round(health.rhr) : restHRMock.fallback;
+  const sleepHours = health?.sleepHours ?? sleepMock.hoursFallback;
+  const sleepQuality = health?.sleepScore != null ? Math.round(health.sleepScore) : sleepMock.qualityFallback;
+
+  const now = new Date();
+
+  const statItems: StatItem[] = [
+    { label: "REST HR", value: String(rhr), sub: restHRMock.delta },
+    { label: "HRV", value: String(hrv), sub: hrvMock.delta, subColor: c.accent },
+    { label: "WEIGHT", value: weightMock.value, sub: weightMock.delta },
+  ];
+
   return (
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <AppHeader recoveryPct={bodyData.recoveryPct} tone={color.green} />
+      <ScreenHeader />
 
-      <SectionEnter index={0}>
-        <View style={styles.titleBlock}>
-          <Text style={[type.eyebrow, styles.eyebrow]}>{eyebrow}</Text>
-          <Text style={type.screenTitle}>
-            {title.lead}
-            <Text style={styles.emphasis}>{title.emphasis}</Text>
-          </Text>
+      <FadeUp index={0}>
+        <View style={styles.eyebrowSpace}>
+          <Eyebrow left={eyebrowDate(now)} right={`WEEK ${isoWeek(now)}`} />
         </View>
-      </SectionEnter>
+        <View style={styles.titleSpace}>
+          <TitleBlock
+            title="Body"
+            status={["Recovery's ", { b: "green" }, " — cleared for the push day, logged this morning."]}
+          />
+        </View>
+      </FadeUp>
 
-      <SectionEnter index={1}>
-        <RecoverySection />
-      </SectionEnter>
-      <SectionEnter index={2}>
-        <SleepSection />
-      </SectionEnter>
-      <SectionEnter index={3}>
-        <StrainSection />
-      </SectionEnter>
-      <SectionEnter index={4}>
-        <TrainingSection />
-      </SectionEnter>
-      <SectionEnter index={5}>
-        <NutritionSection />
-      </SectionEnter>
+      <View style={styles.firstBand}>
+        <Band variant="recovery" index={1}>
+          <Text style={t.sectionHeader}>RECOVERY</Text>
+          <View style={styles.recoveryRow}>
+            <RecoveryDial score={recoveryScore} />
+            <HrvBars label="HRV · 7D" sub={`${hrv} MS · REST ${rhr}`} />
+          </View>
+        </Band>
+      </View>
+
+      <TrainingBand time={trainingMock.time} title={trainingMock.title} sub={trainingMock.sub} index={2} />
+
+      <Band variant="plain" index={3}>
+        <View style={styles.rowBetween}>
+          <Text style={t.sectionHeader}>SLEEP · LAST NIGHT</Text>
+          <Text style={t.ledgerTime}>{sleepMock.window}</Text>
+        </View>
+        <View style={styles.sleepHeroRow}>
+          <Text style={[t.heroValue, { color: sleepColor(c, sleepHours) }]}>{formatSleepHero(sleepHours)}</Text>
+          <Text style={t.bandSub}>{sleepQuality}% QUALITY</Text>
+        </View>
+        <SleepStageBar stages={sleepMock.stages} />
+      </Band>
+
+      <StatGrid items={statItems} index={4} />
+
+      <Band variant="plain" index={5}>
+        <WeekCells sessions={weekMock.sessions} days={weekMock.days} />
+      </Band>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   content: {
-    paddingHorizontal: space.gutter,
     paddingTop: Platform.OS === "web" ? 28 : 62,
     paddingBottom: 110,
   },
-  titleBlock: {
-    marginTop: 4,
-    marginBottom: 4,
+  eyebrowSpace: {
+    marginTop: 26,
   },
-  eyebrow: {
-    marginBottom: 10,
+  titleSpace: {
+    marginTop: 20,
   },
-  emphasis: {
-    fontFamily: font.serifItalic,
+  firstBand: {
+    marginTop: 22,
+  },
+  rowBetween: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  recoveryRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    marginTop: 14,
+  },
+  sleepHeroRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 10,
+    marginTop: 12,
   },
 });

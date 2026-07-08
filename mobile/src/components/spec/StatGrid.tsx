@@ -14,6 +14,8 @@ export type StatItem = {
   subColor?: string;
   /** Render pips instead of a text sub (e.g. habits n/of). */
   pips?: { n: number; of: number };
+  /** Filled-pip color (state rule: habits ≤ half → amber); defaults to accent. */
+  pipColor?: string;
 };
 
 type StatGridProps = {
@@ -46,7 +48,7 @@ export function StatGrid({ items, index = 0 }: StatGridProps) {
                 {Array.from({ length: item.pips.of }, (_, p) => (
                   <View
                     key={p}
-                    style={[styles.pip, { backgroundColor: p < (item.pips?.n ?? 0) ? c.accent : c.pipTrack }]}
+                    style={[styles.pip, { backgroundColor: p < (item.pips?.n ?? 0) ? (item.pipColor ?? c.accent) : c.pipTrack }]}
                   />
                 ))}
               </View>
