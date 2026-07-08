@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import Svg, { Circle, Path, Rect } from "react-native-svg";
+import Svg, { Path, Rect } from "react-native-svg";
 
 /**
  * Crafted line icons — 1.7px stroke, round caps/joins (spec §1 rule 4).
@@ -18,50 +18,6 @@ function Frame({ size, children }: { size: number; children: ReactNode }) {
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       {children}
     </Svg>
-  );
-}
-
-export function HomeIcon({ size = defaults.size, color, strokeWidth = defaults.strokeWidth }: IconProps) {
-  return (
-    <Frame size={size}>
-      <Path d="M3 10.5 12 4l9 6.5" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
-      <Path d="M5 9.5V20h5v-6h4v6h5V9.5" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
-    </Frame>
-  );
-}
-
-export function BodyIcon({ size = defaults.size, color, strokeWidth = defaults.strokeWidth }: IconProps) {
-  return (
-    <Frame size={size}>
-      <Path d="M3 12h4l2-6 4 12 2-6h6" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
-    </Frame>
-  );
-}
-
-export function PlusIcon({ size = defaults.size, color, strokeWidth = 2.2 }: IconProps) {
-  return (
-    <Frame size={size}>
-      <Path d="M12 5v14M5 12h14" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
-    </Frame>
-  );
-}
-
-export function MoneyIcon({ size = defaults.size, color, strokeWidth = defaults.strokeWidth }: IconProps) {
-  return (
-    <Frame size={size}>
-      <Rect x={2.5} y={6.5} width={19} height={11} rx={2.5} stroke={color} strokeWidth={strokeWidth} />
-      <Circle cx={12} cy={12} r={2.3} stroke={color} strokeWidth={strokeWidth} />
-      <Path d="M6 10v4M18 10v4" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
-    </Frame>
-  );
-}
-
-export function FocusIcon({ size = defaults.size, color, strokeWidth = defaults.strokeWidth }: IconProps) {
-  return (
-    <Frame size={size}>
-      <Circle cx={12} cy={12} r={8} stroke={color} strokeWidth={strokeWidth} />
-      <Path d="M9 12l2 2 4-4.5" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
-    </Frame>
   );
 }
 

@@ -72,7 +72,11 @@ export function AssistantSheet() {
           <View style={[styles.grabber, { backgroundColor: c.ink28 }]} />
         </View>
 
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          automaticallyAdjustKeyboardInsets
+        >
           <SheetFadeUp index={0}>
             <AssistantHeader onClose={close} />
           </SheetFadeUp>

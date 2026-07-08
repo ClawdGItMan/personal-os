@@ -48,7 +48,7 @@ export function LiveTimerBand({ nowMs, elapsedSec, endsAt, label, pct, index = 0
       </View>
       <Text style={[styles.sessionSub, { color: c.ink64 }]}>{label}</Text>
       <View
-        style={[styles.progressTrack, { backgroundColor: c.dialTrack }]}
+        style={[styles.progressTrack, { backgroundColor: c.dayTrack }]}
         onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
       >
         <Animated.View style={[styles.progressFill, { backgroundColor: c.accent }, fillStyle]}>

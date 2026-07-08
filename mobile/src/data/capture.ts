@@ -5,9 +5,6 @@
  * deterministic sample exchanges.
  */
 
-/** Module accent for a confirmation card tag — keyed to the destination module. */
-export type ModuleAccent = "green" | "blue";
-
 /** A lift entry rendered inside a confirmation card via the shared LiftRow. */
 export type LiftEntry = {
   kind: "lift";
@@ -35,8 +32,6 @@ export type ConfirmationExchange = {
   utterance: string;
   /** Card module tag, e.g. "Body · Training". */
   module: string;
-  /** Tag accent — green (Body) / blue (Calendar). */
-  accent: ModuleAccent;
   /** Verb shown after the tag, e.g. "logged" / "updated". */
   verb: string;
   /** The parsed entry, rendered in the destination module's row grammar. */
@@ -66,7 +61,7 @@ export type PermissionExchange = {
 export const captureData = {
   /** Header eyebrow when idle vs. listening (spec §5.6). */
   header: { idle: "Agent", listening: "Listening" },
-  /** Agent intro — serif-italic (spec §5.6). */
+  /** Agent intro — Manrope 500, ink50 (spec §5.6). */
   intro: "Tell me what happened — I'll file it where it belongs.",
   /** Input dock placeholder. */
   placeholder: "Log anything…",
@@ -76,10 +71,9 @@ export const captureData = {
   exchanges: [
     {
       id: "bench",
-      time: "13:24",
+      time: "1:24 PM",
       utterance: "Benched 185 for 3 by 5, felt strong",
       module: "Body · Training",
-      accent: "green",
       verb: "logged",
       entry: { kind: "lift", name: "Bench Press", scheme: "3 × 5", weight: "185", unit: "lb", pr: true },
       note: "Logged to today's push session — and that's a 5 lb PR on bench. New PR.",
@@ -87,12 +81,11 @@ export const captureData = {
     },
     {
       id: "lunch",
-      time: "13:25",
+      time: "1:25 PM",
       utterance: "Push lunch with Adam to 1",
       module: "Focus · Calendar",
-      accent: "blue",
       verb: "updated",
-      entry: { kind: "change", title: "Lunch · Adam", sub: "Cipriani", from: "12:30", to: "13:00" },
+      entry: { kind: "change", title: "Lunch · Adam", sub: "Cipriani", from: "12:30 PM", to: "1:00 PM" },
       note: "Moved in Google Calendar. Adam will get the updated invite.",
       secondary: "view",
     },
@@ -101,10 +94,10 @@ export const captureData = {
   /** The write-back permission gate (capture-states, right panel). */
   permission: {
     id: "perm-lunch",
-    time: "13:25",
+    time: "1:25 PM",
     utterance: "Push lunch with Adam to 1",
     module: "Focus · Calendar",
-    pending: { kind: "change", title: "Lunch · Adam", sub: "Pending change", from: "12:30", to: "13:00" },
+    pending: { kind: "change", title: "Lunch · Adam", sub: "Pending change", from: "12:30 PM", to: "1:00 PM" },
     note: "I can move this for you — but I can only read your Google Calendar right now. Editing events needs write access.",
     noteEmphasis: "read",
     grantLabel: "Grant calendar edit",
@@ -115,9 +108,9 @@ export const captureData = {
   /** Voice / dictation Listening state (capture-states, left panel). */
   voice: {
     status: "Listening…",
-    /** Committed (final) transcript — fg2. */
+    /** Committed (final) transcript — ink72. */
     committed: "Bench, three by five at one eighty five —",
-    /** In-flight (pending) transcript — fg4 + blue caret. */
+    /** In-flight (pending) transcript — ink38 + accent caret. */
     pending: " last set was a grind",
     cancel: "Cancel",
     keyboard: "Keyboard",

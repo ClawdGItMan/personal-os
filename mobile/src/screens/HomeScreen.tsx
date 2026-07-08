@@ -105,7 +105,7 @@ export function HomeScreen() {
           <Text style={[t.bandSub, styles.focusSub]}>{homeData.focusSession.sub}</Text>
           <View
             onLayout={(e: LayoutChangeEvent) => setFocusTrackWidth(e.nativeEvent.layout.width)}
-            style={[styles.progressTrack, { backgroundColor: c.hrvBar }]}
+            style={[styles.progressTrack, { backgroundColor: c.dayTrack }]}
           >
             <Animated.View
               style={[styles.progressFill, { backgroundColor: c.accent }, focusFillStyle]}

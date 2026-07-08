@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import type { LedgerState } from "../components/spec/LedgerRow";
 import { extractDueTime12h, focusData, formatEventTime12h } from "../data/focus";
 import { useCalendarToday, useHabits, useJournal, useTasks } from "../lib/queries";
+import { useNav } from "../navigation/NavContext";
 
 export type QueueRowVM = {
   key: string;
@@ -52,6 +53,7 @@ export function useQueueRows(): UseQueueRowsResult {
   const tasks = useTasks();
   const habits = useHabits();
   const journal = useJournal();
+  const { openDetail } = useNav();
   const [journalOpen, setJournalOpen] = useState(false);
   const nowMs = useNowMs();
 
@@ -61,6 +63,7 @@ export function useQueueRows(): UseQueueRowsResult {
     title: ev.title,
     tag: "CAL",
     state: ev.state === "done" ? "done" : "up",
+    onPress: () => openDetail({ kind: "event", title: ev.title, time: ev.time, sub: ev.sub, state: ev.state }),
   }));
 
   const taskRows: QueueRowVM[] = tasks.today.map((item) => ({

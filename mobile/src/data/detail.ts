@@ -92,7 +92,7 @@ const task: DetailContent = {
     "The Whoop cron occasionally throws on a single user and aborts the whole batch — silent dead syncs. Isolate each user's sync so one failure can't kill the run for everyone else.",
   recommendations: [
     {
-      text: "2 sync errors logged 03:14 overnight — same user, almost certainly the root cause.",
+      text: "2 sync errors logged 3:14 AM overnight — same user, almost certainly the root cause.",
       action: "View errors",
     },
     {

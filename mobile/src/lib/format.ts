@@ -13,11 +13,6 @@ export function time12(d: Date | string): string {
   return `${h12}:${minutes} ${hours < 12 ? "AM" : "PM"}`;
 }
 
-/** Format a 0–100 number as a whole percentage, e.g. 55 → "55%". */
-export function pct(n: number): string {
-  return `${Math.round(n)}%`;
-}
-
 const WEEKDAYS = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
 const MONTHS = [
   "JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
