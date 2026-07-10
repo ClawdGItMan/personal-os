@@ -154,8 +154,16 @@ export function LoginScreen() {
               {status === "sending" ? (
                 <ActivityIndicator color={c.onAccent} size="small" />
               ) : (
-                <Text style={[styles.buttonLabel, { color: c.onAccent }]}>Send sign-in link</Text>
+                <Text style={[styles.buttonLabel, { color: c.onAccent }]}>Send sign-in code</Text>
               )}
+            </Pressable>
+
+            <Pressable
+              onPress={() => { if (valid) { setStatus("sent"); setError(""); } }}
+              disabled={!valid}
+              hitSlop={8}
+            >
+              <Text style={[styles.link, { color: valid ? c.accent : c.ink38 }]}>I already have a code</Text>
             </Pressable>
           </View>
         )}
