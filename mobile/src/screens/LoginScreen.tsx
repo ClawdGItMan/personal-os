@@ -6,21 +6,41 @@ import { supabase } from "../lib/supabase";
 import { useTheme } from "../theme/ThemeContext";
 import { fonts } from "../theme/typeRoles";
 
-type Status = "idle" | "sending" | "sent" | "error";
+type Status = "idle" | "sending" | "sent" | "verifying" | "error";
 
 /**
- * Magic-link sign-in (spec §7 auth). Sends a token-hash link via Supabase; the
- * link reopens the app at the `auth-callback` redirect, where SessionProvider
- * completes it. Retheme onto ivy/porcelain: Manrope throughout (no serif), a
- * single accent action, themed solid fill — the auth flow itself is untouched.
+ * Email OTP sign-in (spec §7 auth). Sends a Supabase magic-link email that also
+ * carries a 6-digit code ({{ .Token }} in the email template); the user types
+ * the code here and `verifyOtp` completes the session — no deep link needed
+ * (iOS mail apps won't open custom-scheme links). The web/link path still works
+ * as a fallback via SessionProvider's auth-callback handling.
  */
 export function LoginScreen() {
   const { c } = useTheme();
   const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
 
   const valid = /.+@.+\..+/.test(email.trim());
+  const codeValid = /^\d{6}$/.test(code.trim());
+
+  async function verifyCode() {
+    if (!codeValid) return;
+    setStatus("verifying");
+    setError("");
+    const { error: err } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token: code.trim(),
+      type: "email",
+    });
+    if (err) {
+      setStatus("sent");
+      setError(err.message);
+      return;
+    }
+    // Session lands via SessionProvider's onAuthStateChange — nothing else to do.
+  }
 
   async function sendLink() {
     if (!valid) return;
@@ -52,15 +72,49 @@ export function LoginScreen() {
           <Text style={[styles.brand, { color: c.ink72 }]}>MAX OS</Text>
         </View>
 
-        {status === "sent" ? (
+        {status === "sent" || status === "verifying" ? (
           <View style={styles.block}>
             <Text style={[styles.title, { color: c.ink }]}>
               Check your <Text style={[styles.emphasis, { color: c.ink }]}>email.</Text>
             </Text>
             <Text style={[styles.sub, { color: c.ink64 }]}>
-              A sign-in link is on its way to {email.trim()}. Tap it to open the app.
+              Enter the 6-digit code sent to {email.trim()}.
             </Text>
-            <Pressable onPress={() => setStatus("idle")} hitSlop={8}>
+
+            <TextInput
+              style={[styles.field, styles.codeField, { backgroundColor: c.surface, borderColor: c.hairSection, color: c.ink }]}
+              value={code}
+              onChangeText={setCode}
+              placeholder="000000"
+              placeholderTextColor={c.ink38}
+              keyboardType="number-pad"
+              textContentType="oneTimeCode"
+              autoComplete="one-time-code"
+              maxLength={6}
+              onSubmitEditing={verifyCode}
+              returnKeyType="go"
+              autoFocus
+            />
+
+            {error ? <Text style={[styles.error, { color: c.red }]}>{error}</Text> : null}
+
+            <Pressable
+              style={[
+                styles.button,
+                { backgroundColor: c.accent },
+                (!codeValid || status === "verifying") && styles.buttonDisabled,
+              ]}
+              onPress={verifyCode}
+              disabled={!codeValid || status === "verifying"}
+            >
+              {status === "verifying" ? (
+                <ActivityIndicator color={c.onAccent} size="small" />
+              ) : (
+                <Text style={[styles.buttonLabel, { color: c.onAccent }]}>Verify code</Text>
+              )}
+            </Pressable>
+
+            <Pressable onPress={() => { setStatus("idle"); setCode(""); setError(""); }} hitSlop={8}>
               <Text style={[styles.link, { color: c.accent }]}>Use a different email</Text>
             </Pressable>
           </View>
@@ -160,6 +214,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     fontFamily: fonts.sans500,
     fontSize: 15,
+  },
+  codeField: {
+    fontFamily: fonts.mono600,
+    fontSize: 22,
+    letterSpacing: 8,
+    textAlign: "center",
   },
   error: {
     fontFamily: fonts.mono500,
