@@ -1,5 +1,4 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 
 import { useTheme } from "../../theme/ThemeContext";
 import { layout } from "../../theme/layout";
@@ -26,15 +25,9 @@ export function TopMove({ tag, title, evidence, onApply, onLater }: TopMoveProps
 
   return (
     <View style={[styles.band, { borderColor: c.bandBorder }]}>
-      <Svg style={StyleSheet.absoluteFill} preserveAspectRatio="none" width="100%" height="100%">
-        <Defs>
-          <LinearGradient id="topMoveWash" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={c.bandGrad0} />
-            <Stop offset="1" stopColor={c.bandGrad1} />
-          </LinearGradient>
-        </Defs>
-        <Rect x={0} y={0} width="100%" height="100%" fill="url(#topMoveWash)" />
-      </Svg>
+      {/* Flat rgba wash, not an SVG gradient — see Band.tsx (rn-svg drops the
+          alpha off rgba() gradient stops on iOS and paints solid green). */}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: c.bandWash }]} />
 
       <Text style={t.bandLabel}>{tag}</Text>
       <Text style={[styles.title, { color: c.ink }]}>{title}</Text>

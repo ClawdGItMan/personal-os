@@ -28,6 +28,10 @@ export type Palette = {
   bandBorderRecovery: string;
   bandGrad0: string;
   bandGrad1: string;
+  /** Flat accent-band wash (replaces the SVG gradient — see Band.tsx). The
+   * spec gradient runs .055→.02; this is the visually-identical flat midpoint,
+   * rendered as a plain rgba View so native honors the alpha. */
+  bandWash: string;
   dialTrack: string;
   hrvBar: string;
   pipTrack: string;
@@ -66,6 +70,7 @@ export const light: Palette = {
   bandBorderRecovery: "rgba(30,122,82,0.24)",
   bandGrad0: "rgba(30,122,82,0.055)",
   bandGrad1: "rgba(30,122,82,0.02)",
+  bandWash: "rgba(30,122,82,0.04)",
   dialTrack: "rgba(15,17,21,0.08)",
   hrvBar: "rgba(30,122,82,0.35)",
   pipTrack: "rgba(15,17,21,0.1)",
@@ -104,6 +109,7 @@ export const dark: Palette = {
   bandBorderRecovery: "rgba(108,171,134,0.24)",
   bandGrad0: "rgba(108,171,134,0.06)",
   bandGrad1: "rgba(108,171,134,0.025)",
+  bandWash: "rgba(108,171,134,0.05)",
   dialTrack: "rgba(239,237,226,0.09)",
   hrvBar: "rgba(108,171,134,0.36)",
   pipTrack: "rgba(239,237,226,0.13)",

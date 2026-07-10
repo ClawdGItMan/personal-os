@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
-import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 
 import { FadeUp } from "../../motion/FadeUp";
 import { useTheme } from "../../theme/ThemeContext";
@@ -30,15 +29,10 @@ export function Band({ variant, children, index = 0 }: BandProps) {
     <FadeUp index={index}>
       <View style={[styles.band, { borderColor }]}>
         {variant === "accent" ? (
-          <Svg style={StyleSheet.absoluteFill} preserveAspectRatio="none" width="100%" height="100%">
-            <Defs>
-              <LinearGradient id="bandWash" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0" stopColor={c.bandGrad0} />
-                <Stop offset="1" stopColor={c.bandGrad1} />
-              </LinearGradient>
-            </Defs>
-            <Rect x={0} y={0} width="100%" height="100%" fill="url(#bandWash)" />
-          </Svg>
+          // Flat rgba fill, not an SVG gradient: react-native-svg drops the
+          // alpha from rgba() gradient stops on iOS, painting the wash as solid
+          // accent green. A plain View honors the alpha and fills full-bleed.
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: c.bandWash }]} />
         ) : null}
         {children}
       </View>
