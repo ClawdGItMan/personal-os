@@ -2,9 +2,10 @@
  * Body screen data helpers — design README §Body (spec 7a). Every band is now
  * LIVE (Whoop `health_snapshots` / `workouts` via `useHealthToday`,
  * `useSleepDetail`, `useWorkouts`, and the colocated `useBodyHistory` in
- * `components/body/`) — this file only holds pure formatting/derivation
- * helpers plus the small fixed fallbacks that still lack a trend provider
- * (REST HR/HRV 7-day deltas). All times are already 12-hour.
+ * `components/body/`, which also now derives the REST HR/HRV vitals-cell
+ * deltas from real history — no more fixed fallbacks or mock deltas) — this
+ * file only holds pure formatting/derivation helpers. All times are already
+ * 12-hour.
  */
 import type { StatusSegment } from "../components/spec/TitleBlock";
 import type { LatestWorkout, WorkoutDayCell } from "../lib/queries";
@@ -22,15 +23,6 @@ export type WeekDay = {
 };
 
 const WEEKDAY_LETTERS = ["M", "T", "W", "T", "F", "S", "S"] as const;
-
-/** Recovery score shown before the first Whoop sync resolves. */
-export const recoveryFallback = { score: 72 };
-
-/** REST HR stat — 7-day delta has no trend provider yet (Whoop gives today's point value only). */
-export const restHRMock = { fallback: 48, delta: "−2 · 7D" }; // mock — no trend provider yet
-
-/** HRV stat — "vs avg" delta has no trend provider yet. */
-export const hrvMock = { fallback: 64, delta: "↑ +6 VS AVG" }; // mock — no trend provider yet
 
 /** Minutes → "H:MM" (e.g. 72 → "1:12"). Shared by the sleep-stage legend and
  * the sleep-debt line — both start from raw minute counts. */
@@ -118,8 +110,14 @@ export function isWorkoutToday(startedAt: string, now: Date): boolean {
  * logged." when a workout started today, else "Recovery's {word} — no
  * training yet today." `workoutSportToday` should be the title-cased sport of
  * today's latest workout (via `titleCaseSport` + `isWorkoutToday`), or null.
+ * `recoveryScore` is `null` for a fresh account with no Whoop sync yet (see
+ * BodyScreen) — mirrors `data/home.ts`'s `fallbackStatusSegments`: keeps the
+ * line honest with no recovery claim instead of a mock-backed word.
  */
-export function bodyStatusSegments(recoveryScore: number, workoutSportToday: string | null): StatusSegment[] {
+export function bodyStatusSegments(recoveryScore: number | null, workoutSportToday: string | null): StatusSegment[] {
+  if (recoveryScore == null) {
+    return workoutSportToday ? [`${workoutSportToday} logged.`] : ["No health data yet — connect Whoop on web."];
+  }
   const word = recoveryWord(recoveryScore);
   const clause = workoutSportToday ? ` — ${workoutSportToday} logged.` : " — no training yet today.";
   return ["Recovery's ", { b: word }, clause];

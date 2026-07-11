@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { LedgerState } from "../components/spec/LedgerRow";
 import type { PressedHaptic } from "../components/spec/Pressed";
@@ -92,31 +92,40 @@ function todayBoundsISO(): { startISO: string; endISO: string } {
  * for tasks). `useCalendarToday`/`useTasks` only expose display-shaped
  * fields, not the raw row, so this is a second lightweight read-only fetch
  * alongside them — never rendered inline, only spread onto a DetailItem.
+ * Exposes its own `refetch` (not just a mount-time fetch) so pull-to-refresh
+ * can fold it into `useQueueRows`' composed `refetch` — otherwise these maps
+ * go stale after the initial mount and a mid-session item (created/edited
+ * after mount, e.g. via the assistant) opens Detail with missing fields.
  */
 function useDetailRawRows(): {
   eventsById: Map<string, CalendarEventRawRow>;
   tasksById: Map<string, TaskRawRow>;
+  refetch: () => Promise<void>;
 } {
   const [eventsById, setEventsById] = useState<Map<string, CalendarEventRawRow>>(new Map());
   const [tasksById, setTasksById] = useState<Map<string, TaskRawRow>>(new Map());
+  const mountedRef = useRef(true);
 
-  useEffect(() => {
-    let active = true;
+  const refetch = useCallback(async () => {
     const { startISO, endISO } = todayBoundsISO();
-    void Promise.all([
+    const [eventsRes, tasksRes] = await Promise.all([
       supabase.from("calendar_events").select("*").gte("starts_at", startISO).lt("starts_at", endISO),
       supabase.from("tasks").select("*"),
-    ]).then(([eventsRes, tasksRes]) => {
-      if (!active) return;
-      if (eventsRes.data) setEventsById(new Map(eventsRes.data.map((r) => [r.id, r])));
-      if (tasksRes.data) setTasksById(new Map(tasksRes.data.map((r) => [r.id, r])));
-    });
-    return () => {
-      active = false;
-    };
+    ]);
+    if (!mountedRef.current) return;
+    if (eventsRes.data) setEventsById(new Map(eventsRes.data.map((r) => [r.id, r])));
+    if (tasksRes.data) setTasksById(new Map(tasksRes.data.map((r) => [r.id, r])));
   }, []);
 
-  return { eventsById, tasksById };
+  useEffect(() => {
+    mountedRef.current = true;
+    void refetch();
+    return () => {
+      mountedRef.current = false;
+    };
+  }, [refetch]);
+
+  return { eventsById, tasksById, refetch };
 }
 
 /** Chronological sort key (ms) for a calendar row — prefers the raw row's
@@ -171,7 +180,7 @@ export function useQueueRows(mode: QueueRowsMode = "queue"): UseQueueRowsResult 
   const habits = useHabits();
   const journal = useJournal();
   const device = useDeviceCalendar();
-  const { eventsById, tasksById } = useDetailRawRows();
+  const { eventsById, tasksById, refetch: refetchDetailRawRows } = useDetailRawRows();
   const { openDetail } = useNav();
   const [journalOpen, setJournalOpen] = useState(false);
   const nowMs = useNowMs();
@@ -304,8 +313,15 @@ export function useQueueRows(mode: QueueRowsMode = "queue"): UseQueueRowsResult 
   const queueLeft = queueRows.filter((r) => r.state === "up").length;
 
   const refetch = useCallback(async () => {
-    await Promise.all([calendar.refetch(), tasks.refetch(), habits.refetch(), journal.refetch(), device.refetch()]);
-  }, [calendar, tasks, habits, journal, device]);
+    await Promise.all([
+      calendar.refetch(),
+      tasks.refetch(),
+      habits.refetch(),
+      journal.refetch(),
+      device.refetch(),
+      refetchDetailRawRows(),
+    ]);
+  }, [calendar, tasks, habits, journal, device, refetchDetailRawRows]);
 
   return {
     nowMs,

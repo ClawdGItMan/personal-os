@@ -23,11 +23,8 @@ import {
   countWeekSessions,
   daysSinceMonday,
   formatTrainingSub,
-  hrvMock,
   isoWeek,
   isWorkoutToday,
-  recoveryFallback,
-  restHRMock,
   titleCaseSport,
 } from "../data/body";
 import { eyebrowDate, time12 } from "../lib/format";
@@ -66,25 +63,34 @@ function toWorkoutDetailItem(w: LatestWorkout): DetailItem {
 /**
  * Body (design README §Body, spec 7a) — recovery dial, today's training,
  * last night's sleep, vitals, and this week's sessions. Recovery score, HRV,
- * rest HR are live via `useHealthToday` (REST HR's 7-day delta still has no
- * trend provider, see `src/data/body.ts`'s `restHRMock`; HRV's RangeToggle
- * band gained one in task C4 via `useHealthHistory`); training + the week
- * grid are live via `useWorkouts`; sleep is live via `useSleepDetail`;
- * weight + sleep debt are derived (via the colocated `useBodyHistory`) from
- * the same `useHealthHistory(90)` fetch the HRV/weight RangeToggle bands
- * slice for their windows.
+ * rest HR are live via `useHealthToday`, honest (no mock fallback — `null`
+ * for a fresh account with no Whoop sync yet, mirroring Home's honesty fix,
+ * see `HomeScreen.tsx`); REST HR's 7-day delta and HRV's vs-window-avg delta
+ * are now real too, derived (via the colocated `useBodyHistory`) from the
+ * same `useHealthHistory(90)` fetch the HRV/weight RangeToggle bands slice
+ * for their windows. Training + the week grid are live via `useWorkouts`;
+ * sleep is live via `useSleepDetail`; weight + sleep debt are derived the
+ * same way as the REST HR/HRV deltas.
  */
 export function BodyScreen() {
   const { c, t } = useTheme();
   const reduceMotion = useReducedMotion();
-  const { data: health, refetch: refetchHealth } = useHealthToday();
+  const { data: health, loading: healthLoading, refetch: refetchHealth } = useHealthToday();
   const sleep = useSleepDetail();
   // Single 90d fetch (covers any of 7/30/90) — task C4 promoted the old
   // useBodyHistory-owned fetch into lib/queries/useHealthHistory.ts; both
   // useBodyHistory's derivation and the HRV/weight RangeToggle bands below
   // slice this one result instead of each issuing their own query.
   const history = useHealthHistory(90);
-  const bodyHistory = useBodyHistory(history.points);
+
+  // Honest values only (mock-data policy, mirrors HomeScreen's f60e384 fix):
+  // loading is covered by a skeleton below, and a user with no health rows
+  // sees an explicit no-data state, never the old design-fixture numbers.
+  const recoveryScore = health?.recoveryScore != null ? Math.round(health.recoveryScore) : null;
+  const hrv = health?.hrv != null ? Math.round(health.hrv) : null;
+  const rhr = health?.rhr != null ? Math.round(health.rhr) : null;
+
+  const bodyHistory = useBodyHistory(history.points, rhr, hrv);
   const { openDetail } = useNav();
   const [weightExpanded, setWeightExpanded] = useState(false);
 
@@ -104,10 +110,6 @@ export function BodyScreen() {
     }
   }, [refetchHealth, sleep.refetch, history.refetch, workouts.refetch]);
 
-  const recoveryScore = health?.recoveryScore ?? recoveryFallback.score;
-  const hrv = health?.hrv != null ? Math.round(health.hrv) : hrvMock.fallback;
-  const rhr = health?.rhr != null ? Math.round(health.rhr) : restHRMock.fallback;
-
   const weightValue = history.loading
     ? "···"
     : bodyHistory.weightLatest != null
@@ -124,8 +126,8 @@ export function BodyScreen() {
           : "NO DATA";
 
   const statItems: VitalsItem[] = [
-    { label: "REST HR", value: String(rhr), sub: restHRMock.delta },
-    { label: "HRV", value: String(hrv), sub: hrvMock.delta, subColor: c.accent },
+    { label: "REST HR", value: rhr != null ? String(rhr) : "—", sub: bodyHistory.rhrDeltaSub },
+    { label: "HRV", value: hrv != null ? String(hrv) : "—", sub: bodyHistory.hrvVsAvgSub, subColor: c.accent },
     {
       label: "WEIGHT",
       value: weightValue,
@@ -164,10 +166,23 @@ export function BodyScreen() {
       <View style={styles.firstBand}>
         <Band variant="recovery" index={1}>
           <Text style={t.sectionHeader}>RECOVERY</Text>
-          <View style={styles.recoveryRow}>
-            <RecoveryDial score={recoveryScore} />
-            <HrvRangeBand points={history.points} loading={history.loading} currentHrv={hrv} rhr={rhr} />
-          </View>
+          {healthLoading ? (
+            <View style={styles.recoveryRow}>
+              <Skeleton width={126} height={66} radius={8} />
+              <View style={styles.recoverySkeletonCol}>
+                <Skeleton width={70} height={10} radius={2} />
+                <Skeleton width={90} height={26} radius={3} />
+                <Skeleton width={80} height={9} radius={2} />
+              </View>
+            </View>
+          ) : recoveryScore != null ? (
+            <View style={styles.recoveryRow}>
+              <RecoveryDial score={recoveryScore} />
+              <HrvRangeBand points={history.points} loading={history.loading} currentHrv={hrv} rhr={rhr} />
+            </View>
+          ) : (
+            <Text style={[t.bandSub, styles.recoveryEmpty]}>NO HEALTH DATA YET — CONNECT WHOOP ON WEB</Text>
+          )}
         </Band>
       </View>
 
@@ -257,6 +272,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-end",
     justifyContent: "space-between",
+    marginTop: 14,
+  },
+  recoverySkeletonCol: {
+    alignItems: "flex-end",
+    gap: 8,
+  },
+  recoveryEmpty: {
     marginTop: 14,
   },
   skeletonTitle: {

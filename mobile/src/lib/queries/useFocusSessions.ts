@@ -40,10 +40,14 @@ export type UseFocusSessionsResult = {
    * server-side: queries for this user's newest still-running session
    * (never trusts hook state, which can be stale) and ends it before
    * inserting the new one — mirrors `start_focus_session` in
-   * `src/lib/assistant/tools.ts`. Refetches after insert. */
-  start: (label: string, plannedMinutes: number) => Promise<void>;
-  /** Sets `ended_at = now()` on the current active session, then refetches. */
-  end: () => Promise<void>;
+   * `src/lib/assistant/tools.ts`. Refetches after insert. Resolves `true`
+   * on success, `false` on failure (also reflected in `error`, which is
+   * retained for screens that render it directly). */
+  start: (label: string, plannedMinutes: number) => Promise<boolean>;
+  /** Sets `ended_at = now()` on the current active session, then refetches.
+   * Resolves `true` on success, `false` on failure (also reflected in
+   * `error`). */
+  end: () => Promise<boolean>;
 };
 
 const LOOKBACK_DAYS = 60;
@@ -161,13 +165,13 @@ export function useFocusSessions(): UseFocusSessionsResult {
   }, [refetch]);
 
   const start = useCallback(
-    async (label: string, plannedMinutes: number) => {
+    async (label: string, plannedMinutes: number): Promise<boolean> => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
         setError("Not signed in");
-        return;
+        return false;
       }
 
       // Product invariant: only one active focus session at a time. Query
@@ -186,7 +190,7 @@ export function useFocusSessions(): UseFocusSessionsResult {
         .maybeSingle();
       if (findErr) {
         setError(findErr.message);
-        return;
+        return false;
       }
 
       if (active) {
@@ -197,7 +201,7 @@ export function useFocusSessions(): UseFocusSessionsResult {
           .eq("user_id", user.id);
         if (endErr) {
           setError(endErr.message);
-          return;
+          return false;
         }
       }
 
@@ -206,19 +210,20 @@ export function useFocusSessions(): UseFocusSessionsResult {
         .insert({ user_id: user.id, label, planned_minutes: plannedMinutes });
       if (err) {
         setError(err.message);
-        return;
+        return false;
       }
       fireSuccessHaptic();
       await refetch();
+      return true;
     },
     [refetch],
   );
 
-  const end = useCallback(async () => {
+  const end = useCallback(async (): Promise<boolean> => {
     const active = findActive(rows);
     if (!active) {
       setError("No active focus session to end");
-      return;
+      return false;
     }
     const { error: err } = await supabase
       .from("focus_sessions")
@@ -226,10 +231,11 @@ export function useFocusSessions(): UseFocusSessionsResult {
       .eq("id", active.id);
     if (err) {
       setError(err.message);
-      return;
+      return false;
     }
     fireSuccessHaptic();
     await refetch();
+    return true;
   }, [rows, refetch]);
 
   const dates = lastNDates(WEEK_DAYS);

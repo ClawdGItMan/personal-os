@@ -302,7 +302,9 @@ describe("write tools — row shapes", () => {
     vi.setSystemTime(new Date("2026-07-10T12:25:00Z")); // +25 min after started_at
     const ended = (await executors.end_focus_session?.({})) as { summary: string; undo?: { table: string; id: string } };
     expect(ended.summary).toContain("25 min");
-    expect(ended.undo).toEqual({ table: "focus_sessions", id: VALID_UUID });
+    // No undo: ending a session is an update on an existing row, not an
+    // insert — deleting it would destroy the session, not reopen it.
+    expect(ended.undo).toBeUndefined();
     expect(db.get("focus_sessions")?.[0]?.ended_at).toBeTruthy();
   });
 

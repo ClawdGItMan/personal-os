@@ -12,6 +12,8 @@ export type HealthHistoryPoint = {
   date: string;
   /** Heart-rate variability, ms. */
   hrv: number | null;
+  /** Resting heart rate, bpm. */
+  rhr: number | null;
   weight: number | null;
   /** Total sleep, decimal hours. */
   sleepHours: number | null;
@@ -74,7 +76,7 @@ export function useHealthHistory(days: number): UseHealthHistoryResult {
 
     const { data, error: err } = await supabase
       .from("health_snapshots")
-      .select("date,hrv,weight,sleep_hours")
+      .select("date,hrv,rhr,weight,sleep_hours")
       .gte("date", sinceISO)
       .order("date", { ascending: true });
 
@@ -85,7 +87,7 @@ export function useHealthHistory(days: number): UseHealthHistoryResult {
     }
 
     setPoints(
-      (data ?? []).map((r) => ({ date: r.date, hrv: r.hrv, weight: r.weight, sleepHours: r.sleep_hours })),
+      (data ?? []).map((r) => ({ date: r.date, hrv: r.hrv, rhr: r.rhr, weight: r.weight, sleepHours: r.sleep_hours })),
     );
     setLoading(false);
   }, [days]);

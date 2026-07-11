@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
 import type { HealthHistoryPoint } from "../../lib/queries";
+import { sliceLastNDays } from "../../lib/queries";
 
 /**
  * Small history derivation colocated here (not in `lib/queries/`) — Task
@@ -23,7 +24,19 @@ export type UseBodyHistoryResult = {
    * with no `sleep_hours` value are skipped entirely (treated as unknown, not
    * as zero sleep) so a sync gap doesn't inflate the debt. */
   sleepDebtMin: number;
+  /** REST HR vitals-cell sub: "{±}{N} · 7D" comparing the current RHR to the
+   * closest snapshot at/before 7 days ago. `""` (not a fake number) when
+   * there's no current value or no anchor point that far back. */
+  rhrDeltaSub: string;
+  /** HRV vitals-cell sub: "{↑/↓/→} {±}{N} VS AVG" comparing the current HRV
+   * to the mean of the last 7 days' HRV readings (same window/technique as
+   * `HrvRangeBand`'s own window-avg calc, at 7D). `""` when there's no
+   * current value or fewer than 2 HRV readings in the window. */
+  hrvVsAvgSub: string;
 };
+
+const RHR_DELTA_WINDOW_DAYS = 7;
+const HRV_AVG_WINDOW_DAYS = 7;
 
 const TARGET_DEBT_HOURS = 7.5;
 
@@ -82,12 +95,65 @@ function computeSleepDebtMin(points: readonly HealthHistoryPoint[]): number {
   return Math.round(debtHours * 60);
 }
 
-/** Derives the WEIGHT stat's 30d delta and the SLEEP DEBT line from a
- * `useHealthHistory(days)` points array (needs ≥30d + a 7d margin — see
- * BodyScreen's `useHealthHistory(90)` call). */
-export function useBodyHistory(points: readonly HealthHistoryPoint[]): UseBodyHistoryResult {
+/** "{±}{N} · 7D" — mirrors `computeWeightDelta`'s "closest snapshot at or
+ * before target" search, just over a 7-day (not 30-day) window and a single
+ * point (not a stat-cell delta pair). `""` when there's no current value or
+ * no RHR reading that far back (honest empty, not a fake number). */
+function computeRhrDeltaSub(points: readonly HealthHistoryPoint[], currentRhr: number | null): string {
+  if (currentRhr == null) return "";
+  const withRhr = points.filter((p): p is HealthHistoryPoint & { rhr: number } => p.rhr != null);
+  if (withRhr.length < 2) return "";
+
+  const targetTime = Date.now() - RHR_DELTA_WINDOW_DAYS * 86400000;
+  let anchor: (HealthHistoryPoint & { rhr: number }) | null = null;
+  for (const p of withRhr) {
+    const t = new Date(`${p.date}T00:00:00`).getTime();
+    if (t <= targetTime) anchor = p; // ascending order → keep the closest-before-or-on target
+    else break;
+  }
+  if (!anchor) return "";
+
+  const delta = Math.round(currentRhr - anchor.rhr);
+  const sign = delta > 0 ? "+" : delta < 0 ? "−" : "±";
+  return `${sign}${Math.abs(delta)} · ${RHR_DELTA_WINDOW_DAYS}D`;
+}
+
+/** "{↑/↓/→} {±}{N} VS AVG" — same window-avg technique as `HrvRangeBand`'s
+ * own 30D/90D sub (mean of non-null HRV readings in the window, requires
+ * ≥2), just fixed to the 7D window so it pairs with the REST HR delta above.
+ * `""` when there's no current value or the window is too sparse. */
+function computeHrvVsAvgSub(points: readonly HealthHistoryPoint[], currentHrv: number | null): string {
+  if (currentHrv == null) return "";
+  const hrvValues = sliceLastNDays(points, HRV_AVG_WINDOW_DAYS)
+    .map((p) => p.hrv)
+    .filter((v): v is number => v != null);
+  if (hrvValues.length < 2) return "";
+
+  const avg = hrvValues.reduce((sum, v) => sum + v, 0) / hrvValues.length;
+  const delta = Math.round(currentHrv - avg);
+  const arrow = delta > 0 ? "↑ +" : delta < 0 ? "↓ −" : "→ ±";
+  return `${arrow}${Math.abs(delta)} VS AVG`;
+}
+
+/** Derives the WEIGHT stat's 30d delta, the SLEEP DEBT line, and the REST
+ * HR/HRV vitals-cell subs from a `useHealthHistory(days)` points array
+ * (needs ≥30d + a 7d margin — see BodyScreen's `useHealthHistory(90)` call).
+ * `currentRhr`/`currentHrv` are today's already-resolved (nullable) values
+ * (from `useHealthToday`) — independent of the history window, but needed
+ * as the "current" half of each delta. */
+export function useBodyHistory(
+  points: readonly HealthHistoryPoint[],
+  currentRhr: number | null,
+  currentHrv: number | null,
+): UseBodyHistoryResult {
   return useMemo(() => {
     const { latest, deltaLb } = computeWeightDelta(points);
-    return { weightLatest: latest, weightDeltaLb: deltaLb, sleepDebtMin: computeSleepDebtMin(points) };
-  }, [points]);
+    return {
+      weightLatest: latest,
+      weightDeltaLb: deltaLb,
+      sleepDebtMin: computeSleepDebtMin(points),
+      rhrDeltaSub: computeRhrDeltaSub(points, currentRhr),
+      hrvVsAvgSub: computeHrvVsAvgSub(points, currentHrv),
+    };
+  }, [points, currentRhr, currentHrv]);
 }

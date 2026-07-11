@@ -27,14 +27,14 @@ type HrvRangeBandProps = {
   /** `useHealthHistory(90)`'s points — wide enough to slice any of 7/30/90. */
   points: readonly HealthHistoryPoint[];
   loading: boolean;
-  /** Today's HRV reading, already resolved with BodyScreen's mock fallback —
-   * independent of the range window, always shown as the "current" half of
-   * the sub line. */
-  currentHrv: number;
-  /** Today's resting heart rate, already resolved with BodyScreen's mock
-   * fallback — shown in the 7D sub line only, matching Home's exact
+  /** Today's HRV reading (from `useHealthToday`, honest — `null` when
+   * absent, no mock fallback), independent of the range window, shown as the
+   * "current" half of the sub line. */
+  currentHrv: number | null;
+  /** Today's resting heart rate (from `useHealthToday`, honest — `null`
+   * when absent), shown in the 7D sub line only, matching Home's exact
    * "{hrv} MS · REST {rhr}" format (`HomeScreen.tsx`'s `HrvBars` usage). */
-  rhr: number;
+  rhr: number | null;
 };
 
 /**
@@ -44,8 +44,10 @@ type HrvRangeBandProps = {
  * Sub line parity with Home: at 7D it reads "{current} MS · REST {rhr}" (the
  * exact format Home's own 7D `HrvBars` uses); at 30D/90D — where there's no
  * single "today" rest reading for the wider window — it falls back to
- * "{current} MS · AVG {window avg}". Sparse/empty windows (<2 points) render
- * a "NOT ENOUGH DATA" line instead of a broken chart.
+ * "{current} MS · AVG {window avg}". Sparse/empty windows (<2 points), or a
+ * missing current/rest reading for today, render "" (no fake number) instead
+ * of the fabricated line; sparse/empty windows additionally render a
+ * "NOT ENOUGH DATA" line instead of a broken chart.
  */
 export function HrvRangeBand({ points, loading, currentHrv, rhr }: HrvRangeBandProps) {
   const { t } = useTheme();
@@ -56,7 +58,14 @@ export function HrvRangeBand({ points, loading, currentHrv, rhr }: HrvRangeBandP
     .filter((v): v is number => v != null);
   const hasEnoughData = hrvValues.length >= 2;
   const windowAvg = hasEnoughData ? Math.round(hrvValues.reduce((sum, v) => sum + v, 0) / hrvValues.length) : null;
-  const sub = range === 7 ? `${currentHrv} MS · REST ${rhr}` : `${currentHrv} MS · AVG ${windowAvg}`;
+  const sub =
+    range === 7
+      ? currentHrv != null && rhr != null
+        ? `${currentHrv} MS · REST ${rhr}`
+        : ""
+      : currentHrv != null && windowAvg != null
+        ? `${currentHrv} MS · AVG ${windowAvg}`
+        : "";
 
   return (
     <View style={styles.wrap}>

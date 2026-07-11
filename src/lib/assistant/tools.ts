@@ -37,9 +37,12 @@ import {
 type Client = SupabaseClient<Database>;
 
 /** Contract every write tool returns, for the client to render a
- * confirmation card. `undo`, when present, names the row the write touched;
- * omitted when there's nothing sensible to point at (e.g. a delete, or a
- * shared multi-source row where a naive id-delete undo would be unsafe). */
+ * confirmation card. `undo`, when present, names the row a plain INSERT just
+ * created; the only undo consumer deletes {table,id}, so `undo` must be
+ * omitted whenever that would be wrong — deletes (nothing left to point at),
+ * updates on a pre-existing row (deleting it would destroy data instead of
+ * reverting the change), and shared multi-source rows (a naive id-delete
+ * would destroy other sources' data, not just this write). */
 export interface ToolWriteResult {
   ok: true;
   summary: string;
@@ -312,7 +315,10 @@ function buildToolDefs(supabase: Client, userId: string): Record<string, ToolDef
           .maybeSingle();
         if (error) throw new Error(error.message);
         if (!data) throw new Error(`Task not found: ${id}`);
-        return { ok: true, summary: `Completed "${data.title}"`, undo: { table: "tasks", id: data.id } };
+        // No `undo`: this is an update on an existing row, not an insert —
+        // the only undo consumer deletes {table,id}, which would destroy the
+        // task rather than un-complete it.
+        return { ok: true, summary: `Completed "${data.title}"` };
       },
     }),
 
@@ -452,10 +458,12 @@ function buildToolDefs(supabase: Client, userId: string): Record<string, ToolDef
           0,
           Math.round((endedAt.getTime() - new Date(active.started_at).getTime()) / 60_000),
         );
+        // No `undo`: this is an update on an existing row, not an insert —
+        // the only undo consumer deletes {table,id}, which would destroy the
+        // session rather than reopen it.
         return {
           ok: true,
           summary: `Ended focus session "${data.label}" (${minutes} min)`,
-          undo: { table: "focus_sessions", id: data.id },
         };
       },
     }),
@@ -532,10 +540,13 @@ function buildToolDefs(supabase: Client, userId: string): Record<string, ToolDef
           .select("id,month,amount")
           .single();
         if (error) throw new Error(error.message);
+        // No `undo`: this is an upsert that may have updated an existing
+        // month's budget rather than inserted a new one — the only undo
+        // consumer deletes {table,id}, which would destroy that row rather
+        // than restore the prior amount.
         return {
           ok: true,
           summary: `Set budget for ${data.month.slice(0, 7)} to ${fmtUSD(data.amount)}`,
-          undo: { table: "budgets", id: data.id },
         };
       },
     }),

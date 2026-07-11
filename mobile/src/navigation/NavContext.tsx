@@ -53,9 +53,19 @@ export function NavProvider({ children }: { children: ReactNode }) {
   const openDetail = useCallback((item: DetailItem) => setOverlay({ kind: "detail", item }), []);
   const close = useCallback(() => setOverlay(null), []);
 
+  // Switching tabs while a Detail overlay is open leaves a stale page
+  // covering the newly-selected tab (Detail is a pushed full-screen overlay,
+  // not scoped to the tab it was opened from) — clear it on tab change.
+  // Sheets (capture/assistant/settings) keep the existing behavior: they
+  // cover the tab bar anyway, so a tab tap can't reach them to begin with.
+  const handleSetTab = useCallback((next: TabKey) => {
+    setTab(next);
+    setOverlay((prev) => (prev?.kind === "detail" ? null : prev));
+  }, []);
+
   const value = useMemo<NavValue>(
-    () => ({ tab, setTab, overlay, openCapture, openAssistant, openSettings, openDetail, close }),
-    [tab, overlay, openCapture, openAssistant, openSettings, openDetail, close],
+    () => ({ tab, setTab: handleSetTab, overlay, openCapture, openAssistant, openSettings, openDetail, close }),
+    [tab, overlay, handleSetTab, openCapture, openAssistant, openSettings, openDetail, close],
   );
 
   return <NavContext.Provider value={value}>{children}</NavContext.Provider>;
