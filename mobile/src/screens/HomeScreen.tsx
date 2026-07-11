@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Platform, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { LiveTimerBand } from "../components/focus/LiveTimerBand";
+import { formatCompact } from "../components/money/format";
 import { Band } from "../components/spec/Band";
 import { DayBar } from "../components/spec/DayBar";
 import { Eyebrow } from "../components/spec/Eyebrow";
@@ -18,7 +19,6 @@ import {
   dayProgressPct,
   fallbackStatusSegments,
   firstUpcomingEvent,
-  formatCompactNetWorth,
   formatNetWorthPctLabel,
   greetingLead,
   homeData,
@@ -147,7 +147,7 @@ export function HomeScreen() {
     },
     {
       label: "NET WORTH",
-      value: formatCompactNetWorth(money.netWorth),
+      value: formatCompact(money.netWorth),
       sub: netWorthSub,
       subColor: netWorthSubColor,
     },

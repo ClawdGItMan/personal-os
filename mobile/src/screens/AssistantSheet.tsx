@@ -19,6 +19,7 @@ import {
   AssistantApiError,
   AssistantNotConfiguredError,
   AssistantOfflineError,
+  AssistantShapeError,
   AssistantUnauthorizedError,
   act,
   getBrief,
@@ -139,7 +140,14 @@ export function AssistantSheet() {
     } catch (err) {
       if (err instanceof AssistantNotConfiguredError) setBriefState("not_configured");
       else if (err instanceof AssistantOfflineError) setBriefState("offline");
-      else {
+      else if (err instanceof AssistantShapeError) {
+        // Technical detail (stale-server login redirect, proxy error page,
+        // etc.) stays in the thrown error for logs — the UI only ever shows
+        // the friendly copy below.
+        console.warn("[assistant] brief shape gate failed:", err.message);
+        setBriefErrorMessage("Couldn't reach the assistant");
+        setBriefState("error");
+      } else {
         setBriefErrorMessage(err instanceof Error ? err.message : "Couldn't load your brief");
         setBriefState("error");
       }

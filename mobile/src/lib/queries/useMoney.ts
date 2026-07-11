@@ -51,9 +51,11 @@ export type UseMoneyResult = {
   /** This month's `budgets` row amount, or null when none is set. */
   budgetAmount: number | null;
   /** Liquid CASH total ÷ avg monthly burn over the last 3 calendar months
-   * (current + prior 2, missing months count as 0 burn). Null when that
-   * average is 0 (no burn / no data) — avoids a div-by-zero or a misleading
-   * "infinite runway" reading. */
+   * (current + prior 2) — the average divides only by the months that
+   * actually logged ≥1 negative transaction (floored at 1), so a sparse
+   * transaction history isn't diluted by empty months with no data yet.
+   * Null when that average is 0 (no burn / no data) — avoids a div-by-zero
+   * or a misleading "infinite runway" reading. */
   runwayMonths: number | null;
   /** Last 8 transactions, newest first (independent of calendar month). */
   recent: MoneyTransaction[];
@@ -164,14 +166,22 @@ function bucketMonthlyBurn(rows: Pick<TransactionRow, "amount" | "occurred_at">[
 }
 
 /** Avg burn over the last `BURN_LOOKBACK_MONTHS` calendar months (current +
- * prior, missing months count as 0) → liquid cash ÷ that average, or null
- * when the average is 0 (no burn / no data — avoids div-by-zero). */
+ * prior), dividing only by the months that actually have ≥1 negative
+ * transaction — `bucketMonthlyBurn` only ever populates a month's entry from
+ * such transactions, so `.has(key)` doubles as that check — floored at 1 so
+ * a single data month isn't diluted by empty months with no burn recorded
+ * yet → liquid cash ÷ that average, or null when the average is 0 (no burn /
+ * no data — avoids div-by-zero). */
 function computeRunwayMonths(cashTotal: number, monthlyBurn: Map<string, number>, now: Date): number | null {
   let sum = 0;
+  let monthsWithBurn = 0;
   for (let i = 0; i < BURN_LOOKBACK_MONTHS; i++) {
-    sum += monthlyBurn.get(monthKey(monthStart(now, -i))) ?? 0;
+    const key = monthKey(monthStart(now, -i));
+    if (!monthlyBurn.has(key)) continue;
+    sum += monthlyBurn.get(key) ?? 0;
+    monthsWithBurn += 1;
   }
-  const avgBurn = sum / BURN_LOOKBACK_MONTHS;
+  const avgBurn = sum / Math.max(1, monthsWithBurn);
   if (avgBurn === 0) return null;
   return cashTotal / avgBurn;
 }

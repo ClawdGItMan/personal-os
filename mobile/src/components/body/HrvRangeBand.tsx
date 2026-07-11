@@ -31,18 +31,23 @@ type HrvRangeBandProps = {
    * independent of the range window, always shown as the "current" half of
    * the sub line. */
   currentHrv: number;
+  /** Today's resting heart rate, already resolved with BodyScreen's mock
+   * fallback — shown in the 7D sub line only, matching Home's exact
+   * "{hrv} MS · REST {rhr}" format (`HomeScreen.tsx`'s `HrvBars` usage). */
+  rhr: number;
 };
 
 /**
  * RECOVERY band's HRV mini-chart (task C4) — gains a 7D/30D/90D
  * `RangeToggle`. 7D keeps the locked `HrvBars` look; 30D/90D switch to a
  * `Sparkline` draw since a 30/90-bar mini chart doesn't fit the band width.
- * Sub line reads "{current} MS · AVG {window avg}" (replaces the old static
- * "↑ +6 VS AVG" mock — see `data/body.ts`'s `hrvMock` note — now that a real
- * trend provider exists via `useHealthHistory`). Sparse/empty windows (<2
- * points) render a "NOT ENOUGH DATA" line instead of a broken chart.
+ * Sub line parity with Home: at 7D it reads "{current} MS · REST {rhr}" (the
+ * exact format Home's own 7D `HrvBars` uses); at 30D/90D — where there's no
+ * single "today" rest reading for the wider window — it falls back to
+ * "{current} MS · AVG {window avg}". Sparse/empty windows (<2 points) render
+ * a "NOT ENOUGH DATA" line instead of a broken chart.
  */
-export function HrvRangeBand({ points, loading, currentHrv }: HrvRangeBandProps) {
+export function HrvRangeBand({ points, loading, currentHrv, rhr }: HrvRangeBandProps) {
   const { t } = useTheme();
   const [range, setRange] = useState<RangeDays>(7);
 
@@ -51,7 +56,7 @@ export function HrvRangeBand({ points, loading, currentHrv }: HrvRangeBandProps)
     .filter((v): v is number => v != null);
   const hasEnoughData = hrvValues.length >= 2;
   const windowAvg = hasEnoughData ? Math.round(hrvValues.reduce((sum, v) => sum + v, 0) / hrvValues.length) : null;
-  const sub = windowAvg != null ? `${currentHrv} MS · AVG ${windowAvg}` : `${currentHrv} MS`;
+  const sub = range === 7 ? `${currentHrv} MS · REST ${rhr}` : `${currentHrv} MS · AVG ${windowAvg}`;
 
   return (
     <View style={styles.wrap}>

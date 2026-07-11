@@ -124,13 +124,37 @@ function nextId(prefix: string): string {
  * `tool-input-available` wire chunk, used to remember which tool a later
  * `tool-output-available` result belongs to (that chunk only carries
  * `toolCallId`, not the name — see the `ai` package's `UIMessageChunk`
- * union). Returns null for any other/malformed part. */
+ * union). Returns null for any other/malformed part — including
+ * `tool-input-error`, even though its `type` also starts with "tool-input":
+ * callers must check `toolInputErrorFromPart` first (see `onToolEvent`) or
+ * this would silently absorb an actual failure as a routine name update. */
 function toolNameFromPart(part: unknown): { toolCallId: string; toolName: string } | null {
   if (!part || typeof part !== "object") return null;
   const p = part as { type?: unknown; toolCallId?: unknown; toolName?: unknown };
-  if (typeof p.type !== "string" || !p.type.startsWith("tool-input")) return null;
+  if (typeof p.type !== "string" || !p.type.startsWith("tool-input") || p.type === "tool-input-error") return null;
   if (typeof p.toolCallId !== "string" || typeof p.toolName !== "string") return null;
   return { toolCallId: p.toolCallId, toolName: p.toolName };
+}
+
+/** Extracts `{toolCallId, toolName}` from a `tool-input-error` wire chunk —
+ * emitted when the model's tool-call *input* fails to build (e.g. bad
+ * arguments) before the tool ever runs, distinct from `tool-output-error`
+ * (a failure *during* execution, handled by `toolErrorFromPart` below).
+ * `toolName` may be absent on some chunk shapes; callers fall back to the
+ * name already recorded via `toolNamesRef` (from an earlier `tool-input-*`
+ * chunk for the same call), if any. */
+function toolInputErrorFromPart(part: unknown): { toolCallId: string; toolName: string | null } | null {
+  if (!part || typeof part !== "object") return null;
+  const p = part as { type?: unknown; toolCallId?: unknown; toolName?: unknown };
+  if (p.type !== "tool-input-error") return null;
+  if (typeof p.toolCallId !== "string") return null;
+  return { toolCallId: p.toolCallId, toolName: typeof p.toolName === "string" ? p.toolName : null };
+}
+
+/** All-caps tool label for a notice, e.g. "create_task" -> "CREATE TASK" —
+ * mirrors ChatThread.tsx's own local `toolLabel()` for its tool-status rows. */
+function toolLabel(name: string): string {
+  return name.replace(/_/g, " ").toUpperCase();
 }
 
 /** Extracts `{toolCallId, summary, undo}` from a `tool-output-available`
@@ -218,6 +242,26 @@ export function useCaptureSession(): UseCaptureSessionResult {
     };
 
     const onToolEvent = (part: unknown) => {
+      // Checked first: `toolNameFromPart`'s "tool-input"-prefix match would
+      // otherwise catch a `tool-input-error` chunk too and silently absorb
+      // it as a routine name-registration update instead of surfacing the
+      // failure.
+      const inputError = toolInputErrorFromPart(part);
+      if (inputError) {
+        const toolName = inputError.toolName ?? toolNamesRef.current.get(inputError.toolCallId) ?? null;
+        setEntries((prev) => [
+          ...prev,
+          {
+            kind: "notice",
+            id: nextId("n"),
+            tone: "error",
+            message: `COULDN'T PREPARE ${toolName ? toolLabel(toolName) : "ACTION"}`,
+            retryable: false,
+          },
+        ]);
+        return;
+      }
+
       const nameInfo = toolNameFromPart(part);
       if (nameInfo) {
         toolNamesRef.current.set(nameInfo.toolCallId, nameInfo.toolName);

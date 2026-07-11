@@ -145,31 +145,6 @@ export function formatNetWorthPctLabel(pct: number): string {
   return `${pct >= 0 ? "+" : ""}${pct.toFixed(2)}% · 30D`;
 }
 
-/** Comma-group an unsigned integer string, e.g. "1842" -> "1,842" (hand-rolled,
- * not `toLocaleString` — matches lib/format.ts's locale-stability convention). */
-function groupThousands(digits: string): string {
-  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-}
-
-/**
- * Compact currency for the NET WORTH stat, e.g. "$2.83M" / "$412K" / "$938".
- * Deliberately a small local duplicate of `components/money/format.ts`'s
- * `formatCompact` rather than an import — that file is owned by the
- * concurrently in-flight Money task and isn't committed yet, so importing it
- * would create a fragile cross-task dependency. Flag to dedupe once Money
- * lands, if desired.
- */
-export function formatCompactNetWorth(n: number): string {
-  const sign = n < 0 ? "-" : "";
-  const abs = Math.abs(n);
-  if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(2)}M`;
-  if (abs >= 1_000) {
-    const k = abs / 1_000;
-    return `${sign}$${k >= 100 ? Math.round(k) : k.toFixed(1)}K`;
-  }
-  return `${sign}$${groupThousands(String(Math.round(abs)))}`;
-}
-
 const BRIEF_FRESH_MS = 12 * 60 * 60 * 1000;
 
 /** Whether an assistant brief's `generated_at` is fresh enough to trust for

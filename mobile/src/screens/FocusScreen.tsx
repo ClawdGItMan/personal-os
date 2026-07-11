@@ -10,7 +10,7 @@ import { LedgerRow } from "../components/spec/LedgerRow";
 import { ScreenHeader } from "../components/spec/ScreenHeader";
 import { StatGrid } from "../components/spec/StatGrid";
 import { TitleBlock } from "../components/spec/TitleBlock";
-import { buildWeekCells, focusData, formatMinutesHM, weekAvgLabel, weekRangeLabel } from "../data/focus";
+import { buildWeekCells, focusData, focusStatusSegments, formatMinutesHM, weekAvgLabel, weekRangeLabel } from "../data/focus";
 import { eyebrowDate } from "../lib/format";
 import { useFocusSessions } from "../lib/queries";
 import { FadeUp } from "../motion/FadeUp";
@@ -71,7 +71,10 @@ export function FocusScreen() {
           />
         </View>
         <View style={styles.titleSpace}>
-          <TitleBlock title={focusData.title} status={focusData.status} />
+          <TitleBlock
+            title={focusData.title}
+            status={focusStatusSegments(focus.todayStats.sessions, focus.todayStats.deepMinutes, DAILY_SESSION_GOAL, now)}
+          />
         </View>
         {focus.error ? (
           <Text style={[styles.errorText, { color: c.red }]}>{`COULDN'T LOAD FOCUS DATA — ${focus.error}`}</Text>

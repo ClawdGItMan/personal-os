@@ -6,6 +6,7 @@
  * helpers plus the small fixed fallbacks that still lack a trend provider
  * (REST HR/HRV 7-day deltas). All times are already 12-hour.
  */
+import type { StatusSegment } from "../components/spec/TitleBlock";
 import type { LatestWorkout, WorkoutDayCell } from "../lib/queries";
 import type { Palette } from "../theme/palette";
 
@@ -89,6 +90,39 @@ export function formatTrainingSub(w: Pick<LatestWorkout, "durationSec" | "strain
   const minutes = w.durationSec != null ? Math.round(w.durationSec / 60) : null;
   const strain = w.strain != null ? w.strain.toFixed(1) : null;
   return `${minutes != null ? minutes : "—"} MIN · STRAIN ${strain != null ? strain : "—"}`;
+}
+
+/** Recovery-score state word for the status line (spec: green ≥67, red <34,
+ * else amber) — same thresholds as `data/home.ts`'s `recoveryWord`. */
+export function recoveryWord(score: number): "green" | "amber" | "red" {
+  if (score >= 67) return "green";
+  if (score >= 34) return "amber";
+  return "red";
+}
+
+/** True when a workout's `startedAt` falls on today's local calendar day —
+ * distinct from the TRAINING band's 7-day staleness check (`WORKOUT_STALE_MS`
+ * in BodyScreen.tsx): the status line only credits a workout logged today. */
+export function isWorkoutToday(startedAt: string, now: Date): boolean {
+  const started = new Date(startedAt);
+  return (
+    started.getFullYear() === now.getFullYear() &&
+    started.getMonth() === now.getMonth() &&
+    started.getDate() === now.getDate()
+  );
+}
+
+/**
+ * Deterministic Body status-line segments (replaces the old canned "cleared
+ * for the push day, logged this morning" copy): "Recovery's {word} — {sport}
+ * logged." when a workout started today, else "Recovery's {word} — no
+ * training yet today." `workoutSportToday` should be the title-cased sport of
+ * today's latest workout (via `titleCaseSport` + `isWorkoutToday`), or null.
+ */
+export function bodyStatusSegments(recoveryScore: number, workoutSportToday: string | null): StatusSegment[] {
+  const word = recoveryWord(recoveryScore);
+  const clause = workoutSportToday ? ` — ${workoutSportToday} logged.` : " — no training yet today.";
+  return ["Recovery's ", { b: word }, clause];
 }
 
 /**

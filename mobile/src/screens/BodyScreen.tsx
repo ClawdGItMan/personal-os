@@ -18,12 +18,14 @@ import { ScreenHeader } from "../components/spec/ScreenHeader";
 import { Skeleton } from "../components/spec/Skeleton";
 import { TitleBlock } from "../components/spec/TitleBlock";
 import {
+  bodyStatusSegments,
   buildWeekDays,
   countWeekSessions,
   daysSinceMonday,
   formatTrainingSub,
   hrvMock,
   isoWeek,
+  isWorkoutToday,
   recoveryFallback,
   restHRMock,
   titleCaseSport,
@@ -136,6 +138,9 @@ export function BodyScreen() {
   const isStaleOrMissingWorkout =
     !workouts.latest || Date.now() - new Date(workouts.latest.startedAt).getTime() > WORKOUT_STALE_MS;
 
+  const workoutSportToday =
+    workouts.latest && isWorkoutToday(workouts.latest.startedAt, now) ? titleCaseSport(workouts.latest.sport) : null;
+
   const weekDays = buildWeekDays(workouts.week);
   const weekSessions = countWeekSessions(workouts.week);
 
@@ -152,10 +157,7 @@ export function BodyScreen() {
           <Eyebrow left={eyebrowDate(now)} right={`WEEK ${isoWeek(now)}`} />
         </View>
         <View style={styles.titleSpace}>
-          <TitleBlock
-            title="Body"
-            status={["Recovery's ", { b: "green" }, " — cleared for the push day, logged this morning."]}
-          />
+          <TitleBlock title="Body" status={bodyStatusSegments(recoveryScore, workoutSportToday)} />
         </View>
       </FadeUp>
 
@@ -164,7 +166,7 @@ export function BodyScreen() {
           <Text style={t.sectionHeader}>RECOVERY</Text>
           <View style={styles.recoveryRow}>
             <RecoveryDial score={recoveryScore} />
-            <HrvRangeBand points={history.points} loading={history.loading} currentHrv={hrv} />
+            <HrvRangeBand points={history.points} loading={history.loading} currentHrv={hrv} rhr={rhr} />
           </View>
         </Band>
       </View>
@@ -210,23 +212,29 @@ export function BodyScreen() {
         ) : null}
       </Animated.View>
 
-      {workouts.loading ? (
-        <Band variant="plain" index={5}>
-          <Text style={t.sectionHeader}>THIS WEEK</Text>
-          <View style={styles.skeletonWeek}>
-            <Skeleton width="100%" height={22} radius={4} />
-          </View>
-        </Band>
-      ) : workouts.error ? (
-        <Band variant="plain" index={5}>
-          <Text style={t.sectionHeader}>THIS WEEK</Text>
-          <BandMessage kind="error" onRetry={workouts.refetch} />
-        </Band>
-      ) : (
-        <Band variant="plain" index={5}>
-          <WeekCells sessions={weekSessions} days={weekDays} />
-        </Band>
-      )}
+      {/* Sits right after the WeightTrendBand's expand/collapse container —
+          its own `layout` transition (matching C4's) lets this band slide
+          into its new position when that container grows/shrinks instead of
+          snapping there instantly. */}
+      <Animated.View layout={reduceMotion ? undefined : LinearTransition.duration(260)}>
+        {workouts.loading ? (
+          <Band variant="plain" index={5}>
+            <Text style={t.sectionHeader}>THIS WEEK</Text>
+            <View style={styles.skeletonWeek}>
+              <Skeleton width="100%" height={22} radius={4} />
+            </View>
+          </Band>
+        ) : workouts.error ? (
+          <Band variant="plain" index={5}>
+            <Text style={t.sectionHeader}>THIS WEEK</Text>
+            <BandMessage kind="error" onRetry={workouts.refetch} />
+          </Band>
+        ) : (
+          <Band variant="plain" index={5}>
+            <WeekCells sessions={weekSessions} days={weekDays} />
+          </Band>
+        )}
+      </Animated.View>
     </ScrollView>
   );
 }

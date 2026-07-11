@@ -1,3 +1,4 @@
+import type { StatusSegment } from "../components/spec/TitleBlock";
 import { time12 } from "../lib/format";
 import type { FocusWeekMinutePoint } from "../lib/queries";
 
@@ -47,16 +48,42 @@ export type WeekCell = {
 
 export const focusData = {
   title: "Focus",
-  status: [
-    "Two blocks left — ",
-    { b: "protect the afternoon." },
-  ],
 
   journal: {
     prompt: "What pulled your focus today?",
     placeholder: "Tap to write",
   },
 };
+
+/** Time-of-day word for the status line (spec: morning/afternoon/evening) —
+ * same thresholds as `data/home.ts`'s `greetingLead`. */
+function timeOfDayWord(d: Date): "morning" | "afternoon" | "evening" {
+  const hour = d.getHours();
+  if (hour < 12) return "morning";
+  if (hour < 18) return "afternoon";
+  return "evening";
+}
+
+/**
+ * Deterministic Focus status-line segments (replaces the old canned "Two
+ * blocks left — protect the afternoon." copy): "{goal−sessionsToday} blocks
+ * left — protect the {morning|afternoon|evening}." while under the daily
+ * session goal (floored at 0), else "Goal hit — {deepHrs} deep today." once
+ * `sessionsToday` reaches `goal`.
+ */
+export function focusStatusSegments(
+  sessionsToday: number,
+  deepMinutesToday: number,
+  goal: number,
+  now: Date,
+): StatusSegment[] {
+  const left = Math.max(0, goal - sessionsToday);
+  if (left === 0) {
+    return ["Goal hit — ", { b: `${formatMinutesHM(deepMinutesToday)} deep today.` }];
+  }
+  const word = timeOfDayWord(now);
+  return [`${left} block${left === 1 ? "" : "s"} left — `, { b: `protect the ${word}.` }];
+}
 
 /** "HH:MM" 24h → "H:MM AM/PM" (design README: all times render 12-hour). */
 export function formatHHMM12h(hhmm: string): string {

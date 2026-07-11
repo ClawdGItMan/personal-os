@@ -6,7 +6,7 @@ import { useTheme } from "../../theme/ThemeContext";
 import { Pressed } from "../spec/Pressed";
 import type { StatItem } from "../spec/StatGrid";
 
-export type VitalsItem = StatItem & {
+export type VitalsItem = Omit<StatItem, "pips" | "pipColor"> & {
   /** When set, the cell becomes a `Pressed` tap target (BodyScreen's WEIGHT
    * stat → inline trend expand, task C4) instead of a plain `View`. */
   onPress?: () => void;

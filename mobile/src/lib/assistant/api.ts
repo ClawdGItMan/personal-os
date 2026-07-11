@@ -50,6 +50,19 @@ export class AssistantApiError extends Error {
   }
 }
 
+/** Thrown when a brief response fails the shape gate (HTML from a stale
+ * server's login redirect, a proxy error page, null, etc.) — `message`
+ * carries the raw technical detail for logs. A distinct subclass (not a
+ * plain `AssistantApiError`) so UI callers can `instanceof`-match it and map
+ * it to a friendlier "can't reach the assistant" state instead of surfacing
+ * the technical message raw (see `AssistantSheet`'s `loadBrief` catch). */
+export class AssistantShapeError extends AssistantApiError {
+  constructor(message: string, status: number) {
+    super(message, status);
+    this.name = "AssistantShapeError";
+  }
+}
+
 /** Thrown by `streamChat` when its caller-supplied `AbortSignal` fires
  * mid-stream — distinct from a network failure or server error, so the UI
  * can treat a deliberate cancel (e.g. navigating away, sending a new
@@ -202,7 +215,7 @@ export async function getBrief(refresh?: boolean, signal?: AbortSignal): Promise
   // error, NOT normalize into a phantom empty brief (seen on-sim 2026-07-10).
   const briefRecord = asRecord(rawBrief);
   if (typeof briefRecord.headline !== "string" || briefRecord.headline.length === 0) {
-    throw new AssistantApiError("GET /api/assistant/brief returned an unexpected response shape", res.status);
+    throw new AssistantShapeError("GET /api/assistant/brief returned an unexpected response shape", res.status);
   }
   return {
     brief: normalizeBrief(rawBrief),

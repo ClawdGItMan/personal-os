@@ -33,13 +33,24 @@ function ymd(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+/** Local midnight `days` ago (0 = today) — mirrors `useMoney.ts`'s `daysAgo`. */
+function daysAgo(days: number): Date {
+  const now = new Date();
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  d.setDate(d.getDate() - days);
+  return d;
+}
+
 /** Points must be sorted ascending by date. Returns only the points whose
- * date falls within the last `days` local days (inclusive of today). Used
- * by the range-toggled charts (HRV band, weight trend expand) to slice a
- * single wider fetch down to the selected 7D/30D/90D window — mirrors
- * `useMoney.ts`'s `lastNDaysOfSeries`. */
+ * date falls within the last `days` local days (inclusive of today). Cutoff
+ * is computed via local-midnight date arithmetic (`daysAgo`, mirroring
+ * `useMoney.ts`'s `daysAgo`/`lastNDaysOfSeries`) rather than raw ms
+ * subtraction — plain `Date.now() - days * 86400000` can land the cutoff on
+ * the wrong local calendar day across a DST transition. Used by the
+ * range-toggled charts (HRV band, weight trend expand) to slice a single
+ * wider fetch down to the selected 7D/30D/90D window. */
 export function sliceLastNDays<T extends { date: string }>(points: readonly T[], days: number): T[] {
-  const cutoff = ymd(new Date(Date.now() - (days - 1) * 86400000));
+  const cutoff = ymd(daysAgo(days - 1));
   return points.filter((p) => p.date >= cutoff);
 }
 

@@ -17,6 +17,17 @@
  * Calendar" action) — and drop the matching device copy.
  */
 
+/** Assumption this whole module leans on: every Supabase `calendar_events`
+ * row passed in as `supabaseEvents` is assumed to have come from the app's
+ * own `google_calendar` sync — the one Supabase source that could plausibly
+ * also appear, independently, in a device calendar the user separately
+ * opted into (see useQueueRows.ts's `supabaseDedupeInputs`, built from
+ * `calendar.data` with no `source` filter). A manually-created event (e.g.
+ * via the assistant's `create_calendar_event` tool) that happens to share a
+ * title/time with an unrelated device event would also be suppressed under
+ * this assumption — considered an acceptable, rare false positive rather
+ * than plumbing `source` through every caller to guard against it. */
+
 /** Minimal shape a Supabase calendar row needs for de-dupe matching.
  * `CalendarTodayEvent` (useCalendarToday's display-mapped shape) doesn't
  * carry `all_day` — callers must look it up from the raw `calendar_events`
@@ -85,13 +96,20 @@ function toMinutesOfDay(time: string, nowMs: number): number | null {
  * - A device event with a title that doesn't match anything in
  *   `supabaseEvents` (the common case — most device events aren't also
  *   synced to Supabase) always survives untouched.
+ *
+ * After the Supabase pass, the survivors are also de-duped against each
+ * other (`dedupeWithinDeviceEvents`) — covers a user who's opted into more
+ * than one device calendar source (e.g. both a work and a personal calendar
+ * account) that mirror the same underlying event; neither copy would match
+ * anything in `supabaseEvents`, so without this second pass both would
+ * render.
  */
 export function dedupeDeviceEvents<T extends DedupeCandidate>(
   supabaseEvents: SupabaseDedupeEvent[],
   deviceEvents: T[],
   nowMs: number,
 ): T[] {
-  return deviceEvents.filter((device) => {
+  const survivedSupabasePass = deviceEvents.filter((device) => {
     const deviceTitle = normalizeTitle(device.title);
 
     if (device.time === "ALL DAY") {
@@ -111,4 +129,39 @@ export function dedupeDeviceEvents<T extends DedupeCandidate>(
     });
     return !isDuplicate;
   });
+
+  return dedupeWithinDeviceEvents(survivedSupabasePass, nowMs);
+}
+
+/**
+ * De-dupes a list of device events against each other, keeping the first
+ * occurrence of any duplicate pair (stable — later entries never displace
+ * earlier ones). Same matching rule as the Supabase pass above: same title
+ * (case-insensitive, trimmed) AND (both all-day, OR |start delta| < 2
+ * minutes). A candidate whose time can't be parsed is never treated as a
+ * duplicate of anything, same defensive stance as the Supabase pass.
+ */
+function dedupeWithinDeviceEvents<T extends DedupeCandidate>(events: T[], nowMs: number): T[] {
+  const kept: T[] = [];
+
+  for (const candidate of events) {
+    const candidateTitle = normalizeTitle(candidate.title);
+
+    const isDuplicate = kept.some((existing) => {
+      if (normalizeTitle(existing.title) !== candidateTitle) return false;
+
+      if (candidate.time === "ALL DAY" || existing.time === "ALL DAY") {
+        return candidate.time === "ALL DAY" && existing.time === "ALL DAY";
+      }
+
+      const candidateMinutes = toMinutesOfDay(candidate.time, nowMs);
+      const existingMinutes = toMinutesOfDay(existing.time, nowMs);
+      if (candidateMinutes === null || existingMinutes === null) return false;
+      return Math.abs(candidateMinutes - existingMinutes) < DEDUPE_WINDOW_MINUTES;
+    });
+
+    if (!isDuplicate) kept.push(candidate);
+  }
+
+  return kept;
 }
