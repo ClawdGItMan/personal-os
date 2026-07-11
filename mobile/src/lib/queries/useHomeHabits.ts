@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { supabase } from "../supabase";
 
@@ -13,6 +13,7 @@ export type UseHomeHabits = {
   data: HomeHabits | null;
   loading: boolean;
   error: string | null;
+  refetch: () => Promise<void>;
 };
 
 /** Local calendar date as `YYYY-MM-DD` (matches the `date` column format). */
@@ -31,43 +32,38 @@ function localToday(): string {
  * Returns `{ done: 0, total: 0 }` when the user has no habits yet.
  */
 export function useHomeHabits(): UseHomeHabits {
-  const [state, setState] = useState<UseHomeHabits>({
-    data: null,
-    loading: true,
-    error: null,
-  });
+  const [data, setData] = useState<HomeHabits | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
+  const refetch = useCallback(async () => {
+    setError(null);
     const today = localToday();
 
-    void Promise.all([
+    const [habitsRes, logsRes] = await Promise.all([
       supabase.from("habits").select("id").eq("archived", false),
       supabase.from("habit_logs").select("habit_id,done").eq("date", today),
-    ]).then(([habitsRes, logsRes]) => {
-      if (!active) return;
-      const error = habitsRes.error ?? logsRes.error;
-      if (error) {
-        setState({ data: null, loading: false, error: error.message });
-        return;
-      }
-      const habitIds = new Set((habitsRes.data ?? []).map((h) => h.id));
-      const doneIds = new Set(
-        (logsRes.data ?? [])
-          .filter((log) => log.done && habitIds.has(log.habit_id))
-          .map((log) => log.habit_id),
-      );
-      setState({
-        data: { done: doneIds.size, total: habitIds.size },
-        loading: false,
-        error: null,
-      });
-    });
-
-    return () => {
-      active = false;
-    };
+    ]);
+    const err = habitsRes.error ?? logsRes.error;
+    if (err) {
+      setData(null);
+      setLoading(false);
+      setError(err.message);
+      return;
+    }
+    const habitIds = new Set((habitsRes.data ?? []).map((h) => h.id));
+    const doneIds = new Set(
+      (logsRes.data ?? [])
+        .filter((log) => log.done && habitIds.has(log.habit_id))
+        .map((log) => log.habit_id),
+    );
+    setData({ done: doneIds.size, total: habitIds.size });
+    setLoading(false);
   }, []);
 
-  return state;
+  useEffect(() => {
+    void refetch();
+  }, [refetch]);
+
+  return { data, loading, error, refetch };
 }

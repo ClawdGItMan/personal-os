@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import {
   AssistantAbortedError,
@@ -11,6 +11,7 @@ import {
 } from "../../lib/assistant/api";
 import type { ChatMessageInput, ChatSource } from "../../lib/assistant/api";
 import { supabase } from "../../lib/supabase";
+import { Pressed } from "../spec/Pressed";
 import { Skeleton } from "../spec/Skeleton";
 import { useTheme } from "../../theme/ThemeContext";
 import { layout } from "../../theme/layout";
@@ -328,9 +329,9 @@ export function ChatThread({ messages, historyLoading, historyError, onRetryHist
       {historyError ? (
         <View style={styles.errorRow}>
           <Text style={[styles.errorText, { color: c.red }]}>{historyError.toUpperCase()}</Text>
-          <Pressable onPress={onRetryHistory} hitSlop={8}>
+          <Pressed onPress={onRetryHistory} hitSlop={8}>
             <Text style={[styles.retryLink, { color: c.accent }]}>RETRY</Text>
-          </Pressable>
+          </Pressed>
         </View>
       ) : null}
 
@@ -360,9 +361,9 @@ function ChatEntryRow({ entry, onRetry }: { entry: ChatEntry; onRetry: () => voi
     return (
       <View style={styles.errorRow}>
         <Text style={[styles.errorText, { color: c.red }]}>{entry.message.toUpperCase()}</Text>
-        <Pressable onPress={onRetry} hitSlop={8}>
+        <Pressed onPress={onRetry} hitSlop={8}>
           <Text style={[styles.retryLink, { color: c.accent }]}>RETRY</Text>
-        </Pressable>
+        </Pressed>
       </View>
     );
   }

@@ -1,4 +1,5 @@
-import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCallback, useState } from "react";
+import { Platform, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { BandMessage } from "../components/body/BandMessage";
 import { SleepBand } from "../components/body/SleepBand";
@@ -69,13 +70,26 @@ function toWorkoutDetailItem(w: LatestWorkout): DetailItem {
  */
 export function BodyScreen() {
   const { c, t } = useTheme();
-  const { data: health } = useHealthToday();
+  const { data: health, refetch: refetchHealth } = useHealthToday();
   const sleep = useSleepDetail();
   const bodyHistory = useBodyHistory();
   const { openDetail } = useNav();
 
   const now = new Date();
   const workouts = useWorkouts(daysSinceMonday(now) + 1); // Monday…today, oldest first
+
+  // Pull-to-refresh: every hook this screen reads exposes a refetch. None of
+  // them expose a distinct "refreshing" flag, so this screen tracks its own
+  // (see HomeScreen's refreshAll for the same note).
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshAll = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([refetchHealth(), sleep.refetch(), bodyHistory.refetch(), workouts.refetch()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetchHealth, sleep.refetch, bodyHistory.refetch, workouts.refetch]);
 
   const recoveryScore = health?.recoveryScore ?? recoveryFallback.score;
   const hrv = health?.hrv != null ? Math.round(health.hrv) : hrvMock.fallback;
@@ -109,7 +123,11 @@ export function BodyScreen() {
   const weekSessions = countWeekSessions(workouts.week);
 
   return (
-    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl tintColor={c.ink50} refreshing={refreshing} onRefresh={() => void refreshAll()} />}
+    >
       <ScreenHeader />
 
       <FadeUp index={0}>

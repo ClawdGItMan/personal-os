@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import type { LedgerState } from "../components/spec/LedgerRow";
 import { extractDueTime12h, focusData, formatEventTime12h } from "../data/focus";
@@ -37,6 +37,11 @@ export type UseQueueRowsResult = {
   journalOpen: boolean;
   /** Insert a new journal entry — passed through to JournalField's onSubmit. */
   addJournalEntry: (text: string) => Promise<boolean>;
+  /** Refetches every source this hook reads (calendar, tasks, habits,
+   * journal) — all four are fetched regardless of `mode` (hooks can't be
+   * called conditionally), so pull-to-refresh on either screen that uses
+   * this hook refreshes the full set in parallel. */
+  refetch: () => Promise<void>;
 };
 
 function isSameLocalDay(a: Date, b: Date): boolean {
@@ -198,6 +203,10 @@ export function useQueueRows(mode: QueueRowsMode = "queue"): UseQueueRowsResult 
     mode === "today-all" ? calendar.loading || tasks.loading : calendar.loading || tasks.loading || habits.loading || journal.loading;
   const queueLeft = queueRows.filter((r) => r.state === "up").length;
 
+  const refetch = useCallback(async () => {
+    await Promise.all([calendar.refetch(), tasks.refetch(), habits.refetch(), journal.refetch()]);
+  }, [calendar, tasks, habits, journal]);
+
   return {
     nowMs,
     queueRows,
@@ -205,5 +214,6 @@ export function useQueueRows(mode: QueueRowsMode = "queue"): UseQueueRowsResult 
     queueLeft,
     journalOpen,
     addJournalEntry: journal.addEntry,
+    refetch,
   };
 }

@@ -13,6 +13,7 @@ import { useFonts } from "expo-font";
 import { StatusBar } from "expo-status-bar";
 import type { ReactNode } from "react";
 import { Platform, StyleSheet, View } from "react-native";
+import Animated, { FadeIn, useReducedMotion } from "react-native-reanimated";
 
 import { SessionProvider, useSession } from "./src/auth/SessionProvider";
 import { TabBar } from "./src/components/spec/TabBar";
@@ -50,13 +51,31 @@ function ThemedFill() {
   return <View style={[styles.fill, { backgroundColor: c.bg }]} />;
 }
 
-/** Renders the active tab's screen. */
+const TAB_FADE_MS = 180;
+
+/**
+ * Renders the active tab's screen. Task C1: keyed by `tab` inside a
+ * Reanimated `Animated.View` so switching tabs remounts this node and its
+ * `entering` FadeIn plays a 180ms cross-fade — opacity-only (no transform),
+ * so it never shifts the layout of the ScrollView underneath or the TabBar
+ * sibling. Honors reduced motion by skipping the entrance animation
+ * entirely (an unanimated `entering={undefined}` swap, same instant-cut
+ * fallback FadeUp.tsx uses).
+ */
 function ActiveScreen() {
   const { tab } = useNav();
-  if (tab === "body") return <BodyScreen />;
-  if (tab === "money") return <MoneyScreen />;
-  if (tab === "focus") return <FocusScreen />;
-  return <HomeScreen />;
+  const reduceMotion = useReducedMotion();
+  const Screen = tab === "body" ? BodyScreen : tab === "money" ? MoneyScreen : tab === "focus" ? FocusScreen : HomeScreen;
+
+  return (
+    <Animated.View
+      key={tab}
+      style={styles.fill}
+      entering={reduceMotion ? undefined : FadeIn.duration(TAB_FADE_MS)}
+    >
+      <Screen />
+    </Animated.View>
+  );
 }
 
 /**

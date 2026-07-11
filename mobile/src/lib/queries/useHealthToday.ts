@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { supabase } from "../supabase";
 
@@ -30,6 +30,7 @@ export type UseHealthToday = {
   data: HealthToday | null;
   loading: boolean;
   error: string | null;
+  refetch: () => Promise<void>;
 };
 
 /**
@@ -38,49 +39,45 @@ export type UseHealthToday = {
  * Returns `{ data: null }` (not an error) when the user has no snapshots yet.
  */
 export function useHealthToday(): UseHealthToday {
-  const [state, setState] = useState<UseHealthToday>({
-    data: null,
-    loading: true,
-    error: null,
-  });
+  const [data, setData] = useState<HealthToday | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
-
-    void supabase
+  const refetch = useCallback(async () => {
+    setError(null);
+    const { data: row, error: err } = await supabase
       .from("health_snapshots")
       .select("date,recovery_score,hrv,rhr,sleep_hours,sleep_score,strain,source")
       .order("date", { ascending: false })
       .limit(1)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (!active) return;
-        if (error) {
-          setState({ data: null, loading: false, error: error.message });
-          return;
-        }
-        setState({
-          data: data
-            ? {
-                date: data.date,
-                recoveryScore: data.recovery_score,
-                hrv: data.hrv,
-                rhr: data.rhr,
-                sleepHours: data.sleep_hours,
-                sleepScore: data.sleep_score,
-                strain: data.strain,
-                source: data.source,
-              }
-            : null,
-          loading: false,
-          error: null,
-        });
-      });
+      .maybeSingle();
 
-    return () => {
-      active = false;
-    };
+    if (err) {
+      setData(null);
+      setLoading(false);
+      setError(err.message);
+      return;
+    }
+    setData(
+      row
+        ? {
+            date: row.date,
+            recoveryScore: row.recovery_score,
+            hrv: row.hrv,
+            rhr: row.rhr,
+            sleepHours: row.sleep_hours,
+            sleepScore: row.sleep_score,
+            strain: row.strain,
+            source: row.source,
+          }
+        : null,
+    );
+    setLoading(false);
   }, []);
 
-  return state;
+  useEffect(() => {
+    void refetch();
+  }, [refetch]);
+
+  return { data, loading, error, refetch };
 }

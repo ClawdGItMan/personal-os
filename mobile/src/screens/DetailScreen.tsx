@@ -9,6 +9,7 @@ import { DetailFactsRow } from "../components/detail/DetailFactsRow";
 import type { Fact } from "../components/detail/DetailFactsRow";
 import { DetailHeader } from "../components/detail/DetailHeader";
 import { capitalize, formatDurationHM, formatRelativeDate, titleCaseFromSnake } from "../components/detail/detailFormat";
+import { fireSuccessHaptic } from "../components/spec/Pressed";
 import { time12 } from "../lib/format";
 import { useFocusSessions, useTasks } from "../lib/queries";
 import { FadeUp } from "../motion/FadeUp";
@@ -237,6 +238,7 @@ export function DetailScreen({ item }: { item: DetailItem }) {
         setActionError(after);
         return;
       }
+      fireSuccessHaptic();
       close();
     },
     [close],

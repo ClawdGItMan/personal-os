@@ -1,6 +1,7 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, TextInput, View } from "react-native";
 import type { KeyboardTypeOptions } from "react-native";
 
+import { Pressed } from "../spec/Pressed";
 import { useTheme } from "../../theme/ThemeContext";
 import { fonts } from "../../theme/typeRoles";
 
@@ -76,7 +77,7 @@ export function SegmentedToggle<T extends string>({ options, value, onChange }: 
       {options.map((opt) => {
         const active = opt.value === value;
         return (
-          <Pressable
+          <Pressed
             key={opt.value}
             onPress={() => onChange(opt.value)}
             style={[
@@ -88,7 +89,7 @@ export function SegmentedToggle<T extends string>({ options, value, onChange }: 
             ]}
           >
             <Text style={[styles.segmentLabel, { color: active ? c.accent : c.ink50 }]}>{opt.label}</Text>
-          </Pressable>
+          </Pressed>
         );
       })}
     </View>
@@ -106,13 +107,18 @@ type SheetPrimaryButtonProps = {
 export function SheetPrimaryButton({ label, onPress, disabled, loading }: SheetPrimaryButtonProps) {
   const { c } = useTheme();
   return (
-    <Pressable
+    <Pressed
+      // Every SheetPrimaryButton call site is a money save (add/edit account,
+      // add transaction, set budget) — its real feedback is the success buzz
+      // the caller fires from its own try/await success branch, not a
+      // pressIn tick.
+      haptic="success"
       style={[styles.button, { backgroundColor: c.accent }, (disabled || loading) && styles.buttonDisabled]}
       onPress={onPress}
       disabled={disabled || loading}
     >
       {loading ? <ActivityIndicator color={c.onAccent} size="small" /> : <Text style={[styles.buttonLabel, { color: c.onAccent }]}>{label}</Text>}
-    </Pressable>
+    </Pressed>
   );
 }
 

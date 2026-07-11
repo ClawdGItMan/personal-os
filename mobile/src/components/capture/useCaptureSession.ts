@@ -11,6 +11,7 @@ import {
   type ChatMessageInput,
 } from "../../lib/assistant/api";
 import { supabase } from "../../lib/supabase";
+import { fireSuccessHaptic } from "../spec/Pressed";
 
 /**
  * Capture's live agent session (task B7). Session-scoped only — the server
@@ -237,6 +238,7 @@ export function useCaptureSession(): UseCaptureSessionResult {
             confirmation: { moduleLabel, summary: result.summary, undoRef, undone: false },
           },
         ]);
+        fireSuccessHaptic();
         return;
       }
 

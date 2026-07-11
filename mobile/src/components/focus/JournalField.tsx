@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import type { TextInput as RNTextInput } from "react-native";
-import { AccessibilityInfo, Animated, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { AccessibilityInfo, Animated, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { useTheme } from "../../theme/ThemeContext";
 import { layout } from "../../theme/layout";
 import { fonts } from "../../theme/typeRoles";
+import { Pressed } from "../spec/Pressed";
 
 type JournalFieldProps = {
   /** Reflective prompt (e.g. "What pulled your focus today?"). */
@@ -122,7 +123,7 @@ export function JournalField({ prompt, placeholder, onSubmit }: JournalFieldProp
           />
         </View>
       ) : (
-        <Pressable
+        <Pressed
           style={[styles.write, { borderColor: c.hairSection }]}
           onPress={open}
           disabled={!onSubmit}
@@ -130,7 +131,7 @@ export function JournalField({ prompt, placeholder, onSubmit }: JournalFieldProp
         >
           <BlinkingCaret color={c.accent} />
           <Text style={[styles.placeholder, { color: c.ink50 }]}>{placeholder}</Text>
-        </Pressable>
+        </Pressed>
       )}
     </View>
   );

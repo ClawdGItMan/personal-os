@@ -1,7 +1,8 @@
 import * as Linking from "expo-linking";
 import { useState } from "react";
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Platform, StyleSheet, Text, TextInput, View } from "react-native";
 
+import { Pressed } from "../components/spec/Pressed";
 import { supabase } from "../lib/supabase";
 import { useTheme } from "../theme/ThemeContext";
 import { fonts } from "../theme/typeRoles";
@@ -111,7 +112,7 @@ export function LoginScreen() {
 
             {error ? <Text style={[styles.error, { color: c.red }]}>{error}</Text> : null}
 
-            <Pressable
+            <Pressed
               style={[
                 styles.button,
                 { backgroundColor: c.accent },
@@ -125,11 +126,11 @@ export function LoginScreen() {
               ) : (
                 <Text style={[styles.buttonLabel, { color: c.onAccent }]}>Verify code</Text>
               )}
-            </Pressable>
+            </Pressed>
 
-            <Pressable onPress={() => { setStatus("idle"); setCode(""); setError(""); }} hitSlop={8}>
+            <Pressed onPress={() => { setStatus("idle"); setCode(""); setError(""); }} hitSlop={8}>
               <Text style={[styles.link, { color: c.accent }]}>Use a different email</Text>
-            </Pressable>
+            </Pressed>
           </View>
         ) : (
           <View style={styles.block}>
@@ -155,7 +156,7 @@ export function LoginScreen() {
 
             {status === "error" ? <Text style={[styles.error, { color: c.red }]}>{error}</Text> : null}
 
-            <Pressable
+            <Pressed
               style={[
                 styles.button,
                 { backgroundColor: c.accent },
@@ -169,15 +170,15 @@ export function LoginScreen() {
               ) : (
                 <Text style={[styles.buttonLabel, { color: c.onAccent }]}>Send sign-in code</Text>
               )}
-            </Pressable>
+            </Pressed>
 
-            <Pressable
+            <Pressed
               onPress={() => { if (valid) { setStatus("sent"); setError(""); } }}
               disabled={!valid}
               hitSlop={8}
             >
               <Text style={[styles.link, { color: valid ? c.accent : c.ink38 }]}>I already have a code</Text>
-            </Pressable>
+            </Pressed>
           </View>
         )}
       </View>

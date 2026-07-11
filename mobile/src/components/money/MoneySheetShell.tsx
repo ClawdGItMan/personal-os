@@ -14,6 +14,7 @@ import {
 } from "react-native";
 
 import { CloseIcon } from "../icons";
+import { Pressed } from "../spec/Pressed";
 import { useTheme } from "../../theme/ThemeContext";
 import { fonts } from "../../theme/typeRoles";
 
@@ -63,6 +64,9 @@ export function MoneySheetShell({ title, onClose, children }: MoneySheetShellPro
   return (
     <Modal visible transparent animationType="none" onRequestClose={onClose}>
       <View style={styles.host}>
+        {/* Full-bleed dismiss scrim — no visible surface to give press
+            physics to, and a haptic tick on "tap outside to close" would
+            read as noise, so this stays a plain Pressable. */}
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Dismiss">
           <View style={[StyleSheet.absoluteFill, { backgroundColor: c.scrim }]} />
         </Pressable>
@@ -81,9 +85,9 @@ export function MoneySheetShell({ title, onClose, children }: MoneySheetShellPro
               <View style={[styles.dot, { backgroundColor: c.accent }]} />
               <Text style={[styles.headerLabel, { color: c.ink72 }]}>{title}</Text>
             </View>
-            <Pressable style={[styles.close, { borderColor: c.hairSection }]} onPress={onClose} hitSlop={8}>
+            <Pressed style={[styles.close, { borderColor: c.hairSection }]} onPress={onClose} hitSlop={8}>
               <CloseIcon size={12} color={c.ink50} strokeWidth={2} />
-            </Pressable>
+            </Pressed>
           </View>
 
           <KeyboardAvoidingView

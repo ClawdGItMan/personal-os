@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import type { FinanceAccountType, MoneyAccount, MoneyGroup } from "../../lib/queries";
+import { fireSuccessHaptic, Pressed } from "../spec/Pressed";
 import { useTheme } from "../../theme/ThemeContext";
 import { fonts } from "../../theme/typeRoles";
 import { formatPlainMagnitude } from "./format";
@@ -91,6 +92,7 @@ export function AccountEditorSheet({
     const value = sign === "debt" ? -Math.abs(parsedMagnitude) : Math.abs(parsedMagnitude);
     try {
       await onAddAccount(name.trim(), type, value);
+      fireSuccessHaptic();
       resetAddForm();
       setAdding(false);
     } catch (err) {
@@ -122,7 +124,7 @@ export function AccountEditorSheet({
         {addError ? <FormError>{addError}</FormError> : null}
         <SheetPrimaryButton label="Add account" onPress={submitAdd} disabled={!addValid} loading={saving} />
         {accounts.length > 0 ? (
-          <Pressable
+          <Pressed
             onPress={() => {
               resetAddForm();
               setAdding(false);
@@ -131,7 +133,7 @@ export function AccountEditorSheet({
             style={styles.cancelLink}
           >
             <Text style={[styles.cancelLinkText, { color: c.ink50 }]}>Back to accounts</Text>
-          </Pressable>
+          </Pressed>
         ) : null}
       </MoneySheetShell>
     );
@@ -156,11 +158,12 @@ export function AccountEditorSheet({
                     onCancel={() => setEditingId(null)}
                     onSave={async (value) => {
                       await onUpdateValue(account.id, value);
+                      fireSuccessHaptic();
                       setEditingId(null);
                     }}
                   />
                 ) : (
-                  <Pressable
+                  <Pressed
                     key={account.id}
                     onPress={() => setEditingId(account.id)}
                     style={[styles.accountRow, { borderTopColor: c.hairRow }]}
@@ -173,7 +176,7 @@ export function AccountEditorSheet({
                       {account.currentValue < 0 ? "-" : ""}
                       {formatPlainMagnitude(account.currentValue)}
                     </Text>
-                  </Pressable>
+                  </Pressed>
                 ),
               )}
             </View>
@@ -181,7 +184,7 @@ export function AccountEditorSheet({
         })
       )}
 
-      <Pressable
+      <Pressed
         onPress={() => {
           resetAddForm();
           setAdding(true);
@@ -189,7 +192,7 @@ export function AccountEditorSheet({
         style={[styles.addAccountRow, { borderColor: c.hairSection }]}
       >
         <Text style={[styles.addAccountLabel, { color: c.accent }]}>+ Add account</Text>
-      </Pressable>
+      </Pressed>
     </MoneySheetShell>
   );
 }
@@ -243,9 +246,9 @@ function AccountEditRow({ account, onCancel, onSave }: AccountEditRowProps) {
         </View>
       ) : null}
       <View style={styles.editRowActions}>
-        <Pressable onPress={onCancel} hitSlop={8} style={styles.cancelButton}>
+        <Pressed onPress={onCancel} hitSlop={8} style={styles.cancelButton}>
           <Text style={[styles.cancelButtonText, { color: c.ink50 }]}>Cancel</Text>
-        </Pressable>
+        </Pressed>
         <View style={styles.saveButtonWrap}>
           <SheetPrimaryButton label="Save" onPress={save} disabled={!valid} loading={saving} />
         </View>

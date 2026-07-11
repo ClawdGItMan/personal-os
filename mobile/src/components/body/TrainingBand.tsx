@@ -1,8 +1,9 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { useTheme } from "../../theme/ThemeContext";
 import { fonts } from "../../theme/typeRoles";
 import { Band } from "../spec/Band";
+import { Pressed } from "../spec/Pressed";
 import { BandMessage } from "./BandMessage";
 
 type TrainingBandProps = {
@@ -25,14 +26,14 @@ export function TrainingBand({ time, title, sub, onPress, index = 0 }: TrainingB
   const { c, t, mode } = useTheme();
   return (
     <Band variant="accent" index={index}>
-      <Pressable onPress={onPress} disabled={!onPress}>
+      <Pressed onPress={onPress} disabled={!onPress}>
         <View style={styles.row}>
           <Text style={t.bandLabel}>TRAINING · DONE</Text>
           <Text style={[styles.time, { color: mode === "light" ? c.ink : c.accent }]}>{time}</Text>
         </View>
         <Text style={[t.bandTitle, styles.title]}>{title}</Text>
         <Text style={[t.bandSub, styles.sub]}>{sub}</Text>
-      </Pressable>
+      </Pressed>
     </Band>
   );
 }

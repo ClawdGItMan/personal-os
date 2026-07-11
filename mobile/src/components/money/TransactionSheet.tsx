@@ -2,6 +2,7 @@ import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import type { MoneyTransaction } from "../../lib/queries";
+import { fireSuccessHaptic } from "../spec/Pressed";
 import { useTheme } from "../../theme/ThemeContext";
 import { fonts } from "../../theme/typeRoles";
 import { fullDateTimeLabel, formatPlainSigned } from "./format";
@@ -70,6 +71,7 @@ export function TransactionSheet({ transaction, onClose, onAdd }: TransactionShe
     const amount = direction === "expense" ? -Math.abs(parsedMagnitude) : Math.abs(parsedMagnitude);
     try {
       await onAdd({ name: name.trim(), amount, category: category.trim() });
+      fireSuccessHaptic();
       onClose();
     } catch (err) {
       setAddError(err instanceof Error ? err.message : "Failed to add transaction");

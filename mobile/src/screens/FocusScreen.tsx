@@ -1,4 +1,5 @@
-import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCallback, useState } from "react";
+import { Platform, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { JournalField } from "../components/focus/JournalField";
 import { LiveTimerBand } from "../components/focus/LiveTimerBand";
@@ -34,14 +35,32 @@ const DEFAULT_SESSION_MINUTES = 50;
  */
 export function FocusScreen() {
   const { c, t } = useTheme();
-  const { nowMs, queueRows, queueLoading, queueLeft, journalOpen, addJournalEntry } = useQueueRows();
+  const { nowMs, queueRows, queueLoading, queueLeft, journalOpen, addJournalEntry, refetch: refetchQueue } =
+    useQueueRows();
   const focus = useFocusSessions();
 
   const now = new Date();
   const weekCells = buildWeekCells(focus.weekMinutes, now);
 
+  // Pull-to-refresh: every hook this screen reads exposes a refetch. Neither
+  // exposes a distinct "refreshing" flag, so this screen tracks its own (see
+  // HomeScreen's refreshAll for the same note).
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshAll = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([refetchQueue(), focus.refetch()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetchQueue, focus.refetch]);
+
   return (
-    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl tintColor={c.ink50} refreshing={refreshing} onRefresh={() => void refreshAll()} />}
+    >
       <ScreenHeader />
 
       <FadeUp index={0}>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import Animated from "react-native-reanimated";
 
 import { focusElapsedSec, focusEndsAtMs, focusIsOvertime, focusPct, formatElapsed } from "../../data/focus";
@@ -11,6 +11,7 @@ import { useTheme } from "../../theme/ThemeContext";
 import { layout } from "../../theme/layout";
 import { fonts } from "../../theme/typeRoles";
 import { Band } from "../spec/Band";
+import { Pressed } from "../spec/Pressed";
 import { Skeleton } from "../spec/Skeleton";
 
 /** How long the first tap's "TAP AGAIN TO END" confirm affordance stays up. */
@@ -102,7 +103,7 @@ export function LiveTimerBand({ nowMs, active, loading, onStart, onEnd, index = 
 
   return (
     <Band variant="accent" index={index}>
-      <Pressable
+      <Pressed
         onPress={handlePress}
         accessibilityRole="button"
         accessibilityLabel={active ? "End focus session" : "Start deep work"}
@@ -140,7 +141,7 @@ export function LiveTimerBand({ nowMs, active, loading, onStart, onEnd, index = 
             <Text style={[t.bandSub, styles.startSub]}>50 MIN · TAP TO BEGIN</Text>
           </>
         )}
-      </Pressable>
+      </Pressed>
     </Band>
   );
 }

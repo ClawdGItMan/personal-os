@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { CheckIcon } from "../icons";
+import { Pressed } from "../spec/Pressed";
 import { useTheme } from "../../theme/ThemeContext";
 import { layout } from "../../theme/layout";
 import { fonts } from "../../theme/typeRoles";
@@ -64,20 +65,24 @@ export function TopMove({ tag, title, evidence, status, summary, errorMessage, o
       ) : null}
 
       <View style={styles.actions}>
-        <Pressable
+        <Pressed
           onPress={onApply}
           disabled={pending}
+          // APPLY triggers an act() write — its real feedback is the success
+          // buzz AssistantSheet fires on that call's resolution (see
+          // fireSuccessHaptic in handleApplyTopMove), not a pressIn tick.
+          haptic="success"
           style={[styles.pill, { backgroundColor: c.accent }, pending && styles.pillDisabled]}
         >
           <Text style={[styles.pillLabel, { color: c.onAccent }]}>{pending ? "APPLYING…" : "APPLY"}</Text>
-        </Pressable>
-        <Pressable
+        </Pressed>
+        <Pressed
           onPress={onLater}
           disabled={pending}
           style={[styles.pill, styles.pillOutline, { borderColor: c.hairSection }, pending && styles.pillDisabled]}
         >
           <Text style={[styles.pillLabel, { color: c.ink64 }]}>LATER</Text>
-        </Pressable>
+        </Pressed>
       </View>
     </View>
   );

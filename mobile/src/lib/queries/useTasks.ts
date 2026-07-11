@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
+import { fireSuccessHaptic } from "../../components/spec/Pressed";
 import { supabase } from "../supabase";
 import type { Database } from "../database.types";
 
@@ -128,7 +129,9 @@ export function useTasks(): UseTasksResult {
       // Revert on failure.
       setRows((prev) => prev.map((t) => (t.id === id ? { ...t, done: !next } : t)));
       setError(err.message);
+      return;
     }
+    fireSuccessHaptic();
   }, []);
 
   const snoozeTask = useCallback(

@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { useTheme } from "../../theme/ThemeContext";
 import { fonts } from "../../theme/typeRoles";
+import { Pressed } from "../spec/Pressed";
 
 /**
  * System notice (spec §5.6 states: AssistantNotConfigured / offline /
@@ -26,9 +27,9 @@ export function SystemNotice({ tone, title, message, onRetry }: SystemNoticeProp
       {title ? <Text style={[styles.title, { color: tint }]}>{title}</Text> : null}
       <Text style={[styles.message, { color: c.ink72 }]}>{message}</Text>
       {onRetry ? (
-        <Pressable style={[styles.chip, { borderColor: c.hairSection }]} onPress={onRetry} hitSlop={6}>
+        <Pressed style={[styles.chip, { borderColor: c.hairSection }]} onPress={onRetry} hitSlop={6}>
           <Text style={[styles.chipLabel, { color: c.ink50 }]}>Retry</Text>
-        </Pressable>
+        </Pressed>
       ) : null}
     </View>
   );

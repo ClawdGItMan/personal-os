@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text } from "react-native";
 
 import type { MoneyTransaction } from "../../lib/queries";
+import { Pressed } from "../spec/Pressed";
 import { layout } from "../../theme/layout";
 import { useTheme } from "../../theme/ThemeContext";
 import { fonts } from "../../theme/typeRoles";
@@ -24,13 +25,13 @@ export function MoneyLedgerRow({ transaction, onPress }: MoneyLedgerRowProps) {
   const { label, muted } = ledgerDateLabel(transaction.occurredAt);
 
   return (
-    <Pressable onPress={onPress} style={[styles.row, { borderTopColor: c.hairRow }]}>
+    <Pressed onPress={onPress} style={[styles.row, { borderTopColor: c.hairRow }]}>
       <Text style={[t.ledgerTime, styles.time, { color: muted ? c.ink34 : c.ink50 }]}>{label}</Text>
       <Text numberOfLines={1} style={[t.ledgerTitle, styles.title]}>
         {transaction.name}
       </Text>
       <Text style={[styles.amount, { color: amountColor }]}>{formatPlainSigned(transaction.amount)}</Text>
-    </Pressable>
+    </Pressed>
   );
 }
 

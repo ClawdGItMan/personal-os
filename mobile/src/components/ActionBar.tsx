@@ -1,5 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
+import { Pressed } from "./spec/Pressed";
 import { useTheme } from "../theme/ThemeContext";
 import { fonts } from "../theme/typeRoles";
 
@@ -18,10 +19,14 @@ export function ActionBar({ actions, pending = false }: { actions: ActionBarItem
   return (
     <View style={styles.row}>
       {actions.map((action) => (
-        <Pressable
+        <Pressed
           key={action.label}
           onPress={action.onPress}
           disabled={pending}
+          // Every ActionBar action is a write that funnels through
+          // DetailScreen's run() — its real feedback is the success buzz
+          // run() fires on completion, not a pressIn tick.
+          haptic="success"
           style={[
             styles.pill,
             action.primary ? { backgroundColor: c.accent, borderColor: c.accent } : { borderColor: c.hairSection },
@@ -29,7 +34,7 @@ export function ActionBar({ actions, pending = false }: { actions: ActionBarItem
           ]}
         >
           <Text style={[styles.label, { color: action.primary ? c.onAccent : c.ink72 }]}>{action.label}</Text>
-        </Pressable>
+        </Pressed>
       ))}
     </View>
   );

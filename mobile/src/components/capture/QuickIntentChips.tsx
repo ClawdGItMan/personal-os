@@ -1,5 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
+import { Pressed } from "../spec/Pressed";
 import { useTheme } from "../../theme/ThemeContext";
 import { fonts } from "../../theme/typeRoles";
 
@@ -20,7 +21,7 @@ export function QuickIntentChips({ intents, onIntent, disabled = false }: QuickI
   return (
     <View style={styles.row}>
       {intents.map((intent) => (
-        <Pressable
+        <Pressed
           key={intent}
           style={[styles.chip, { borderColor: c.hairRow }, disabled && styles.chipDisabled]}
           onPress={() => onIntent?.(intent)}
@@ -28,7 +29,7 @@ export function QuickIntentChips({ intents, onIntent, disabled = false }: QuickI
           hitSlop={4}
         >
           <Text style={[styles.label, { color: c.ink38 }]}>{intent}</Text>
-        </Pressable>
+        </Pressed>
       ))}
     </View>
   );

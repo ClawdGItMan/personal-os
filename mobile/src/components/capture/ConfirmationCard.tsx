@@ -1,9 +1,10 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import type { CaptureConfirmation } from "./useCaptureSession";
 import { useTheme } from "../../theme/ThemeContext";
 import { fonts } from "../../theme/typeRoles";
 import { CheckIcon, UndoIcon } from "../icons";
+import { Pressed } from "../spec/Pressed";
 
 /**
  * Confirmation card (spec §4 · §5.6) — the agent's real write-tool result: a
@@ -38,7 +39,7 @@ export function ConfirmationCard({ confirmation, onUndo }: ConfirmationCardProps
 
       {undoRef ? (
         <View style={styles.chips}>
-          <Pressable
+          <Pressed
             style={[styles.chip, { borderColor: c.hairSection }, undone && styles.chipDone]}
             onPress={undone ? undefined : onUndo}
             disabled={undone}
@@ -46,7 +47,7 @@ export function ConfirmationCard({ confirmation, onUndo }: ConfirmationCardProps
           >
             <UndoIcon size={11} color={c.ink50} />
             <Text style={[styles.chipLabel, { color: c.ink50 }]}>{undone ? "Undone" : "Undo"}</Text>
-          </Pressable>
+          </Pressed>
         </View>
       ) : null}
     </View>

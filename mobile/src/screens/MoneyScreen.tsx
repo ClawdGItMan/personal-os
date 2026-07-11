@@ -1,6 +1,6 @@
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Platform, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated from "react-native-reanimated";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { AccountEditorSheet } from "../components/money/AccountEditorSheet";
 import { BandHeader } from "../components/money/BandHeader";
@@ -12,6 +12,7 @@ import { AccountsSkeleton, BurnSkeleton, LedgerSkeleton, NetWorthSkeleton } from
 import { TransactionSheet } from "../components/money/TransactionSheet";
 import { Band } from "../components/spec/Band";
 import { Eyebrow } from "../components/spec/Eyebrow";
+import { fireSuccessHaptic, Pressed } from "../components/spec/Pressed";
 import { ScreenHeader } from "../components/spec/ScreenHeader";
 import { Sparkline } from "../components/spec/Sparkline";
 import { StatGrid } from "../components/spec/StatGrid";
@@ -110,6 +111,20 @@ export function MoneyScreen() {
   const [budgetInput, setBudgetInput] = useState("");
   const [savingBudget, setSavingBudget] = useState(false);
   const [budgetError, setBudgetError] = useState<string | null>(null);
+  // Pull-to-refresh: `loading` above is the initial-load flag, not a
+  // distinct "refreshing" one (useMoney's refetch never sets it back to
+  // true), so this screen tracks its own — otherwise RefreshControl's
+  // spinner would retract the instant `onRefresh` fires instead of holding
+  // through the fetch.
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetch]);
 
   const over = budgetAmount != null && monthBurn > budgetAmount;
   const burnPct = budgetAmount ? Math.min(100, (monthBurn / budgetAmount) * 100) : 0;
@@ -150,6 +165,7 @@ export function MoneyScreen() {
     // row (that row is READ-path only; see useMoney's write contract note).
     try {
       await setBudget(parsed);
+      fireSuccessHaptic();
       setBudgetEditing(false);
     } catch (err) {
       setBudgetError(err instanceof Error ? err.message : "Couldn't save budget");
@@ -162,7 +178,11 @@ export function MoneyScreen() {
 
   return (
     <View style={styles.flex}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl tintColor={c.ink50} refreshing={refreshing} onRefresh={() => void handleRefresh()} />}
+      >
         <ScreenHeader />
 
         <View style={styles.eyebrowWrap}>
@@ -182,14 +202,14 @@ export function MoneyScreen() {
             </>
           ) : error ? (
             <Band variant="plain" index={0}>
-              <Pressable
+              <Pressed
                 onPress={() => {
                   void refetch();
                 }}
                 style={styles.retryRow}
               >
                 <Text style={[styles.retryText, { color: c.red }]}>COULDN&apos;T LOAD — RETRY</Text>
-              </Pressable>
+              </Pressed>
             </Band>
           ) : (
             <>
@@ -213,17 +233,17 @@ export function MoneyScreen() {
               </Band>
 
               {accounts.length === 0 ? (
-                <Pressable onPress={() => setSheet({ kind: "accounts", initialAdding: true })}>
+                <Pressed onPress={() => setSheet({ kind: "accounts", initialAdding: true })}>
                   <Band variant="plain" index={1}>
                     <View style={styles.emptyCta}>
                       <Text style={[styles.emptyCtaText, { color: c.accent }]}>+ Add your first account</Text>
                     </View>
                   </Band>
-                </Pressable>
+                </Pressed>
               ) : (
-                <Pressable onPress={() => setSheet({ kind: "accounts", initialAdding: false })}>
+                <Pressed onPress={() => setSheet({ kind: "accounts", initialAdding: false })}>
                   <StatGrid items={accountItems} index={1} />
-                </Pressable>
+                </Pressed>
               )}
 
               <Band variant="plain" index={2}>
@@ -249,7 +269,7 @@ export function MoneyScreen() {
                       </View>
                     ) : null}
                     <View style={styles.budgetEditActions}>
-                      <Pressable
+                      <Pressed
                         onPress={() => {
                           setBudgetError(null);
                           setBudgetEditing(false);
@@ -258,7 +278,7 @@ export function MoneyScreen() {
                         style={styles.budgetCancel}
                       >
                         <Text style={[styles.budgetCancelText, { color: c.ink50 }]}>Cancel</Text>
-                      </Pressable>
+                      </Pressed>
                       <View style={styles.budgetSaveWrap}>
                         <SheetPrimaryButton
                           label="Save"
@@ -270,12 +290,12 @@ export function MoneyScreen() {
                     </View>
                   </View>
                 ) : budgetAmount == null ? (
-                  <Pressable onPress={startEditBudget}>
+                  <Pressed onPress={startEditBudget}>
                     <BandHeader left={`${monthAbbrev()} BURN`} right="NO BUDGET" />
                     <Text style={[styles.burnCtaText, { color: c.accent }]}>Set a monthly budget</Text>
-                  </Pressable>
+                  </Pressed>
                 ) : (
-                  <Pressable onPress={startEditBudget}>
+                  <Pressed onPress={startEditBudget}>
                     <BandHeader
                       left={`${monthAbbrev()} BURN`}
                       right={over ? "OVER BUDGET" : "ON PACE"}
@@ -295,7 +315,7 @@ export function MoneyScreen() {
                         style={[styles.barFill, { backgroundColor: over ? c.red : c.accent }, burnFill]}
                       />
                     </View>
-                  </Pressable>
+                  </Pressed>
                 )}
               </Band>
 

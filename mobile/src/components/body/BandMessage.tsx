@@ -1,5 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
+import { Pressed } from "../spec/Pressed";
 import { useTheme } from "../../theme/ThemeContext";
 
 type BandMessageProps =
@@ -27,9 +28,9 @@ export function BandMessage(props: BandMessageProps) {
   return (
     <View style={styles.errorRow}>
       <Text style={t.bandSub}>COULDN&apos;T LOAD</Text>
-      <Pressable onPress={props.onRetry} hitSlop={8}>
+      <Pressed onPress={props.onRetry} hitSlop={8}>
         <Text style={[t.bandSub, { color: c.accent }]}> — RETRY</Text>
-      </Pressable>
+      </Pressed>
     </View>
   );
 }

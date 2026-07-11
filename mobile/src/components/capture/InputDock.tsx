@@ -1,10 +1,11 @@
 import { useRef } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, TextInput, View } from "react-native";
 
 import { captureData } from "../../data/capture";
 import { useTheme } from "../../theme/ThemeContext";
 import { fonts } from "../../theme/typeRoles";
 import { MicIcon, SendIcon } from "../icons";
+import { Pressed } from "../spec/Pressed";
 import { QuickIntentChips } from "./QuickIntentChips";
 
 /**
@@ -62,16 +63,16 @@ export function InputDock({ value, onChangeText, onSend, disabled = false }: Inp
             </Text>
           ) : null}
         </View>
-        <Pressable onPress={() => inputRef.current?.focus()} hitSlop={8} style={styles.micBtn} disabled={disabled}>
+        <Pressed onPress={() => inputRef.current?.focus()} hitSlop={8} style={styles.micBtn} disabled={disabled}>
           <MicIcon size={20} color={c.ink50} strokeWidth={1.8} />
-        </Pressable>
-        <Pressable
+        </Pressed>
+        <Pressed
           style={[styles.send, { backgroundColor: c.accent }, (disabled || !value.trim()) && styles.sendDisabled]}
           onPress={submit}
           disabled={disabled || !value.trim()}
         >
           <SendIcon size={17} color={c.onAccent} strokeWidth={2.2} />
-        </Pressable>
+        </Pressed>
       </View>
     </View>
   );

@@ -11,6 +11,7 @@ import { SheetFadeUp } from "../components/assistant/SheetFadeUp";
 import { SuggestionChips } from "../components/assistant/SuggestionChips";
 import { TopMove } from "../components/assistant/TopMove";
 import type { TopMoveStatus } from "../components/assistant/TopMove";
+import { fireSuccessHaptic, Pressed } from "../components/spec/Pressed";
 import { Skeleton } from "../components/spec/Skeleton";
 import { assistantConfig } from "../data/assistant";
 import type { SeeingItem } from "../data/assistant";
@@ -172,6 +173,7 @@ export function AssistantSheet() {
       if (!isMountedRef.current) return;
       setTopMoveSummary(result.summary);
       setTopMoveStatus("success");
+      fireSuccessHaptic();
       dismissTimerRef.current = setTimeout(() => close(), APPLY_SUCCESS_DISMISS_MS);
     } catch (err) {
       if (!isMountedRef.current) return;
@@ -191,6 +193,7 @@ export function AssistantSheet() {
           await act(item.tool, item.args ?? {}, actAbortRef.current?.signal);
           if (!isMountedRef.current) return;
           setRowStates((prev) => ({ ...prev, [index]: { status: "success" } }));
+          fireSuccessHaptic();
         } catch (err) {
           if (!isMountedRef.current) return;
           setRowStates((prev) => ({ ...prev, [index]: { status: "error", errorMessage: actErrorMessage(err) } }));
@@ -236,6 +239,9 @@ export function AssistantSheet() {
   return (
     <View style={StyleSheet.absoluteFill}>
       <Animated.View style={[StyleSheet.absoluteFill, scrimStyle, { backgroundColor: c.scrim }]}>
+        {/* Full-bleed dismiss scrim — no visible surface to give press
+            physics to, and a haptic tick on "tap outside to close" would
+            read as noise, so this stays a plain Pressable. */}
         <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Dismiss assistant" />
       </Animated.View>
 
@@ -254,9 +260,9 @@ export function AssistantSheet() {
               <AssistantHeader onClose={close} />
             </SheetFadeUp>
             {mode === "chat" ? (
-              <Pressable onPress={() => setMode("brief")} hitSlop={8} style={styles.backRow}>
+              <Pressed onPress={() => setMode("brief")} hitSlop={8} style={styles.backRow}>
                 <Text style={[styles.backLink, { color: c.accent }]}>← BRIEF</Text>
-              </Pressable>
+              </Pressed>
             ) : null}
           </View>
 
@@ -282,18 +288,18 @@ export function AssistantSheet() {
                   ) : briefState === "offline" ? (
                     <View>
                       <Text style={[styles.quietState, { color: c.ink50 }]}>YOU'RE OFFLINE</Text>
-                      <Pressable onPress={loadBrief} hitSlop={8} style={styles.retryRow}>
+                      <Pressed onPress={loadBrief} hitSlop={8} style={styles.retryRow}>
                         <Text style={[styles.retryLink, { color: c.accent }]}>RETRY</Text>
-                      </Pressable>
+                      </Pressed>
                     </View>
                   ) : briefState === "error" ? (
                     <View>
                       <Text style={[styles.errorState, { color: c.red }]}>
                         {(briefErrorMessage ?? "COULDN'T LOAD YOUR BRIEF").toUpperCase()}
                       </Text>
-                      <Pressable onPress={loadBrief} hitSlop={8} style={styles.retryRow}>
+                      <Pressed onPress={loadBrief} hitSlop={8} style={styles.retryRow}>
                         <Text style={[styles.retryLink, { color: c.accent }]}>RETRY</Text>
-                      </Pressable>
+                      </Pressed>
                     </View>
                   ) : (
                     <Briefing headline={envelope!.brief.headline} body={envelope!.brief.body} />

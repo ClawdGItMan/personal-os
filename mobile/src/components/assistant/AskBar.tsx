@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, TextInput, View } from "react-native";
 
 import { assistantConfig } from "../../data/assistant";
+import { Pressed } from "../spec/Pressed";
 import { useTheme } from "../../theme/ThemeContext";
 import { fonts } from "../../theme/typeRoles";
 import { IconSend, IconStop } from "./assistantIcons";
@@ -66,13 +67,13 @@ export function AskBar({ onSend, sending = false, onStop }: AskBarProps) {
           </Text>
         ) : null}
       </View>
-      <Pressable
+      <Pressed
         accessibilityLabel={sending ? "Stop" : "Send"}
         onPress={handlePressCircle}
         style={[styles.send, { backgroundColor: c.accent }]}
       >
         {sending ? <IconStop size={13} color={c.onAccent} /> : <IconSend size={15} color={c.onAccent} />}
-      </Pressable>
+      </Pressed>
     </View>
   );
 }

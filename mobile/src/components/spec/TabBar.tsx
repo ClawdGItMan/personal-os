@@ -1,11 +1,12 @@
 import type { ComponentType } from "react";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, StyleSheet, Text, View } from "react-native";
 
 import { useNav } from "../../navigation/NavContext";
 import type { TabKey } from "../../navigation/NavContext";
 import { useTheme } from "../../theme/ThemeContext";
 import { layout } from "../../theme/layout";
 import { IconBody, IconDollar, IconHome, IconLamp, IconPlus } from "./iconsSpec";
+import { Pressed } from "./Pressed";
 
 type IconComponent = ComponentType<{ size?: number; color: string; strokeWidth?: number }>;
 
@@ -23,11 +24,11 @@ function Tab({ id, label, Icon }: { id: TabKey; label: string; Icon: IconCompone
   const { tab, setTab } = useNav();
   const active = tab === id;
   return (
-    <Pressable style={styles.tab} onPress={() => setTab(id)}>
+    <Pressed style={styles.tab} onPress={() => setTab(id)}>
       <View style={[styles.tick, active && { backgroundColor: c.accent }]} />
       <Icon size={20} color={active ? c.ink : c.tabInactive} />
       <Text style={[t.tabLabel, active && { color: c.ink72 }]}>{label}</Text>
-    </Pressable>
+    </Pressed>
   );
 }
 
@@ -45,7 +46,7 @@ export function TabBar() {
         {LEFT.map((tab) => (
           <Tab key={tab.id} {...tab} />
         ))}
-        <Pressable
+        <Pressed
           accessibilityLabel="Quick capture"
           onPress={openCapture}
           style={[
@@ -54,7 +55,7 @@ export function TabBar() {
           ]}
         >
           <IconPlus size={20} color={c.ink} />
-        </Pressable>
+        </Pressed>
         {RIGHT.map((tab) => (
           <Tab key={tab.id} {...tab} />
         ))}

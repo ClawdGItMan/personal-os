@@ -1,5 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
+import { Pressed } from "../spec/Pressed";
 import { useTheme } from "../../theme/ThemeContext";
 import { fonts } from "../../theme/typeRoles";
 
@@ -29,9 +30,9 @@ export function BandHeader({ left, right, rightColor, onAdd }: BandHeaderProps) 
       <View style={styles.rightGroup}>
         <Text style={[t.bandSub, rightColor != null && { color: rightColor }]}>{right}</Text>
         {onAdd ? (
-          <Pressable accessibilityLabel="Add" onPress={onAdd} hitSlop={8} style={styles.addButton}>
+          <Pressed accessibilityLabel="Add" onPress={onAdd} hitSlop={8} style={styles.addButton}>
             <Text style={[styles.addGlyph, { color: c.ink50 }]}>+</Text>
-          </Pressable>
+          </Pressed>
         ) : null}
       </View>
     </View>

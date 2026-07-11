@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { Platform, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { LiveTimerBand } from "../components/focus/LiveTimerBand";
 import { Band } from "../components/spec/Band";
@@ -61,12 +61,37 @@ const DEFAULT_SESSION_MINUTES = 50;
 export function HomeScreen() {
   const { c, t } = useTheme();
 
-  const { data: health, loading: healthLoading } = useHealthToday();
-  const { data: habits, loading: habitsLoading } = useHomeHabits();
+  const { data: health, loading: healthLoading, refetch: refetchHealth } = useHealthToday();
+  const { data: habits, loading: habitsLoading, refetch: refetchHabits } = useHomeHabits();
   const money = useMoney();
   const focus = useFocusSessions();
   const calendar = useCalendarToday();
-  const { nowMs, queueRows, queueLoading } = useQueueRows("today-all");
+  const { nowMs, queueRows, queueLoading, refetch: refetchQueue } = useQueueRows("today-all");
+
+  // Pull-to-refresh: every hook this screen reads exposes (or now exposes,
+  // task C1) a refetch — fire them together. Note `calendar` here and
+  // useQueueRows' internal calendar are separate hook instances (separate
+  // fetches, not shared state), so both need their own refetch call. None of
+  // these hooks expose a distinct "refreshing" flag (only an initial-load
+  // `loading`), so this screen tracks its own — otherwise RefreshControl's
+  // spinner would retract the instant `onRefresh` fires instead of holding
+  // through the fetch.
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshAll = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        refetchHealth(),
+        refetchHabits(),
+        money.refetch(),
+        focus.refetch(),
+        calendar.refetch(),
+        refetchQueue(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetchHealth, refetchHabits, money.refetch, focus.refetch, calendar.refetch, refetchQueue]);
 
   const [brief, setBrief] = useState<BriefEnvelope | null>(null);
 
@@ -137,7 +162,11 @@ export function HomeScreen() {
   ];
 
   return (
-    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl tintColor={c.ink50} refreshing={refreshing} onRefresh={() => void refreshAll()} />}
+    >
       <ScreenHeader />
 
       <FadeUp index={0} style={styles.eyebrowGroup}>

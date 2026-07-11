@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { useTheme } from "../../theme/ThemeContext";
 import { layout } from "../../theme/layout";
+import { Pressed } from "./Pressed";
 
 export type LedgerState = "done" | "up";
 
@@ -26,7 +27,7 @@ export function LedgerRow({ time, title, tag, state, onPress }: LedgerRowProps) 
   const done = state === "done";
 
   return (
-    <Pressable
+    <Pressed
       onPress={onPress}
       disabled={!onPress}
       style={[styles.row, { borderTopColor: c.hairRow }]}
@@ -52,7 +53,7 @@ export function LedgerRow({ time, title, tag, state, onPress }: LedgerRowProps) 
         </Text>
       </View>
       <Text style={t.tag}>{tag}</Text>
-    </Pressable>
+    </Pressed>
   );
 }
 

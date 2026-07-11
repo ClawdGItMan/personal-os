@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import type { SeeingItem } from "../../data/assistant";
 import { CheckIcon } from "../icons";
+import { Pressed } from "../spec/Pressed";
 import { useTheme } from "../../theme/ThemeContext";
 import { fonts } from "../../theme/typeRoles";
 
@@ -43,15 +44,19 @@ export function SeeingRow({ item, first, onAction }: SeeingRowProps) {
           <CheckIcon size={11} color={c.accent} strokeWidth={2.4} />
         </View>
       ) : (
-        <Pressable
+        <Pressed
           onPress={onAction}
           disabled={pending}
+          // A tool-backed row is an act() write — its real feedback is the
+          // success buzz AssistantSheet fires when that call resolves (see
+          // fireSuccessHaptic in handleAlsoSeeingAction), not a pressIn tick.
+          haptic={item.tool ? "success" : "selection"}
           style={[styles.pill, { borderColor: accentAction ? c.accent : c.hairSection }, pending && styles.pillPending]}
         >
           <Text style={[styles.pillLabel, { color: accentAction ? c.accent : c.ink64 }]}>
             {pending ? "···" : item.action}
           </Text>
-        </Pressable>
+        </Pressed>
       )}
     </View>
   );

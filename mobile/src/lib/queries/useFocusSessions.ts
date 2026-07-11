@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
+import { fireSuccessHaptic } from "../../components/spec/Pressed";
 import { supabase } from "../supabase";
 import type { Database } from "../database.types";
 
@@ -207,6 +208,7 @@ export function useFocusSessions(): UseFocusSessionsResult {
         setError(err.message);
         return;
       }
+      fireSuccessHaptic();
       await refetch();
     },
     [refetch],
@@ -226,6 +228,7 @@ export function useFocusSessions(): UseFocusSessionsResult {
       setError(err.message);
       return;
     }
+    fireSuccessHaptic();
     await refetch();
   }, [rows, refetch]);
 
