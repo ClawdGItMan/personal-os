@@ -26,6 +26,7 @@ import { FocusScreen } from "./src/screens/FocusScreen";
 import { HomeScreen } from "./src/screens/HomeScreen";
 import { LoginScreen } from "./src/screens/LoginScreen";
 import { MoneyScreen } from "./src/screens/MoneyScreen";
+import { SettingsSheet } from "./src/screens/SettingsSheet";
 import { ThemeProvider, useTheme } from "./src/theme/ThemeContext";
 
 /** On web, preview inside a phone-width column so localhost mirrors the device. */
@@ -97,6 +98,7 @@ function Shell() {
       <TabBar />
       {captureOpen ? <CaptureSheet /> : null}
       {overlay?.kind === "assistant" ? <AssistantSheet /> : null}
+      {overlay?.kind === "settings" ? <SettingsSheet /> : null}
     </View>
   );
 }

@@ -95,7 +95,17 @@ export function useDeviceCalendar(): UseDeviceCalendarResult {
     async (ids: string[]) => {
       // Optimistic: reflect the new selection locally first, then persist.
       setSelectedIdsState(ids);
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
+      setError(null);
+      try {
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
+      } catch (err) {
+        // Persist failed (e.g. storage full/unavailable) — route it into the
+        // hook's shared error state instead of throwing uncaught into the
+        // Settings toggle's onPress handler. The optimistic in-memory
+        // selection above still reflects what the user tapped; it just won't
+        // survive an app restart until a retry succeeds.
+        setError(err instanceof Error ? err.message : "Couldn't save calendar selection");
+      }
       await loadCalendarsAndEvents(ids);
     },
     [loadCalendarsAndEvents],
