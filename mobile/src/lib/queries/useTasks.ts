@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
+import { fireSuccessHaptic } from "../../components/spec/Pressed";
 import { supabase } from "../supabase";
 import type { Database } from "../database.types";
 
@@ -31,8 +32,16 @@ export type UseTasksResult = {
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
-  /** Optimistically flip a task's `done`, persist, and revert on failure. */
-  toggleTask: (id: string, next: boolean) => Promise<void>;
+  /** Optimistically flip a task's `done`, persist, and revert on failure.
+   * Resolves `true` on success, `false` on failure (also reflected in
+   * `error`, which is retained for screens that render it directly). */
+  toggleTask: (id: string, next: boolean) => Promise<boolean>;
+  /** Push a task's `due_at` to `untilIso` (e.g. "Snooze +1 day"). Optimistically
+   * moves the item to the bucket implied by the new due date, reverting on
+   * failure, then refetches so the rest (sub's due-time text, ordering)
+   * resyncs from the server. Resolves `true` on success, `false` on failure
+   * (also reflected in `error`). */
+  snoozeTask: (id: string, untilIso: string) => Promise<boolean>;
 };
 
 function startOfTodayMs(): number {
@@ -115,7 +124,7 @@ export function useTasks(): UseTasksResult {
     void refetch();
   }, [refetch]);
 
-  const toggleTask = useCallback(async (id: string, next: boolean) => {
+  const toggleTask = useCallback(async (id: string, next: boolean): Promise<boolean> => {
     // Optimistic: flip locally first.
     setRows((prev) => prev.map((t) => (t.id === id ? { ...t, done: next } : t)));
     const { error: err } = await supabase.from("tasks").update({ done: next }).eq("id", id);
@@ -123,8 +132,34 @@ export function useTasks(): UseTasksResult {
       // Revert on failure.
       setRows((prev) => prev.map((t) => (t.id === id ? { ...t, done: !next } : t)));
       setError(err.message);
+      return false;
     }
+    // Directional: only buzz when marking done, not when reopening/un-completing.
+    if (next) fireSuccessHaptic();
+    return true;
   }, []);
+
+  const snoozeTask = useCallback(
+    async (id: string, untilIso: string): Promise<boolean> => {
+      // Optimistic: move the item to the bucket implied by the new due date
+      // (drives it out of "today" immediately); refetch resyncs the rest
+      // (sub's due-time text, ordering) once the write lands.
+      const prevRows = rows;
+      setRows((prev) => prev.map((t) => (t.id === id ? { ...t, bucket: bucketOf(untilIso) } : t)));
+      const { error: err } = await supabase.from("tasks").update({ due_at: untilIso }).eq("id", id);
+      if (err) {
+        setRows(prevRows);
+        setError(err.message);
+        return false;
+      }
+      // DetailScreen's Snooze action no longer fires its own haptic (C1
+      // fix pass: hooks own success haptics) — this is now its one buzz.
+      fireSuccessHaptic();
+      await refetch();
+      return true;
+    },
+    [rows, refetch],
+  );
 
   const today = rows.filter((t) => t.bucket === "today");
   const week = rows.filter((t) => t.bucket === "week");
@@ -143,5 +178,6 @@ export function useTasks(): UseTasksResult {
     error,
     refetch,
     toggleTask,
+    snoozeTask,
   };
 }

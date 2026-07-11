@@ -29,6 +29,43 @@ describe("mapHealthDay", () => {
     expect(row.recovery_score).toBe(50);
     expect("strain" in row).toBe(false);
     expect("sleep_hours" in row).toBe(false);
+    expect("sleep_start" in row).toBe(false);
+    expect("sleep_deep_min" in row).toBe(false);
+  });
+
+  it("maps sleep window + stage minutes, rounding stage minutes to integers", () => {
+    const row = mapHealthDay({
+      date: "2026-06-05",
+      sleepStart: "2026-06-05T02:00:00Z",
+      sleepEnd: "2026-06-05T09:00:00Z",
+      sleepDeepMin: 90, // 5,400,000ms exactly
+      sleepRemMin: 118.8, // 7,128,000ms => rounds to 119
+      sleepLightMin: 240, // 14,400,000ms exactly
+      sleepAwakeMin: 15, // 900,000ms exactly
+    });
+    expect(row).toMatchObject({
+      sleep_start: "2026-06-05T02:00:00Z",
+      sleep_end: "2026-06-05T09:00:00Z",
+      sleep_deep_min: 90,
+      sleep_rem_min: 119,
+      sleep_light_min: 240,
+      sleep_awake_min: 15,
+    });
+  });
+
+  it("omits stage fields that are individually absent (partial-merge safety)", () => {
+    const row = mapHealthDay({
+      date: "2026-06-05",
+      sleepStart: "2026-06-05T02:00:00Z",
+      sleepEnd: "2026-06-05T09:00:00Z",
+      sleepDeepMin: 90,
+      // sleepRemMin/sleepLightMin/sleepAwakeMin absent.
+    });
+    expect(row.sleep_start).toBe("2026-06-05T02:00:00Z");
+    expect(row.sleep_deep_min).toBe(90);
+    expect("sleep_rem_min" in row).toBe(false);
+    expect("sleep_light_min" in row).toBe(false);
+    expect("sleep_awake_min" in row).toBe(false);
   });
 });
 
@@ -87,13 +124,16 @@ describe("assembleHealthDays", () => {
           {
             id: "sleep-uuid-1",
             nap: false,
+            start: "2026-06-05T02:00:00Z",
+            end: "2026-06-05T09:00:00Z",
             score_state: "SCORED",
             score: {
               sleep_performance_percentage: 88.6,
               stage_summary: {
-                total_light_sleep_time_milli: 14_400_000, // 4h
-                total_slow_wave_sleep_time_milli: 5_400_000, // 1.5h
-                total_rem_sleep_time_milli: 7_128_000, // 1.98h => total 7.48h
+                total_light_sleep_time_milli: 14_400_000, // 4h => 240min
+                total_slow_wave_sleep_time_milli: 5_400_000, // 1.5h => 90min
+                total_rem_sleep_time_milli: 7_128_000, // 1.98h => 7.48h total; 118.8min
+                total_awake_time_milli: 900_000, // 15min
               },
             },
           },
@@ -111,6 +151,12 @@ describe("assembleHealthDays", () => {
       rhr: 54.6,
       sleepPerformance: 88.6,
       sleepHours: 7.48,
+      sleepStart: "2026-06-05T02:00:00Z",
+      sleepEnd: "2026-06-05T09:00:00Z",
+      sleepDeepMin: 90,
+      sleepRemMin: 118.8,
+      sleepLightMin: 240,
+      sleepAwakeMin: 15,
     });
   });
 
@@ -137,6 +183,8 @@ describe("assembleHealthDays", () => {
           {
             id: "sleep-uuid-2",
             nap: false,
+            start: "2026-06-05T03:00:00Z",
+            end: "2026-06-05T06:00:00Z",
             score_state: "SCORED",
             score: {
               sleep_performance_percentage: 90,
@@ -144,6 +192,7 @@ describe("assembleHealthDays", () => {
                 total_light_sleep_time_milli: 3_600_000,
                 total_slow_wave_sleep_time_milli: 3_600_000,
                 total_rem_sleep_time_milli: 3_600_000,
+                // total_awake_time_milli intentionally absent.
               },
             },
           },
@@ -164,6 +213,15 @@ describe("assembleHealthDays", () => {
     expect(day.sleepPerformance).toBe(90);
     expect(day.sleepHours).toBe(3);
     expect(day.date).toBe("2026-06-05");
+    // Sleep window always present when SCORED + non-nap.
+    expect(day.sleepStart).toBe("2026-06-05T03:00:00Z");
+    expect(day.sleepEnd).toBe("2026-06-05T06:00:00Z");
+    expect(day.sleepDeepMin).toBe(60);
+    expect(day.sleepRemMin).toBe(60);
+    expect(day.sleepLightMin).toBe(60);
+    // One stage_summary field individually absent => only that key omitted
+    // (partial-merge safety), the sibling stage fields are unaffected.
+    expect("sleepAwakeMin" in day).toBe(false);
   });
 
   it("excludes naps when joining the night's sleep", () => {
@@ -189,6 +247,8 @@ describe("assembleHealthDays", () => {
           {
             id: "nap-uuid",
             nap: true,
+            start: "2026-06-05T13:00:00Z",
+            end: "2026-06-05T13:30:00Z",
             score_state: "SCORED",
             score: {
               sleep_performance_percentage: 99,
@@ -196,6 +256,7 @@ describe("assembleHealthDays", () => {
                 total_light_sleep_time_milli: 1_800_000,
                 total_slow_wave_sleep_time_milli: 0,
                 total_rem_sleep_time_milli: 0,
+                total_awake_time_milli: 0,
               },
             },
           },
@@ -210,6 +271,12 @@ describe("assembleHealthDays", () => {
     // The linked sleep is a nap => sleep metrics must be omitted.
     expect("sleepPerformance" in day).toBe(false);
     expect("sleepHours" in day).toBe(false);
+    expect("sleepStart" in day).toBe(false);
+    expect("sleepEnd" in day).toBe(false);
+    expect("sleepDeepMin" in day).toBe(false);
+    expect("sleepRemMin" in day).toBe(false);
+    expect("sleepLightMin" in day).toBe(false);
+    expect("sleepAwakeMin" in day).toBe(false);
     // Non-sleep fields still present.
     expect(day.dayStrain).toBe(5);
     expect(day.recoveryScore).toBe(60);

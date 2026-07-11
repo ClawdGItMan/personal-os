@@ -10,9 +10,11 @@ type WeekCellsProps = {
 
 /**
  * "THIS WEEK · N SESSIONS" grid (design README §Body): 7 cells, 22pt tall r4,
- * 8pt gaps — done/today filled accent, track cells at pipTrack. Today
- * additionally wears a ring (spec-sampled: ink at ~.28 opacity over the accent
- * fill in both modes, i.e. `c.ink28`) and its weekday label steps up to ink72;
+ * 8pt gaps — filled cells (has a logged workout) accent, empty cells at
+ * pipTrack. Today additionally wears a ring (spec-sampled: ink at ~.28
+ * opacity over the fill in both modes, i.e. `c.ink28`) and its weekday label
+ * steps up to ink72 — independently of whether today is filled yet, so a
+ * not-yet-trained today reads as ringed-but-empty rather than falsely done;
  * other labels sit at ink38. Renders inside a `<Band variant="plain">` — no
  * border/padding of its own.
  */
@@ -25,22 +27,18 @@ export function WeekCells({ sessions, days }: WeekCellsProps) {
         <Text style={t.bandSub}>{sessions} SESSIONS</Text>
       </View>
       <View style={styles.row}>
-        {days.map((d, i) => {
-          const filled = d.state !== "track";
-          const today = d.state === "today";
-          return (
-            <View key={`${d.letter}-${i}`} style={styles.cellWrap}>
-              <View
-                style={[
-                  styles.cell,
-                  { backgroundColor: filled ? c.accent : c.pipTrack },
-                  today && { borderWidth: 1.5, borderColor: c.ink28 },
-                ]}
-              />
-              <Text style={[t.statSub, { color: today ? c.ink72 : c.ink38 }]}>{d.letter}</Text>
-            </View>
-          );
-        })}
+        {days.map((d, i) => (
+          <View key={`${d.letter}-${i}`} style={styles.cellWrap}>
+            <View
+              style={[
+                styles.cell,
+                { backgroundColor: d.filled ? c.accent : c.pipTrack },
+                d.isToday && { borderWidth: 1.5, borderColor: c.ink28 },
+              ]}
+            />
+            <Text style={[t.statSub, { color: d.isToday ? c.ink72 : c.ink38 }]}>{d.letter}</Text>
+          </View>
+        ))}
       </View>
     </View>
   );

@@ -25,7 +25,27 @@
     },
     "plugins": [
       "expo-font",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "imageWidth": 230,
+          "resizeMode": "contain",
+          "backgroundColor": "#F5F3ED",
+          "dark": {
+            "image": "./assets/splash-dark.png",
+            "backgroundColor": "#0C0F0C"
+          }
+        }
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Personal OS shows your day's events alongside your health and focus data."
+        }
+      ],
+      "expo-notifications"
     ]
   }
 }

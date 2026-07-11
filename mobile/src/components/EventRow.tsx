@@ -1,10 +1,11 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { useNav } from "../navigation/NavContext";
 import type { DetailItem } from "../navigation/NavContext";
 import { useTheme } from "../theme/ThemeContext";
 import { fonts } from "../theme/typeRoles";
 import { ChevronIcon } from "./icons";
+import { Pressed } from "./spec/Pressed";
 
 export type EventState = "done" | "now" | "up";
 
@@ -33,7 +34,7 @@ export function EventRow({ time, state = "up", title, sub, last = false, detail 
   const item: DetailItem = detail ?? { kind: "event", title, time, sub, state };
   const dotActive = state === "done" || state === "now";
   return (
-    <Pressable style={[styles.row, { borderColor: c.hairRow }, last && styles.rowLast]} onPress={() => openDetail(item)}>
+    <Pressed style={[styles.row, { borderColor: c.hairRow }, last && styles.rowLast]} onPress={() => openDetail(item)}>
       <Text style={[styles.time, { color: state === "now" ? c.accent : c.ink50 }]}>{time}</Text>
       <View
         style={[
@@ -46,7 +47,7 @@ export function EventRow({ time, state = "up", title, sub, last = false, detail 
         <Text style={[styles.sub, { color: state === "now" ? c.accent : c.ink38 }]}>{sub}</Text>
       </View>
       <ChevronIcon color={c.ink38} />
-    </Pressable>
+    </Pressed>
   );
 }
 

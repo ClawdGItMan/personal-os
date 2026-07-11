@@ -66,8 +66,8 @@ function refreshErrorMessage(err: unknown): string {
 }
 
 /**
- * Sync the user's Whoop health (recovery/sleep/strain) into `health_snapshots`
- * and workouts into `workouts`.
+ * Sync the user's Whoop health (recovery/sleep/strain/sleep-window/sleep-stages)
+ * into `health_snapshots` and workouts into `workouts`.
  *
  * Caller supplies the Supabase client (cookie client for the inline backfill,
  * service-role admin client for cron) — this function NEVER creates one. Because
@@ -296,7 +296,10 @@ export async function syncWhoop(client: Client, userId: string): Promise<SyncWho
 
 /**
  * Partial column-merge upsert into `health_snapshots`.
- * Each row carries ONLY user_id, date, source, and the present metric columns.
+ * Each row carries ONLY user_id, date, source, and the present metric columns —
+ * including, when the day's Whoop sleep is SCORED, any of `sleep_start`/
+ * `sleep_end`/`sleep_deep_min`/`sleep_rem_min`/`sleep_light_min`/`sleep_awake_min`
+ * (each present independently per `mapHealthDay`, Task A4).
  * ON CONFLICT DO UPDATE sets only the supplied columns — other sources' columns
  * survive untouched (Supabase upsert sends only the keys present in the row object).
  * No-op when rows is empty.

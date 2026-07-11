@@ -1,88 +1,382 @@
-import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Platform, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated from "react-native-reanimated";
+import { useCallback, useState } from "react";
 
+import { AccountEditorSheet } from "../components/money/AccountEditorSheet";
 import { BandHeader } from "../components/money/BandHeader";
+import { CountUpText } from "../components/money/CountUpText";
+import { formatCompact, formatCompactMagnitude, monthAbbrev, runwayLabel } from "../components/money/format";
 import { MoneyLedgerRow } from "../components/money/MoneyLedgerRow";
+import { FormError, SheetPrimaryButton, SheetTextField } from "../components/money/MoneyFormControls";
+import { AccountsSkeleton, BurnSkeleton, LedgerSkeleton, NetWorthSkeleton } from "../components/money/MoneySkeletons";
+import { TransactionSheet } from "../components/money/TransactionSheet";
 import { Band } from "../components/spec/Band";
 import { Eyebrow } from "../components/spec/Eyebrow";
+import { fireSuccessHaptic, Pressed } from "../components/spec/Pressed";
+import type { RangeDays } from "../components/spec/RangeToggle";
+import { RangeToggle } from "../components/spec/RangeToggle";
 import { ScreenHeader } from "../components/spec/ScreenHeader";
 import { Sparkline } from "../components/spec/Sparkline";
 import { StatGrid } from "../components/spec/StatGrid";
 import type { StatItem } from "../components/spec/StatGrid";
 import { TitleBlock } from "../components/spec/TitleBlock";
-import { moneyData } from "../data/money";
+import type { StatusSegment } from "../components/spec/TitleBlock";
+import { eyebrowDate } from "../lib/format";
+import type { MoneyTransaction, NetWorthPoint } from "../lib/queries";
+import { useMoney } from "../lib/queries";
 import { useFillAnim } from "../motion/useFillAnim";
 import { layout } from "../theme/layout";
 import { useTheme } from "../theme/ThemeContext";
+import { fonts } from "../theme/typeRoles";
+
+/** Local sheet state — LOCAL to MoneyScreen (not NavContext), per the design
+ * brief: these are simple slide-ups owned entirely by this screen. */
+type SheetState =
+  | null
+  | { kind: "accounts"; initialAdding: boolean }
+  | { kind: "transaction"; transaction: MoneyTransaction | null }; // null transaction = add mode
+
+const LOADING_STATUS: StatusSegment[] = ["Loading your accounts…"];
+const ERROR_STATUS: StatusSegment[] = ["Couldn't load your money data."];
+
+/** "N ACCOUNT(S)" — real per-group account counts, used instead of the mock's
+ * fabricated "+1.2% · 30D" performance figure (no reliable per-group history
+ * to compute that from). */
+function accountCountLabel(n: number): string {
+  return `${n} ${n === 1 ? "ACCOUNT" : "ACCOUNTS"}`;
+}
+
+/** Net-worth hero status line — defensive: only claims a trend/pace when the
+ * underlying data actually supports it (mock-data policy: never fabricate). */
+function buildStatus(series: NetWorthPoint[], monthBurn: number, budgetAmount: number | null): StatusSegment[] {
+  const trend =
+    series.length < 2
+      ? null
+      : series[series.length - 1].value > series[0].value
+        ? "climbing"
+        : series[series.length - 1].value < series[0].value
+          ? "dipping"
+          : "steady";
+  const pace = budgetAmount == null || budgetAmount === 0 ? null : monthBurn <= budgetAmount ? "on pace" : "over budget";
+
+  if (trend && pace) return ["Net worth's ", { b: trend }, " and spend is ", { b: pace }, "."];
+  if (trend) return ["Net worth's ", { b: trend }, " this month."];
+  if (pace) return ["This month's spend is ", { b: pace }, "."];
+  return ["Add accounts to see your full picture."];
+}
+
+/** Hero sub line — "+$X LATEST · +Y% {N}D" built only from points that exist
+ * ("LATEST" not "TODAY": a sparse snapshot history means the newest point
+ * isn't guaranteed to be today, see useMoney.ts's netWorthSeries30d note).
+ * `rangeDays` (task C4's NET WORTH RangeToggle) only labels the pct window —
+ * it doesn't change which points are summarized; that's `series` itself. */
+function buildNetWorthSub(series: NetWorthPoint[], rangeDays: number): string | null {
+  if (series.length === 0) return null;
+  const parts: string[] = [];
+  if (series.length >= 2) {
+    const delta = series[series.length - 1].value - series[series.length - 2].value;
+    parts.push(`${delta >= 0 ? "+" : "-"}${formatCompactMagnitude(delta)} LATEST`);
+  }
+  const first = series[0].value;
+  if (series.length >= 2 && first !== 0) {
+    const pct = ((series[series.length - 1].value - first) / Math.abs(first)) * 100;
+    parts.push(`${pct >= 0 ? "+" : ""}${pct.toFixed(2)}% ${rangeDays}D`);
+  }
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
 
 /**
- * Money (design README §Money, spec 7b) — net worth hero → accounts →
- * May burn → recent ledger. 100% mock (Plaid deferred, owner Max); content
- * only, the shared themed shell + TabBar are owned by App.
+ * Money (design README §Money, spec 7b) — net worth hero → accounts → burn
+ * vs budget → recent ledger, all live via `useMoney()`. Content only, the
+ * shared themed shell + TabBar are owned by App.
  */
 export function MoneyScreen() {
   const { c, t } = useTheme();
-  const { eyebrow, title, status, netWorth, accounts, burn, ledger } = moneyData;
-  const burnFill = useFillAnim(burn.pct);
+  const {
+    accounts,
+    netWorth,
+    groups,
+    netWorthSeries30d,
+    netWorthSeries90d,
+    monthBurn,
+    budgetAmount,
+    runwayMonths,
+    recent,
+    loading,
+    error,
+    refetch,
+    addAccount,
+    updateAccountValue,
+    addTransaction,
+    setBudget,
+  } = useMoney();
 
-  const accountItems: StatItem[] = accounts.map((a) => ({
-    label: a.label,
-    value: a.value,
-    sub: a.sub,
-    valueColor: a.valueNegative ? c.red : undefined,
-    subColor: a.subAccent ? c.accent : undefined,
-  }));
+  const [sheet, setSheet] = useState<SheetState>(null);
+  // NET WORTH band's range toggle (task C4) — useMoney already fetches a 90d
+  // window and exposes both slices, so this only picks which one feeds the
+  // sparkline/sub line; no query change needed.
+  const [netWorthRange, setNetWorthRange] = useState<RangeDays>(30);
+  const [budgetEditing, setBudgetEditing] = useState(false);
+  const [budgetInput, setBudgetInput] = useState("");
+  const [savingBudget, setSavingBudget] = useState(false);
+  const [budgetError, setBudgetError] = useState<string | null>(null);
+  // Pull-to-refresh: `loading` above is the initial-load flag, not a
+  // distinct "refreshing" one (useMoney's refetch never sets it back to
+  // true), so this screen tracks its own — otherwise RefreshControl's
+  // spinner would retract the instant `onRefresh` fires instead of holding
+  // through the fetch.
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetch]);
+
+  const over = budgetAmount != null && monthBurn > budgetAmount;
+  const burnPct = budgetAmount ? Math.min(100, (monthBurn / budgetAmount) * 100) : 0;
+  const burnFill = useFillAnim(burnPct);
+  const remaining = budgetAmount != null ? budgetAmount - monthBurn : 0;
+
+  const status = loading ? LOADING_STATUS : error ? ERROR_STATUS : buildStatus(netWorthSeries30d, monthBurn, budgetAmount);
+  // The band's own toggle picks which window feeds its sparkline/sub line;
+  // the page-level status sentence above stays anchored to the 30D window
+  // regardless (it's a monthly narrative, not this band's chart).
+  const netWorthSeries = netWorthRange === 90 ? netWorthSeries90d : netWorthSeries30d;
+  const netWorthSub = buildNetWorthSub(netWorthSeries, netWorthRange);
+
+  const cashCount = accounts.filter((a) => a.group === "cash").length;
+  const investedCount = accounts.filter((a) => a.group === "invested").length;
+  const debtCount = accounts.filter((a) => a.group === "debt").length;
+  const accountItems: StatItem[] = [
+    { label: "CASH", value: formatCompact(groups.cash), sub: accountCountLabel(cashCount) },
+    { label: "INVESTED", value: formatCompact(groups.invested), sub: accountCountLabel(investedCount) },
+    {
+      label: "DEBT",
+      value: formatCompact(groups.debt),
+      sub: accountCountLabel(debtCount),
+      valueColor: groups.debt < 0 ? c.red : undefined,
+    },
+  ];
+
+  function startEditBudget() {
+    setBudgetInput(budgetAmount != null ? String(budgetAmount) : "");
+    setBudgetError(null);
+    setBudgetEditing(true);
+  }
+
+  async function saveBudget() {
+    const parsed = Number(budgetInput);
+    if (!Number.isFinite(parsed) || parsed <= 0 || savingBudget) return;
+    setSavingBudget(true);
+    setBudgetError(null);
+    // setBudget (useMoney) THROWS on failure — catch here so a failed save
+    // renders an inline error and keeps the editor open with the user's
+    // input, instead of falling through to MoneyScreen's read-error retry
+    // row (that row is READ-path only; see useMoney's write contract note).
+    try {
+      await setBudget(parsed);
+      fireSuccessHaptic();
+      setBudgetEditing(false);
+    } catch (err) {
+      setBudgetError(err instanceof Error ? err.message : "Couldn't save budget");
+    } finally {
+      setSavingBudget(false);
+    }
+  }
+
+  const budgetInputValid = Number.isFinite(Number(budgetInput)) && Number(budgetInput) > 0;
 
   return (
-    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <ScreenHeader />
+    <View style={styles.flex}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl tintColor={c.ink50} refreshing={refreshing} onRefresh={() => void handleRefresh()} />}
+      >
+        <ScreenHeader />
 
-      <View style={styles.eyebrowWrap}>
-        <Eyebrow left={eyebrow.left} right={eyebrow.right} />
-      </View>
-      <View style={styles.titleWrap}>
-        <TitleBlock title={title} status={status} />
-      </View>
+        <View style={styles.eyebrowWrap}>
+          <Eyebrow left={eyebrowDate(new Date())} right={runwayLabel(runwayMonths)} />
+        </View>
+        <View style={styles.titleWrap}>
+          <TitleBlock title="Money" status={status} />
+        </View>
 
-      <View style={styles.bandsWrap}>
-        <Band variant="plain" index={0}>
-          <BandHeader left={netWorth.label} right={netWorth.period} />
-          <View style={styles.netRow}>
-            <View>
-              <Text style={[t.heroValue, styles.netValue, { color: c.accent }]}>{netWorth.value}</Text>
-              <Text style={[t.bandSub, styles.netSub, { color: c.accent }]}>{netWorth.sub}</Text>
-            </View>
-            <Sparkline width={118} height={34} />
-          </View>
-        </Band>
+        <View style={styles.bandsWrap}>
+          {loading ? (
+            <>
+              <NetWorthSkeleton />
+              <AccountsSkeleton />
+              <BurnSkeleton />
+              <LedgerSkeleton />
+            </>
+          ) : error ? (
+            <Band variant="plain" index={0}>
+              <Pressed
+                onPress={() => {
+                  void refetch();
+                }}
+                style={styles.retryRow}
+              >
+                <Text style={[styles.retryText, { color: c.red }]}>COULDN&apos;T LOAD — RETRY</Text>
+              </Pressed>
+            </Band>
+          ) : (
+            <>
+              <Band variant="plain" index={0}>
+                <View style={styles.netHeaderRow}>
+                  <Text style={t.bandSub}>NET WORTH</Text>
+                  <RangeToggle value={netWorthRange} onChange={setNetWorthRange} options={[30, 90]} />
+                </View>
+                <View style={styles.netRow}>
+                  <View>
+                    <CountUpText
+                      target={netWorth}
+                      format={formatCompact}
+                      style={[t.heroValue, styles.netValue, { color: c.accent }]}
+                    />
+                    {netWorthSub ? (
+                      <Text style={[t.bandSub, styles.netSub, { color: c.accent }]}>{netWorthSub}</Text>
+                    ) : null}
+                  </View>
+                  {netWorthSeries.length >= 2 ? (
+                    <Sparkline points={netWorthSeries.map((p) => p.value)} width={118} height={34} />
+                  ) : (
+                    <Text style={[t.bandSub, styles.notEnoughData]}>{`NOT ENOUGH DATA · ${netWorthRange}D`}</Text>
+                  )}
+                </View>
+              </Band>
 
-        <StatGrid items={accountItems} index={1} />
+              {accounts.length === 0 ? (
+                <Pressed onPress={() => setSheet({ kind: "accounts", initialAdding: true })}>
+                  <Band variant="plain" index={1}>
+                    <View style={styles.emptyCta}>
+                      <Text style={[styles.emptyCtaText, { color: c.accent }]}>+ Add your first account</Text>
+                    </View>
+                  </Band>
+                </Pressed>
+              ) : (
+                <Pressed onPress={() => setSheet({ kind: "accounts", initialAdding: false })}>
+                  <StatGrid items={accountItems} index={1} />
+                </Pressed>
+              )}
 
-        <Band variant="plain" index={2}>
-          <BandHeader left={burn.label} right={burn.status} rightColor={c.accent} />
-          <View style={styles.burnRow}>
-            <Text style={t.statValue}>
-              {burn.spent} <Text style={[t.bandSub, styles.burnOf]}>{burn.ofBudget}</Text>
-            </Text>
-            <Text style={t.bandSub}>{burn.left}</Text>
-          </View>
-          <View style={[styles.barTrack, { backgroundColor: c.dayTrack }]}>
-            <Animated.View style={[styles.barFill, { backgroundColor: c.accent }, burnFill]} />
-          </View>
-        </Band>
+              <Band variant="plain" index={2}>
+                {budgetEditing ? (
+                  <View>
+                    <BandHeader
+                      left={`${monthAbbrev()} BURN`}
+                      right={budgetAmount == null ? "SET BUDGET" : "EDIT BUDGET"}
+                    />
+                    <View style={styles.budgetEditField}>
+                      <SheetTextField
+                        value={budgetInput}
+                        onChangeText={setBudgetInput}
+                        placeholder="0"
+                        keyboardType="decimal-pad"
+                        numeric
+                        autoFocus
+                      />
+                    </View>
+                    {budgetError ? (
+                      <View style={styles.budgetEditError}>
+                        <FormError>{budgetError}</FormError>
+                      </View>
+                    ) : null}
+                    <View style={styles.budgetEditActions}>
+                      <Pressed
+                        onPress={() => {
+                          setBudgetError(null);
+                          setBudgetEditing(false);
+                        }}
+                        hitSlop={8}
+                        style={styles.budgetCancel}
+                      >
+                        <Text style={[styles.budgetCancelText, { color: c.ink50 }]}>Cancel</Text>
+                      </Pressed>
+                      <View style={styles.budgetSaveWrap}>
+                        <SheetPrimaryButton
+                          label="Save"
+                          onPress={saveBudget}
+                          disabled={!budgetInputValid}
+                          loading={savingBudget}
+                        />
+                      </View>
+                    </View>
+                  </View>
+                ) : budgetAmount == null ? (
+                  <Pressed onPress={startEditBudget}>
+                    <BandHeader left={`${monthAbbrev()} BURN`} right="NO BUDGET" />
+                    <Text style={[styles.burnCtaText, { color: c.accent }]}>Set a monthly budget</Text>
+                  </Pressed>
+                ) : (
+                  <Pressed onPress={startEditBudget}>
+                    <BandHeader
+                      left={`${monthAbbrev()} BURN`}
+                      right={over ? "OVER BUDGET" : "ON PACE"}
+                      rightColor={over ? c.red : c.accent}
+                    />
+                    <View style={styles.burnRow}>
+                      <Text style={t.statValue}>
+                        {formatCompact(monthBurn)}{" "}
+                        <Text style={[t.bandSub, styles.burnOf]}>OF {formatCompact(budgetAmount)}</Text>
+                      </Text>
+                      <Text style={[t.bandSub, over && { color: c.red }]}>
+                        {over ? `${formatCompact(Math.abs(remaining))} OVER` : `${formatCompact(remaining)} LEFT`}
+                      </Text>
+                    </View>
+                    <View style={[styles.barTrack, { backgroundColor: c.dayTrack }]}>
+                      <Animated.View
+                        style={[styles.barFill, { backgroundColor: over ? c.red : c.accent }, burnFill]}
+                      />
+                    </View>
+                  </Pressed>
+                )}
+              </Band>
 
-        <Band variant="plain" index={3}>
-          <BandHeader left={ledger.label} right={ledger.period} />
-          {ledger.items.map((item) => (
-            <MoneyLedgerRow key={`${item.time}-${item.title}`} item={item} />
-          ))}
-        </Band>
-      </View>
-    </ScrollView>
+              <Band variant="plain" index={3}>
+                <BandHeader left="RECENT" right="TODAY · YDA" onAdd={() => setSheet({ kind: "transaction", transaction: null })} />
+                {recent.length === 0 ? (
+                  <Text style={[styles.ledgerEmpty, { color: c.ink50 }]}>No transactions yet.</Text>
+                ) : (
+                  recent.map((tx) => (
+                    <MoneyLedgerRow
+                      key={tx.id}
+                      transaction={tx}
+                      onPress={() => setSheet({ kind: "transaction", transaction: tx })}
+                    />
+                  ))
+                )}
+              </Band>
+            </>
+          )}
+        </View>
+      </ScrollView>
+
+      {sheet?.kind === "accounts" ? (
+        <AccountEditorSheet
+          accounts={accounts}
+          onClose={() => setSheet(null)}
+          onAddAccount={addAccount}
+          onUpdateValue={updateAccountValue}
+          initialAdding={sheet.initialAdding}
+        />
+      ) : null}
+
+      {sheet?.kind === "transaction" ? (
+        <TransactionSheet transaction={sheet.transaction} onClose={() => setSheet(null)} onAdd={addTransaction} />
+      ) : null}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   content: {
     paddingTop: Platform.OS === "web" ? 28 : 62,
     paddingBottom: 110,
@@ -96,6 +390,11 @@ const styles = StyleSheet.create({
   bandsWrap: {
     marginTop: 20,
   },
+  netHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   netRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -107,6 +406,10 @@ const styles = StyleSheet.create({
   },
   netSub: {
     letterSpacing: 0.2,
+  },
+  notEnoughData: {
+    maxWidth: 118,
+    textAlign: "right",
   },
   burnRow: {
     flexDirection: "row",
@@ -125,5 +428,60 @@ const styles = StyleSheet.create({
   barFill: {
     height: 3,
     borderRadius: layout.radius.pill,
+  },
+  burnCtaText: {
+    fontFamily: fonts.sans600,
+    fontSize: 14,
+    marginTop: 11,
+    marginBottom: 4,
+  },
+  budgetEditField: {
+    marginTop: 12,
+  },
+  budgetEditError: {
+    marginTop: 10,
+  },
+  budgetEditActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 16,
+    marginTop: 12,
+  },
+  budgetCancel: {
+    paddingVertical: 8,
+  },
+  budgetCancelText: {
+    fontFamily: fonts.mono500,
+    fontSize: 9,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+  },
+  budgetSaveWrap: {
+    width: 120,
+  },
+  emptyCta: {
+    alignItems: "center",
+    paddingVertical: 6,
+  },
+  emptyCtaText: {
+    fontFamily: fonts.mono600,
+    fontSize: 11,
+    letterSpacing: 0.9,
+    textTransform: "uppercase",
+  },
+  ledgerEmpty: {
+    fontFamily: fonts.sans400,
+    fontSize: 13,
+    paddingVertical: 14,
+  },
+  retryRow: {
+    alignItems: "center",
+    paddingVertical: 10,
+  },
+  retryText: {
+    fontFamily: fonts.mono600,
+    fontSize: 10.5,
+    letterSpacing: 1.2,
   },
 });

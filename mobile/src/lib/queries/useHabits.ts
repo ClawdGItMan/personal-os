@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import type { Habit, HabitDot } from "../../data/focus";
+import { fireSuccessHaptic } from "../../components/spec/Pressed";
 import { supabase } from "../supabase";
 import type { Database } from "../database.types";
 
@@ -190,6 +191,8 @@ export function useHabits(): UseHabitsResult {
         setError(err.message);
         return;
       }
+      // Directional: only buzz when marking done, not when un-marking.
+      if (nextDone) fireSuccessHaptic();
       // Refetch so the streak + week-dots recompute from the source of truth.
       await refetch();
     },

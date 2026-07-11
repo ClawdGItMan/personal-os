@@ -1,5 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
+import { Pressed } from "../spec/Pressed";
 import { useTheme } from "../../theme/ThemeContext";
 import { fonts } from "../../theme/typeRoles";
 import { BackChevronIcon } from "./detailIcons";
@@ -14,10 +15,10 @@ export function DetailHeader({ onBack }: { onBack: () => void }) {
   const { c } = useTheme();
   return (
     <View style={styles.row}>
-      <Pressable style={styles.back} onPress={onBack} hitSlop={10}>
+      <Pressed style={styles.back} onPress={onBack} hitSlop={10}>
         <BackChevronIcon color={c.ink50} />
         <Text style={[styles.backLabel, { color: c.ink50 }]}>Focus</Text>
-      </Pressable>
+      </Pressed>
       <View style={styles.more}>
         <View style={[styles.dot, { backgroundColor: c.ink38 }]} />
         <View style={[styles.dot, { backgroundColor: c.ink38 }]} />

@@ -1,79 +1,55 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
-import type { ConfirmationExchange } from "../../data/capture";
+import type { CaptureConfirmation } from "./useCaptureSession";
 import { useTheme } from "../../theme/ThemeContext";
 import { fonts } from "../../theme/typeRoles";
-import { LiftRow } from "../LiftRow";
 import { CheckIcon, UndoIcon } from "../icons";
-import { EditIcon } from "./captureIcons";
+import { Pressed } from "../spec/Pressed";
 
 /**
- * Confirmation card (spec §4 · §5.6) — the most reusable cross-module piece.
- * Hairline card: module tag + ✓; the parsed entry rendered in the destination
- * module's OWN row grammar (a shared LiftRow for Body, an inline time-change
- * for Calendar); a one-line agent note; Undo + Edit/View footer chips. The
- * legacy per-module green/blue accents collapse onto the single new-system
- * accent — Capture composes other modules' rows — almost no bespoke UI of its
- * own.
+ * Confirmation card (spec §4 · §5.6) — the agent's real write-tool result: a
+ * hairline card with a module tag + check, the tool's own one-line summary,
+ * and an Undo chip when the result named an undoable row. Tapping Undo
+ * deletes that row directly (allowlisted table, RLS-scoped) and the card
+ * flips to its "Undone" state. Chrome is the locked design's — only the
+ * content (module/summary/undo) is real now; there's no more per-module row
+ * grammar (LiftRow/change-row) because the tool result is just a summary
+ * string, not structured data.
  */
 type ConfirmationCardProps = {
-  exchange: ConfirmationExchange;
+  confirmation: CaptureConfirmation;
   onUndo?: () => void;
-  onSecondary?: () => void;
 };
 
-export function ConfirmationCard({ exchange, onUndo, onSecondary }: ConfirmationCardProps) {
+export function ConfirmationCard({ confirmation, onUndo }: ConfirmationCardProps) {
   const { c } = useTheme();
+  const { moduleLabel, summary, undoRef, undone } = confirmation;
+
   return (
     <View style={[styles.card, { borderColor: c.hairRow, backgroundColor: c.surface }]}>
       <View style={styles.tag}>
-        <Text style={[styles.module, { color: c.accent }]}>{exchange.module}</Text>
-        <Text style={[styles.verb, { color: c.ink38 }]}>{exchange.verb}</Text>
+        <Text style={[styles.module, { color: undone ? c.ink38 : c.accent }]}>{moduleLabel}</Text>
+        <Text style={[styles.verb, { color: c.ink38 }]}>{undone ? "undone" : "logged"}</Text>
         <View style={styles.check}>
-          <CheckIcon size={13} color={c.accent} strokeWidth={2.4} />
+          <CheckIcon size={13} color={undone ? c.ink38 : c.accent} strokeWidth={2.4} />
         </View>
       </View>
 
-      {exchange.entry.kind === "lift" ? (
-        <View style={styles.entry}>
-          <LiftRow
-            name={exchange.entry.name}
-            scheme={exchange.entry.scheme}
-            weight={exchange.entry.weight}
-            unit={exchange.entry.unit}
-            pr={exchange.entry.pr}
-            last
-          />
-        </View>
-      ) : (
-        <View style={styles.changeRow}>
-          <View>
-            <Text style={[styles.entryTitle, { color: c.ink }]}>{exchange.entry.title}</Text>
-            <Text style={[styles.changeSub, { color: c.ink38 }]}>{exchange.entry.sub}</Text>
-          </View>
-          <Text style={styles.change}>
-            <Text style={[styles.from, { color: c.ink38, textDecorationColor: c.hairSection }]}>
-              {exchange.entry.from}
-            </Text>
-            <Text style={{ color: c.accent }}>{`  → ${exchange.entry.to}`}</Text>
-          </Text>
-        </View>
-      )}
+      <Text style={[styles.summary, { color: undone ? c.ink38 : c.ink }]}>{summary}</Text>
 
-      <Text style={[styles.note, { color: c.ink72 }]}>{exchange.note}</Text>
-
-      <View style={styles.chips}>
-        <Pressable style={[styles.chip, { borderColor: c.hairSection }]} onPress={onUndo} hitSlop={6}>
-          <UndoIcon size={11} color={c.ink50} />
-          <Text style={[styles.chipLabel, { color: c.ink50 }]}>Undo</Text>
-        </Pressable>
-        <Pressable style={[styles.chip, { borderColor: c.hairSection }]} onPress={onSecondary} hitSlop={6}>
-          <EditIcon size={11} color={c.ink50} />
-          <Text style={[styles.chipLabel, { color: c.ink50 }]}>
-            {exchange.secondary === "view" ? "View" : "Edit"}
-          </Text>
-        </Pressable>
-      </View>
+      {undoRef ? (
+        <View style={styles.chips}>
+          <Pressed
+            style={[styles.chip, { borderColor: c.hairSection }, undone && styles.chipDone]}
+            onPress={undone ? undefined : onUndo}
+            disabled={undone}
+            hitSlop={6}
+          >
+            <UndoIcon size={11} color={c.ink50} />
+            <Text style={[styles.chipLabel, { color: c.ink50 }]}>{undone ? "Undone" : "Undo"}</Text>
+          </Pressed>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -106,40 +82,12 @@ const styles = StyleSheet.create({
   check: {
     marginLeft: "auto",
   },
-  entry: {
-    marginTop: 2,
-  },
-  changeRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 12,
-  },
-  entryTitle: {
+  summary: {
     fontFamily: fonts.sans600,
     fontSize: 15,
+    lineHeight: 21,
     letterSpacing: -0.15,
-  },
-  changeSub: {
-    fontFamily: fonts.mono500,
-    fontSize: 9,
-    letterSpacing: 0.6,
-    textTransform: "uppercase",
-    marginTop: 3,
-  },
-  change: {
-    fontFamily: fonts.mono500,
-    fontSize: 13,
-    fontVariant: ["tabular-nums"],
-  },
-  from: {
-    textDecorationLine: "line-through",
-  },
-  note: {
-    fontFamily: fonts.sans400,
-    fontSize: 12.5,
-    lineHeight: 19,
-    marginTop: 12,
+    marginTop: 10,
   },
   chips: {
     flexDirection: "row",
@@ -154,6 +102,9 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderWidth: 1,
     borderRadius: 9,
+  },
+  chipDone: {
+    opacity: 0.5,
   },
   chipLabel: {
     fontFamily: fonts.mono500,

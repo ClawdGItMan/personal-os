@@ -47,6 +47,51 @@ export type Database = {
         }
         Relationships: []
       }
+      assistant_briefs: {
+        Row: {
+          brief: Json
+          generated_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          brief?: Json
+          generated_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          brief?: Json
+          generated_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      budgets: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          month: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          month: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          month?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       calendar_events: {
         Row: {
           all_day: boolean
@@ -190,6 +235,39 @@ export type Database = {
           },
         ]
       }
+      focus_sessions: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          id: string
+          label: string
+          planned_minutes: number
+          source: string
+          started_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          label?: string
+          planned_minutes?: number
+          source?: string
+          started_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          label?: string
+          planned_minutes?: number
+          source?: string
+          started_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       gmail_threads: {
         Row: {
           created_at: string
@@ -311,8 +389,14 @@ export type Database = {
           id: string
           recovery_score: number | null
           rhr: number | null
+          sleep_awake_min: number | null
+          sleep_deep_min: number | null
+          sleep_end: string | null
           sleep_hours: number | null
+          sleep_light_min: number | null
+          sleep_rem_min: number | null
           sleep_score: number | null
+          sleep_start: string | null
           source: string
           steps: number | null
           strain: number | null
@@ -328,8 +412,14 @@ export type Database = {
           id?: string
           recovery_score?: number | null
           rhr?: number | null
+          sleep_awake_min?: number | null
+          sleep_deep_min?: number | null
+          sleep_end?: string | null
           sleep_hours?: number | null
+          sleep_light_min?: number | null
+          sleep_rem_min?: number | null
           sleep_score?: number | null
+          sleep_start?: string | null
           source?: string
           steps?: number | null
           strain?: number | null
@@ -345,8 +435,14 @@ export type Database = {
           id?: string
           recovery_score?: number | null
           rhr?: number | null
+          sleep_awake_min?: number | null
+          sleep_deep_min?: number | null
+          sleep_end?: string | null
           sleep_hours?: number | null
+          sleep_light_min?: number | null
+          sleep_rem_min?: number | null
           sleep_score?: number | null
+          sleep_start?: string | null
           source?: string
           steps?: number | null
           strain?: number | null
@@ -694,6 +790,56 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      transactions: {
+        Row: {
+          account_id: string | null
+          amount: number
+          category: string
+          created_at: string
+          external_id: string | null
+          id: string
+          method: string
+          name: string
+          occurred_at: string
+          source: string
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          amount: number
+          category?: string
+          created_at?: string
+          external_id?: string | null
+          id?: string
+          method?: string
+          name: string
+          occurred_at?: string
+          source?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          amount?: number
+          category?: string
+          created_at?: string
+          external_id?: string | null
+          id?: string
+          method?: string
+          name?: string
+          occurred_at?: string
+          source?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "finance_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       workouts: {
         Row: {

@@ -4,9 +4,13 @@ import type { WeekCell } from "../../data/focus";
 import { useTheme } from "../../theme/ThemeContext";
 import { layout } from "../../theme/layout";
 import { fonts } from "../../theme/typeRoles";
+import { Skeleton } from "../spec/Skeleton";
 
 type WeekStripProps = {
   days: WeekCell[];
+  /** True while useFocusSessions has no data yet — renders 7 skeleton cells
+   * instead of a wrong-data flash (e.g. all "—" before the real week loads). */
+  loading?: boolean;
 };
 
 /**
@@ -15,8 +19,23 @@ type WeekStripProps = {
  * without hours). Today gets a full accent ring, an accent-tinted background
  * (reusing the LIVE band's wash token), and full-opacity accent text.
  */
-export function WeekStrip({ days }: WeekStripProps) {
+export function WeekStrip({ days, loading = false }: WeekStripProps) {
   const { c } = useTheme();
+
+  if (loading) {
+    return (
+      <View style={styles.row}>
+        {Array.from({ length: 7 }, (_, i) => (
+          <View key={i} style={[styles.cell, { borderColor: c.hairSection }]}>
+            <Skeleton width={10} height={8} radius={2} />
+            <Skeleton width={14} height={13} radius={2} />
+            <Skeleton width={18} height={8} radius={2} />
+          </View>
+        ))}
+      </View>
+    );
+  }
+
   return (
     <View style={styles.row}>
       {days.map((day, i) => {

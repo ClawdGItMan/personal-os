@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
+import { Pressed } from "./spec/Pressed";
 import { useTheme } from "../theme/ThemeContext";
 import { fonts } from "../theme/typeRoles";
 
@@ -19,14 +20,14 @@ export function ActionChip({ label, Icon, onPress }: ActionChipProps) {
   // Accent-tint border isn't a shared palette role — mirrors the SparkButton ring pattern.
   const ring = mode === "light" ? "rgba(30,122,82,0.4)" : "rgba(108,171,134,0.4)";
   return (
-    <Pressable style={[styles.chip, { borderColor: ring }]} onPress={onPress}>
+    <Pressed style={[styles.chip, { borderColor: ring }]} onPress={onPress}>
       {Icon ? (
         <View style={styles.icon}>
           <Icon size={11} color={c.accent} />
         </View>
       ) : null}
       <Text style={[styles.text, { color: c.accent }]}>{label}</Text>
-    </Pressable>
+    </Pressed>
   );
 }
 

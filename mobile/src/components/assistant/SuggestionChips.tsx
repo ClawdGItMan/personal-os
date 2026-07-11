@@ -1,5 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
+import { Pressed } from "../spec/Pressed";
 import { useTheme } from "../../theme/ThemeContext";
 
 type SuggestionChipsProps = {
@@ -13,9 +14,9 @@ export function SuggestionChips({ items, onSelect }: SuggestionChipsProps) {
   return (
     <View style={styles.row}>
       {items.map((label) => (
-        <Pressable key={label} onPress={() => onSelect(label)} style={[styles.chip, { borderColor: c.hairSection }]}>
+        <Pressed key={label} onPress={() => onSelect(label)} style={[styles.chip, { borderColor: c.hairSection }]}>
           <Text style={t.chip}>{label}</Text>
-        </Pressable>
+        </Pressed>
       ))}
     </View>
   );

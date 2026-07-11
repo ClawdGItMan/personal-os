@@ -7,7 +7,9 @@ import { SeeingRow } from "./SeeingRow";
 
 type AlsoSeeingProps = {
   items: SeeingItem[];
-  onAction: (item: SeeingItem) => void;
+  /** `index` lets the caller key per-row `act()` pending/success/error state
+   * back to the source `also_seeing` array (rows have no stable server id). */
+  onAction: (item: SeeingItem, index: number) => void;
 };
 
 /** ALSO SEEING ledger (design README §Assistant sheet): section header + count, then SeeingRow list. */
@@ -20,7 +22,7 @@ export function AlsoSeeing({ items, onAction }: AlsoSeeingProps) {
         <Text style={[styles.count, { color: c.ink50 }]}>{items.length}</Text>
       </View>
       {items.map((item, i) => (
-        <SeeingRow key={item.tag} item={item} first={i === 0} onAction={() => onAction(item)} />
+        <SeeingRow key={`${item.tag}-${i}`} item={item} first={i === 0} onAction={() => onAction(item, i)} />
       ))}
     </View>
   );

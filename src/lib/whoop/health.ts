@@ -19,6 +19,7 @@ import { paginate } from "./client";
  */
 
 const MILLIS_PER_HOUR = 3_600_000;
+const MILLIS_PER_MINUTE = 60_000;
 
 // ---------------------------------------------------------------------------
 // Raw record shapes (lightly typed — only the fields we consume).
@@ -47,10 +48,13 @@ export interface WhoopRecovery {
   };
 }
 
-/** Sleep record — `id` is a UUID; `nap` distinguishes naps from the night's sleep. */
+/** Sleep record — `id` is a UUID; `nap` distinguishes naps from the night's sleep.
+ * `start`/`end` bound the sleep window (same shape as `WhoopWorkout`'s window). */
 export interface WhoopSleep {
   id: string;
   nap?: boolean;
+  start?: string;
+  end?: string;
   score_state?: ScoreState;
   score?: {
     sleep_performance_percentage?: number;
@@ -58,6 +62,7 @@ export interface WhoopSleep {
       total_light_sleep_time_milli?: number;
       total_slow_wave_sleep_time_milli?: number;
       total_rem_sleep_time_milli?: number;
+      total_awake_time_milli?: number;
     };
   };
 }
@@ -73,7 +78,9 @@ export interface RawHealthRecords {
   sleeps: WhoopSleep[];
 }
 
-/** Normalized, flat camelCase input to `mapHealthDay` (one per cycle/day). */
+/** Normalized, flat camelCase input to `mapHealthDay` (one per cycle/day).
+ * `sleepDeepMin`/`sleepRemMin`/`sleepLightMin`/`sleepAwakeMin` are unrounded
+ * minutes (ms / 60,000) — `mapHealthDay` rounds them, mirroring `sleepHours`. */
 export interface NormalizedHealthDay {
   date: string;
   recoveryScore?: number;
@@ -82,6 +89,12 @@ export interface NormalizedHealthDay {
   sleepHours?: number;
   hrv?: number;
   rhr?: number;
+  sleepStart?: string;
+  sleepEnd?: string;
+  sleepDeepMin?: number;
+  sleepRemMin?: number;
+  sleepLightMin?: number;
+  sleepAwakeMin?: number;
 }
 
 /** A partial `health_snapshots` row (sans `user_id`, added by the sync core). */
@@ -94,6 +107,12 @@ export interface HealthSnapshotRow {
   sleep_hours?: number;
   hrv?: number;
   rhr?: number;
+  sleep_start?: string;
+  sleep_end?: string;
+  sleep_deep_min?: number;
+  sleep_rem_min?: number;
+  sleep_light_min?: number;
+  sleep_awake_min?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -159,7 +178,12 @@ function deriveSleepHours(sleep: WhoopSleep): number | undefined {
  *
  * A field is included ONLY when its source record is SCORED and the value is
  * present — absent fields are omitted (never set to undefined/null) so the
- * partial upsert won't null other sources' columns.
+ * partial upsert won't null other sources' columns. This applies per-field to
+ * the sleep-stage breakdown too: `sleepStart`/`sleepEnd`/`sleepDeepMin`/
+ * `sleepRemMin`/`sleepLightMin`/`sleepAwakeMin` are each set independently when
+ * present on a SCORED, non-nap sleep — a stage_summary missing one field (e.g.
+ * awake) omits just that one, not the whole group. Stage minutes are left
+ * UNROUNDED here (ms / 60,000); `mapHealthDay` rounds them, mirroring `sleepHours`.
  */
 export function assembleHealthDays(
   { cycles, recoveries, sleeps }: RawHealthRecords,
@@ -199,6 +223,23 @@ export function assembleHealthDays(
       }
       const sleepHours = deriveSleepHours(sleep);
       if (sleepHours !== undefined) day.sleepHours = sleepHours;
+
+      if (sleep.start !== undefined) day.sleepStart = sleep.start;
+      if (sleep.end !== undefined) day.sleepEnd = sleep.end;
+
+      const stages = sleep.score?.stage_summary;
+      if (stages?.total_slow_wave_sleep_time_milli !== undefined) {
+        day.sleepDeepMin = stages.total_slow_wave_sleep_time_milli / MILLIS_PER_MINUTE;
+      }
+      if (stages?.total_rem_sleep_time_milli !== undefined) {
+        day.sleepRemMin = stages.total_rem_sleep_time_milli / MILLIS_PER_MINUTE;
+      }
+      if (stages?.total_light_sleep_time_milli !== undefined) {
+        day.sleepLightMin = stages.total_light_sleep_time_milli / MILLIS_PER_MINUTE;
+      }
+      if (stages?.total_awake_time_milli !== undefined) {
+        day.sleepAwakeMin = stages.total_awake_time_milli / MILLIS_PER_MINUTE;
+      }
     }
 
     return day;
@@ -213,10 +254,12 @@ function round1(value: number): number {
 /**
  * Maps a normalized day to a partial `health_snapshots` row.
  *
- * Rounds `recovery_score`/`sleep_score`/`hrv`/`rhr` to integers and
- * `strain`/`sleep_hours` to one decimal. ALWAYS sets `date` and `source`;
- * includes a metric key ONLY when its normalized input is present (non-undefined)
- * — so the partial upsert won't null metrics owned by other sources.
+ * Rounds `recovery_score`/`sleep_score`/`hrv`/`rhr`/`sleep_deep_min`/
+ * `sleep_rem_min`/`sleep_light_min`/`sleep_awake_min` to integers and
+ * `strain`/`sleep_hours` to one decimal. `sleep_start`/`sleep_end` pass through
+ * unchanged (timestamps). ALWAYS sets `date` and `source`; includes a metric key
+ * ONLY when its normalized input is present (non-undefined) — so the partial
+ * upsert won't null metrics owned by other sources.
  */
 export function mapHealthDay(input: NormalizedHealthDay): HealthSnapshotRow {
   const row: HealthSnapshotRow = { date: input.date, source: "whoop" };
@@ -227,6 +270,12 @@ export function mapHealthDay(input: NormalizedHealthDay): HealthSnapshotRow {
   if (input.sleepHours !== undefined) row.sleep_hours = round1(input.sleepHours);
   if (input.hrv !== undefined) row.hrv = Math.round(input.hrv);
   if (input.rhr !== undefined) row.rhr = Math.round(input.rhr);
+  if (input.sleepStart !== undefined) row.sleep_start = input.sleepStart;
+  if (input.sleepEnd !== undefined) row.sleep_end = input.sleepEnd;
+  if (input.sleepDeepMin !== undefined) row.sleep_deep_min = Math.round(input.sleepDeepMin);
+  if (input.sleepRemMin !== undefined) row.sleep_rem_min = Math.round(input.sleepRemMin);
+  if (input.sleepLightMin !== undefined) row.sleep_light_min = Math.round(input.sleepLightMin);
+  if (input.sleepAwakeMin !== undefined) row.sleep_awake_min = Math.round(input.sleepAwakeMin);
 
   return row;
 }

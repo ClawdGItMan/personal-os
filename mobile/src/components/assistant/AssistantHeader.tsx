@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { useTheme } from "../../theme/ThemeContext";
 import { fonts } from "../../theme/typeRoles";
+import { Pressed } from "../spec/Pressed";
 import { IconSpark } from "../spec/iconsSpec";
 import { IconClose } from "./assistantIcons";
 
@@ -21,13 +22,13 @@ export function AssistantHeader({ onClose }: AssistantHeaderProps) {
         <IconSpark size={19} color={c.accent} />
         <Text style={[styles.label, { color: c.ink }]}>ASSISTANT</Text>
       </View>
-      <Pressable
+      <Pressed
         accessibilityLabel="Close assistant"
         onPress={onClose}
         style={[styles.close, { borderColor: c.hairSection }]}
       >
         <IconClose size={12} color={c.ink64} />
-      </Pressable>
+      </Pressed>
     </View>
   );
 }

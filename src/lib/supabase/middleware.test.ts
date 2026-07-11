@@ -93,6 +93,25 @@ describe("updateSession — unauthenticated routing", () => {
     expect(redirectsToLogin(res)).toBe(false);
   });
 
+  // Assistant API routes (chat/brief/act) auth via `Authorization: Bearer
+  // <supabase access_token>` — mobile's auth model, not the web app's session
+  // cookie — so there is never a session cookie for this middleware to see,
+  // even on a legitimate authenticated request. Each route enforces its own
+  // 401 (see `getUserClientFromBearer`); the middleware must not redirect
+  // first, or the route's own auth check would never run (same class of bug
+  // as the cron */sync case above).
+  it.each([
+    "/api/assistant/chat",
+    "/api/assistant/brief",
+    "/api/assistant/act",
+  ])("does NOT redirect assistant route %s to /login", async (path) => {
+    const res = await updateSession(requestFor(path));
+    expect(
+      redirectsToLogin(res),
+      `${path} was redirected to /login (status ${res.status}); the route's own Bearer check would never run`,
+    ).toBe(false);
+  });
+
   it("does NOT redirect /login itself (auth route)", async () => {
     const res = await updateSession(requestFor("/login"));
     expect(redirectsToLogin(res)).toBe(false);
@@ -105,4 +124,23 @@ describe("updateSession — unauthenticated routing", () => {
     const res = await updateSession(requestFor("/api/whoop/sync-status"));
     expect(redirectsToLogin(res)).toBe(true);
   });
+
+  // Symmetric "not too loose" guard for the assistant exemption, mirroring
+  // the cron-sync guard above: `isAssistantRoute` matches on
+  // `pathname.startsWith("/api/assistant/")` (trailing slash included), so a
+  // path that merely starts with the same characters — a same-named sibling
+  // route or the prefix with no trailing slash — must stay gated. If the
+  // predicate were loosened to a bare `.startsWith("/api/assistant")` (no
+  // slash) or a `.includes("assistant")` check, these would start passing
+  // and this test would catch it.
+  it.each(["/api/assistants/foo", "/api/assistant"])(
+    "still redirects %s to /login (does not match the /api/assistant/ exemption)",
+    async (path) => {
+      const res = await updateSession(requestFor(path));
+      expect(
+        redirectsToLogin(res),
+        `${path} was NOT redirected to /login (status ${res.status}); the assistant exemption predicate is too loose`,
+      ).toBe(true);
+    },
+  );
 });

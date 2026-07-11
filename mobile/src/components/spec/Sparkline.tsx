@@ -54,6 +54,12 @@ export function Sparkline({ points = DEFAULT_POINTS, width, height }: SparklineP
       dot.value = 1;
       return;
     }
+    // Reset before animating (not just on mount) — task C4's range toggles
+    // reuse this same Sparkline instance for a new `points` series, and
+    // without resetting first, a shared value already at 1 makes
+    // `withTiming(1, ...)` a no-op, silently skipping the draw-in redraw.
+    progress.value = 0;
+    dot.value = 0;
     progress.value = withTiming(1, { duration: 1500, easing: ENTER_EASING });
     dot.value = withDelay(1300, withTiming(1, { duration: 250 }));
   }, [length, progress, dot, reduceMotion]);

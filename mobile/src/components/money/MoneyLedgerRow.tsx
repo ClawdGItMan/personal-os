@@ -1,34 +1,37 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text } from "react-native";
 
-import type { MoneyLedgerItem } from "../../data/money";
+import type { MoneyTransaction } from "../../lib/queries";
+import { Pressed } from "../spec/Pressed";
 import { layout } from "../../theme/layout";
 import { useTheme } from "../../theme/ThemeContext";
 import { fonts } from "../../theme/typeRoles";
+import { formatPlainSigned, ledgerDateLabel } from "./format";
 
 type MoneyLedgerRowProps = {
-  item: MoneyLedgerItem;
+  transaction: MoneyTransaction;
+  onPress: () => void;
 };
 
 /**
  * RECENT transaction row (design README §Money): grid 58pt time | 1fr title |
  * auto amount — no marker dot or tag (unlike the timeline LedgerRow). The
- * amount alone carries state color (accent inflow / red outflow); "YDA" rows
- * read their time slot at ink34 vs a same-day clock time's ink50.
+ * amount alone carries state color (accent inflow / red outflow); older-day
+ * rows read their date slot at ink34 vs a same-day clock time's ink50 (see
+ * `ledgerDateLabel`). Tapping opens the TransactionSheet detail view.
  */
-export function MoneyLedgerRow({ item }: MoneyLedgerRowProps) {
+export function MoneyLedgerRow({ transaction, onPress }: MoneyLedgerRowProps) {
   const { c, t } = useTheme();
-  const amountColor = item.tone === "pos" ? c.accent : c.red;
+  const amountColor = transaction.amount >= 0 ? c.accent : c.red;
+  const { label, muted } = ledgerDateLabel(transaction.occurredAt);
 
   return (
-    <View style={[styles.row, { borderTopColor: c.hairRow }]}>
-      <Text style={[t.ledgerTime, styles.time, { color: item.muted ? c.ink34 : c.ink50 }]}>
-        {item.time}
-      </Text>
+    <Pressed onPress={onPress} style={[styles.row, { borderTopColor: c.hairRow }]}>
+      <Text style={[t.ledgerTime, styles.time, { color: muted ? c.ink34 : c.ink50 }]}>{label}</Text>
       <Text numberOfLines={1} style={[t.ledgerTitle, styles.title]}>
-        {item.title}
+        {transaction.name}
       </Text>
-      <Text style={[styles.amount, { color: amountColor }]}>{item.amount}</Text>
-    </View>
+      <Text style={[styles.amount, { color: amountColor }]}>{formatPlainSigned(transaction.amount)}</Text>
+    </Pressed>
   );
 }
 

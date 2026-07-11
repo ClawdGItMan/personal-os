@@ -1,40 +1,58 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, TextInput, View } from "react-native";
 
-import { assistantData } from "../../data/assistant";
+import { assistantConfig } from "../../data/assistant";
+import { Pressed } from "../spec/Pressed";
 import { useTheme } from "../../theme/ThemeContext";
 import { fonts } from "../../theme/typeRoles";
-import { IconSend } from "./assistantIcons";
+import { IconSend, IconStop } from "./assistantIcons";
+
+type AskBarProps = {
+  /** Submit a trimmed, non-empty question — the caller owns what happens next
+   * (brief B6: first send switches the sheet into chat mode). */
+  onSend: (text: string) => void;
+  /** True while a reply is streaming — dims the field and swaps the send
+   * circle to a stop glyph (tap to cancel the in-flight `streamChat`). */
+  sending?: boolean;
+  onStop?: () => void;
+};
 
 /**
  * Ask bar (design README §Assistant sheet) — pill input on the elevated
- * surface with an inset ring + a 34pt accent send circle. Stub: logs the
- * question and clears (no assistant backend yet).
+ * surface with an inset ring + a 34pt accent send circle.
  *
  * The placeholder is a real <Text> overlay, not the native TextInput
  * placeholder: iOS renders a custom-font placeholder with unreliable metrics
  * (observed on-device as monospace-wide, clipped text), whereas a <Text>
  * always renders in the intended Manrope. The native placeholder is left empty
- * and the overlay shows only while the field is empty.
+ * and the overlay shows only while the field is empty. (This overlay
+ * mechanism is load-bearing — left untouched by brief B6.)
  */
-export function AskBar() {
+export function AskBar({ onSend, sending = false, onStop }: AskBarProps) {
   const { c } = useTheme();
   const [value, setValue] = useState("");
 
   const send = () => {
+    if (sending) return;
     const question = value.trim();
     if (!question) return;
-    console.log("assistant: ask", question);
+    onSend(question);
     setValue("");
   };
 
+  const handlePressCircle = () => {
+    if (sending) onStop?.();
+    else send();
+  };
+
   return (
-    <View style={[styles.bar, { backgroundColor: c.surface, borderColor: c.hairSection }]}>
+    <View style={[styles.bar, { backgroundColor: c.surface, borderColor: c.hairSection }, sending && styles.barSending]}>
       <View style={styles.inputWrap}>
         <TextInput
           value={value}
           onChangeText={setValue}
           placeholder=""
+          editable={!sending}
           style={[styles.input, { color: c.ink }]}
           onSubmitEditing={send}
           returnKeyType="send"
@@ -45,13 +63,17 @@ export function AskBar() {
             numberOfLines={1}
             pointerEvents="none"
           >
-            {assistantData.askPlaceholder}
+            {assistantConfig.askPlaceholder}
           </Text>
         ) : null}
       </View>
-      <Pressable accessibilityLabel="Send" onPress={send} style={[styles.send, { backgroundColor: c.accent }]}>
-        <IconSend size={15} color={c.onAccent} />
-      </Pressable>
+      <Pressed
+        accessibilityLabel={sending ? "Stop" : "Send"}
+        onPress={handlePressCircle}
+        style={[styles.send, { backgroundColor: c.accent }]}
+      >
+        {sending ? <IconStop size={13} color={c.onAccent} /> : <IconSend size={15} color={c.onAccent} />}
+      </Pressed>
     </View>
   );
 }
@@ -66,6 +88,9 @@ const styles = StyleSheet.create({
     paddingRight: 5,
     paddingVertical: 5,
     gap: 10,
+  },
+  barSending: {
+    opacity: 0.85,
   },
   inputWrap: {
     flex: 1,

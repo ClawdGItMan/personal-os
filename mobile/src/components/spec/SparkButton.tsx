@@ -1,8 +1,9 @@
-import { Pressable, StyleSheet } from "react-native";
+import { StyleSheet } from "react-native";
 
 import { useNav } from "../../navigation/NavContext";
 import { useTheme } from "../../theme/ThemeContext";
 import { IconSpark } from "./iconsSpec";
+import { Pressed } from "./Pressed";
 
 /**
  * Assistant trigger (design README §Assistant sheet): 34×34 circle on the
@@ -16,13 +17,13 @@ export function SparkButton() {
   const ring = mode === "light" ? "rgba(30,122,82,0.35)" : "rgba(108,171,134,0.4)";
 
   return (
-    <Pressable
+    <Pressed
       accessibilityLabel="Open assistant"
       onPress={openAssistant}
       style={[styles.button, { backgroundColor: c.surface, borderColor: ring }]}
     >
       <IconSpark size={17} color={c.accent} />
-    </Pressable>
+    </Pressed>
   );
 }
 
