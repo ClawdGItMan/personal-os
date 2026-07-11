@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { JournalField } from "../components/focus/JournalField";
@@ -10,33 +9,36 @@ import { LedgerRow } from "../components/spec/LedgerRow";
 import { ScreenHeader } from "../components/spec/ScreenHeader";
 import { StatGrid } from "../components/spec/StatGrid";
 import { TitleBlock } from "../components/spec/TitleBlock";
-import { focusData } from "../data/focus";
+import { buildWeekCells, focusData, formatMinutesHM, weekAvgLabel, weekRangeLabel } from "../data/focus";
 import { eyebrowDate } from "../lib/format";
+import { useFocusSessions } from "../lib/queries";
 import { FadeUp } from "../motion/FadeUp";
+import { layout } from "../theme/layout";
 import { useTheme } from "../theme/ThemeContext";
 import { fonts } from "../theme/typeRoles";
 import { useQueueRows } from "./useQueueRows";
 
+const DAILY_SESSION_GOAL = 4;
+const DEFAULT_SESSION_LABEL = "Deep work";
+const DEFAULT_SESSION_MINUTES = 50;
+
 /**
  * Focus (spec §7c) — the working surface: a live deep-work timer + progress
- * (mock session, no provider yet) over a QUEUE ledger that stays fully live:
- * today's calendar (read), tasks (read + toggle), habits (read + toggle
- * today), and the journal (read + write, opened from its queue row). The
- * queue's live-data wiring + the clock tick live in useQueueRows.ts, the LIVE
- * band lives in components/focus/LiveTimerBand.tsx; App owns the ambient
- * background + bottom nav, this screen is the scrolling content.
+ * over a QUEUE ledger that stays fully live: today's calendar (read), tasks
+ * (read + toggle), habits (read + toggle today), and the journal (read +
+ * write, opened from its queue row). The queue's live-data wiring + the
+ * clock tick live in useQueueRows.ts; the deep-work session (LIVE/START
+ * band, stats, week strip) is wired here off useFocusSessions. The LIVE/
+ * START band lives in components/focus/LiveTimerBand.tsx; App owns the
+ * ambient background + bottom nav, this screen is the scrolling content.
  */
 export function FocusScreen() {
   const { c, t } = useTheme();
   const { nowMs, queueRows, queueLoading, queueLeft, journalOpen, addJournalEntry } = useQueueRows();
+  const focus = useFocusSessions();
 
-  // Fixed once on mount so the timer counts up smoothly from the mock elapsed
-  // time (data/focus.ts) rather than resetting on every re-render.
-  const startMs = useMemo(() => Date.now() - focusData.session.elapsedAtLoadSec * 1000, []);
-  const elapsedSec = Math.max(0, Math.floor((nowMs - startMs) / 1000));
-  const totalSec = focusData.session.blockMinutes * 60;
-  const pct = Math.min(1, elapsedSec / totalSec);
   const now = new Date();
+  const weekCells = buildWeekCells(focus.weekMinutes, now);
 
   return (
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -44,20 +46,26 @@ export function FocusScreen() {
 
       <FadeUp index={0}>
         <View style={styles.eyebrowSpace}>
-          <Eyebrow left={eyebrowDate(now)} right={`${focusData.stats.deepHours} DEEP TODAY`} />
+          <Eyebrow
+            left={eyebrowDate(now)}
+            right={`${focus.loading ? "…" : formatMinutesHM(focus.todayStats.deepMinutes)} DEEP TODAY`}
+          />
         </View>
         <View style={styles.titleSpace}>
           <TitleBlock title={focusData.title} status={focusData.status} />
         </View>
+        {focus.error ? (
+          <Text style={[styles.errorText, { color: c.red }]}>{`COULDN'T LOAD FOCUS DATA — ${focus.error}`}</Text>
+        ) : null}
       </FadeUp>
 
       <View style={styles.firstBand}>
         <LiveTimerBand
           nowMs={nowMs}
-          elapsedSec={elapsedSec}
-          endsAt={focusData.session.endsAt}
-          label={focusData.session.label}
-          pct={pct}
+          active={focus.active}
+          loading={focus.loading}
+          onStart={() => void focus.start(DEFAULT_SESSION_LABEL, DEFAULT_SESSION_MINUTES)}
+          onEnd={() => void focus.end()}
           index={1}
         />
       </View>
@@ -67,17 +75,17 @@ export function FocusScreen() {
         items={[
           {
             label: "SESSIONS",
-            value: `${focusData.stats.sessions.done}/${focusData.stats.sessions.total}`,
-            sub: `${focusData.stats.sessions.left} LEFT`,
+            value: focus.loading ? "…" : `${focus.todayStats.sessions}/${DAILY_SESSION_GOAL}`,
+            sub: focus.loading ? "…" : `${Math.max(0, DAILY_SESSION_GOAL - focus.todayStats.sessions)} LEFT`,
           },
           {
             label: "DEEP HRS",
-            value: focusData.stats.deepHours,
-            sub: `GOAL ${focusData.stats.deepGoal}`,
+            value: focus.loading ? "…" : formatMinutesHM(focus.todayStats.deepMinutes),
+            sub: "GOAL 4:00",
           },
           {
             label: "STREAK",
-            value: String(focusData.stats.streakDays),
+            value: focus.loading ? "…" : String(focus.streakDays),
             sub: "DAYS",
             valueColor: c.accent,
           },
@@ -87,9 +95,11 @@ export function FocusScreen() {
       <Band variant="plain" index={3}>
         <View style={styles.sectionHeaderRow}>
           <Text style={t.sectionHeader}>This week</Text>
-          <Text style={t.bandSub}>{`${focusData.week.rangeLabel} · ${focusData.week.avgLabel}`}</Text>
+          <Text style={t.bandSub}>
+            {focus.loading ? "…" : `${weekRangeLabel(now)} · ${weekAvgLabel(weekCells)}`}
+          </Text>
         </View>
-        <WeekStrip days={focusData.week.days} />
+        <WeekStrip days={weekCells} loading={focus.loading} />
       </Band>
 
       <Band variant="plain" index={4}>
@@ -146,5 +156,13 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sans500,
     fontSize: 13,
     paddingVertical: 14,
+  },
+  errorText: {
+    fontFamily: fonts.mono500,
+    fontSize: 9,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+    marginTop: 10,
+    paddingHorizontal: layout.gutter,
   },
 });
