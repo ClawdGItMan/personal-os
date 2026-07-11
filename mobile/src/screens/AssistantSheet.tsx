@@ -346,7 +346,8 @@ export function AssistantSheet() {
                       </View>
                     ))}
                   </SheetFadeUp>
-                ) : showActionable && envelope ? (
+                ) : showActionable && envelope && envelope.brief.alsoSeeing.length > 0 ? (
+                  // Zero rows → omit the whole section ("ALSO SEEING · 0" is dead chrome).
                   <SheetFadeUp index={3} style={styles.section}>
                     <AlsoSeeing
                       items={envelope.brief.alsoSeeing.map((raw, i) => toSeeingItem(raw, rowStates[i]))}

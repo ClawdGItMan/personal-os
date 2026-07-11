@@ -196,6 +196,14 @@ export async function getBrief(refresh?: boolean, signal?: AbortSignal): Promise
   const json = await res.json().catch(() => null);
   const envelope = asRecord(json);
   const rawBrief = "brief" in envelope ? envelope.brief : json;
+  // Shape gate: a real brief always carries a non-empty string headline (the
+  // server zod schema guarantees it). Anything else — HTML from a stale
+  // server's login redirect, a proxy error page, null — must surface as an
+  // error, NOT normalize into a phantom empty brief (seen on-sim 2026-07-10).
+  const briefRecord = asRecord(rawBrief);
+  if (typeof briefRecord.headline !== "string" || briefRecord.headline.length === 0) {
+    throw new AssistantApiError("GET /api/assistant/brief returned an unexpected response shape", res.status);
+  }
   return {
     brief: normalizeBrief(rawBrief),
     generatedAt: typeof envelope.generated_at === "string" ? envelope.generated_at : null,
