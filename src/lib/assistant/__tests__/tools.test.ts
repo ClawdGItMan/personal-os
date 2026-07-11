@@ -210,6 +210,50 @@ describe("write tools — row shapes", () => {
     expect(started?.ended_at).toBeFalsy();
   });
 
+  it("start_focus_session auto-ends a pre-existing active session before starting the new one", async () => {
+    const { client, db } = createFakeSupabase({
+      focus_sessions: [
+        {
+          id: VALID_UUID,
+          user_id: USER_ID,
+          label: "Old work",
+          started_at: "2026-07-10T11:00:00Z",
+          ended_at: null,
+          planned_minutes: 30,
+        },
+      ],
+    });
+    const executors = buildToolExecutors(client, USER_ID);
+    const result = (await executors.start_focus_session?.({ label: "New work", planned_minutes: 50 })) as {
+      ok: true;
+      summary: string;
+      undo?: { table: string; id: string };
+    };
+
+    expect(result.summary).toBe("Ended previous session · Started 50 min: New work");
+
+    const rows = db.get("focus_sessions") ?? [];
+    expect(rows).toHaveLength(2); // old row kept (now ended), new row inserted — not overwritten
+    const old = rows.find((r) => r.id === VALID_UUID);
+    expect(old?.ended_at).toBeTruthy();
+    const fresh = rows.find((r) => r.id !== VALID_UUID);
+    expect(fresh).toMatchObject({ label: "New work", planned_minutes: 50 });
+    expect(fresh?.ended_at).toBeFalsy();
+
+    // undo points at the NEW session, not the one that got auto-ended
+    expect(result.undo).toEqual({ table: "focus_sessions", id: fresh?.id });
+  });
+
+  it("start_focus_session with no active session starts plainly, unchanged from before", async () => {
+    const { client, db } = createFakeSupabase({});
+    const executors = buildToolExecutors(client, USER_ID);
+    const result = (await executors.start_focus_session?.({ label: "Deep work", planned_minutes: 50 })) as {
+      summary: string;
+    };
+    expect(result.summary).toBe('Started focus session "Deep work" (50 min)');
+    expect(db.get("focus_sessions")).toHaveLength(1);
+  });
+
   it("end_focus_session ends the active session and computes elapsed minutes from its started_at", async () => {
     // Seeded directly (rather than chained off start_focus_session's insert)
     // because the fake store doesn't apply the real `started_at default

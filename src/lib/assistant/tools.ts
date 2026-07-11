@@ -361,9 +361,32 @@ function buildToolDefs(supabase: Client, userId: string): Record<string, ToolDef
     }),
 
     start_focus_session: defineTool({
-      description: "Start a new focus session now.",
+      description:
+        "Start a new focus session now. One deep-work block at a time: if another session is already active, it's ended first.",
       inputSchema: StartFocusSessionInput,
       execute: async ({ label, planned_minutes }): Promise<ToolWriteResult> => {
+        // Product invariant: only one active focus session at a time. Find
+        // and end any pre-existing active session before starting the new
+        // one, so a stray "start" never leaves two sessions open.
+        const { data: active, error: findError } = await supabase
+          .from("focus_sessions")
+          .select("id")
+          .eq("user_id", userId)
+          .is("ended_at", null)
+          .order("started_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (findError) throw new Error(findError.message);
+
+        if (active) {
+          const { error: endError } = await supabase
+            .from("focus_sessions")
+            .update({ ended_at: new Date().toISOString() })
+            .eq("id", active.id)
+            .eq("user_id", userId);
+          if (endError) throw new Error(endError.message);
+        }
+
         const { data, error } = await supabase
           .from("focus_sessions")
           .insert({ user_id: userId, label, planned_minutes, source: "assistant" })
@@ -372,7 +395,9 @@ function buildToolDefs(supabase: Client, userId: string): Record<string, ToolDef
         if (error) throw new Error(error.message);
         return {
           ok: true,
-          summary: `Started focus session "${data.label}" (${data.planned_minutes} min)`,
+          summary: active
+            ? `Ended previous session · Started ${data.planned_minutes} min: ${data.label}`
+            : `Started focus session "${data.label}" (${data.planned_minutes} min)`,
           undo: { table: "focus_sessions", id: data.id },
         };
       },
@@ -398,6 +423,7 @@ function buildToolDefs(supabase: Client, userId: string): Record<string, ToolDef
           .from("focus_sessions")
           .update({ ended_at: endedAt.toISOString() })
           .eq("id", active.id)
+          .eq("user_id", userId)
           .select("id,label")
           .single();
         if (error) throw new Error(error.message);
