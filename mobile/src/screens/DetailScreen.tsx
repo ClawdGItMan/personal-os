@@ -27,7 +27,9 @@ const AGENT_ON = true;
 export function DetailScreen({ item }: { item: DetailItem }) {
   const { c } = useTheme();
   const { close } = useNav();
-  const content = detailContent[item.kind];
+  // Mock content only exists for event/task; 'workout' renders the event
+  // template until the live Detail rewrite (task B8) replaces this file.
+  const content = detailContent[item.kind === "task" ? "task" : "event"];
   const isEvent = item.kind === "event";
 
   return (

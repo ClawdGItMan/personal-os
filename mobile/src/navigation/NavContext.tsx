@@ -4,14 +4,14 @@ import type { ReactNode } from "react";
 export type TabKey = "home" | "body" | "money" | "focus";
 
 /**
- * A tappable item that opens the shared Detail page (spec §5.5). Events and
- * tasks both flow through here; `kind` lets the Detail template flex by type.
- * Screen agents pass whatever extra fields their detail view needs — this is
- * deliberately open (`[key: string]: unknown`) so rows don't all need the same
- * shape, while `kind`/`title` are the always-present contract.
+ * A tappable item that opens the shared Detail page (spec §5.5). Events,
+ * tasks and workouts flow through here; `kind` lets the Detail template flex
+ * by type. Screen agents pass whatever extra fields their detail view needs —
+ * this is deliberately open (`[key: string]: unknown`) so rows don't all need
+ * the same shape, while `kind`/`title` are the always-present contract.
  */
 export type DetailItem = {
-  kind: "event" | "task";
+  kind: "event" | "task" | "workout";
   title: string;
   [key: string]: unknown;
 };
