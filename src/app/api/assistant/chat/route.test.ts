@@ -73,6 +73,14 @@ function fakeResponseMessage() {
   };
 }
 
+/** A response with only a tool-call part, no text part at all — the model
+ * did the write silently without narrating it. */
+function fakeToolOnlyResponseMessage() {
+  return {
+    parts: [{ type: "tool-complete_task", input: { id: "t1" }, output: { ok: true } }],
+  };
+}
+
 describe("POST /api/assistant/chat", () => {
   beforeEach(() => {
     assistantConfigured.mockReset().mockReturnValue(true);
@@ -132,6 +140,12 @@ describe("POST /api/assistant/chat", () => {
     expect(res.status).toBe(200);
 
     const rows = db.get("agent_messages") ?? [];
+    // Regression guard for the agent_messages_role_check modernization
+    // (migration 20260710120004): the fake's insert path now throws a
+    // PostgREST-shaped 23514 for any role outside ('user','assistant'), so
+    // this assertion — and the request succeeding at all — genuinely proves
+    // the app writes a role the live constraint accepts, not just that some
+    // row landed in the table.
     const userRow = rows.find((r) => r.role === "user");
     expect(userRow).toMatchObject({
       user_id: USER_ID,
@@ -174,8 +188,27 @@ describe("POST /api/assistant/chat", () => {
 
     const rows = db.get("agent_messages") ?? [];
     const assistantRow = rows.find((r) => r.role === "assistant");
+    // Also proves the write clears the fake's agent_messages_role_check
+    // (see above) — i.e. this is 'assistant', not the retired 'agent'.
+    expect(assistantRow?.role).toBe("assistant");
     expect(assistantRow?.text).toBe("Done — marked it.");
     expect(assistantRow?.tool_calls).toEqual([{ tool: "toggle_habit_today", input: { habit_id: "h1" } }]);
+  });
+
+  it("persists an empty text and the captured tool_calls when the assistant response is tool-only (no text part)", async () => {
+    const { client, db } = createFakeSupabase({});
+    getUserClientFromBearer.mockResolvedValue({ supabase: client, userId: USER_ID });
+
+    await POST(chatRequest(validBody));
+    expect(capturedOnFinish).toBeTypeOf("function");
+
+    await capturedOnFinish?.({ responseMessage: fakeToolOnlyResponseMessage() });
+
+    const rows = db.get("agent_messages") ?? [];
+    const assistantRow = rows.find((r) => r.role === "assistant");
+    expect(assistantRow?.role).toBe("assistant");
+    expect(assistantRow?.text).toBe("");
+    expect(assistantRow?.tool_calls).toEqual([{ tool: "complete_task", input: { id: "t1" } }]);
   });
 
   it("logs and swallows agent_messages insert failures instead of throwing (both the pre-stream user-message write and the onFinish assistant write)", async () => {

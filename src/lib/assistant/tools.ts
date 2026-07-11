@@ -126,6 +126,26 @@ const SetBudgetInput = z.object({
   amount: z.number().finite(),
 });
 
+/** Names of every tool whose executor performs a write (insert/update/delete/
+ * upsert), as opposed to a read-only `get_*` tool. This is the single source
+ * of truth for "which tools `/api/assistant/act` may invoke directly" — read
+ * tools exist for the model's own context-gathering during chat, not for a
+ * client to fetch data through without going via the model. Exported (not
+ * derived from `buildToolDefs` at runtime) so it stays a plain, easily
+ * tested list rather than an inferred/naming-convention check. */
+export const WRITE_TOOL_NAMES: ReadonlySet<string> = new Set([
+  "create_task",
+  "complete_task",
+  "toggle_habit_today",
+  "create_calendar_event",
+  "start_focus_session",
+  "end_focus_session",
+  "log_journal",
+  "add_transaction",
+  "log_weight",
+  "set_budget",
+]);
+
 // ---------------------------------------------------------------------------
 // Registry
 // ---------------------------------------------------------------------------

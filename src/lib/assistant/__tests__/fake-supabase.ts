@@ -21,6 +21,33 @@ function randomId(): string {
   return globalThis.crypto.randomUUID();
 }
 
+/** Mirrors the real `agent_messages_role_check` CHECK constraint (migration
+ * 20260710120004_agent_messages_role_modern.sql: `role in ('user','assistant')`).
+ * `agent_messages` is the only table whose contract these tests need to
+ * actively guard — a regression back to the old three-voice-UI 'you'/'agent'
+ * values would otherwise insert silently in the fake even though prod would
+ * reject it with a 23514. Kept table-specific and minimal on purpose. */
+const AGENT_MESSAGES_VALID_ROLES = new Set(["user", "assistant"]);
+
+/** Throws a PostgREST-shaped error object (matching the `{message, details,
+ * hint, code}` shape `postgrest-js` throws/returns on a Postgres CHECK
+ * violation, code 23514) when an `agent_messages` insert carries a `role`
+ * outside the real constraint's allowlist. */
+function assertAgentMessagesRoleCheck(table: string, rows: Row[]): void {
+  if (table !== "agent_messages") return;
+  for (const row of rows) {
+    const role = row.role;
+    if (typeof role === "string" && !AGENT_MESSAGES_VALID_ROLES.has(role)) {
+      throw {
+        message: `new row for relation "agent_messages" violates check constraint "agent_messages_role_check"`,
+        details: `Failing row contains role "${role}".`,
+        hint: null,
+        code: "23514",
+      };
+    }
+  }
+}
+
 /** Orders values the way Postgres would for our column types: numbers
  * numerically, ISO-date-like strings chronologically, everything else
  * lexicographically. `null`/`undefined` sort first. */
@@ -160,6 +187,7 @@ class FakeQueryBuilder {
   private runInsert(): Row[] {
     const table = this.table_();
     const rowsIn = Array.isArray(this.payload) ? this.payload : this.payload ? [this.payload] : [];
+    assertAgentMessagesRoleCheck(this.table, rowsIn);
     const inserted = rowsIn.map((r) => {
       const row: Row = { id: randomId(), created_at: new Date().toISOString(), ...r };
       table.push(row);

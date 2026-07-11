@@ -1,41 +1,69 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { ZodError } from "zod";
-import { buildTools, buildToolExecutors } from "@/lib/assistant/tools";
+import { buildTools, buildToolExecutors, WRITE_TOOL_NAMES } from "@/lib/assistant/tools";
 import { createFakeSupabase } from "./fake-supabase";
 
 const USER_ID = "11111111-1111-4111-8111-111111111111";
 const OTHER_USER_ID = "22222222-2222-4222-8222-222222222222";
 const VALID_UUID = "33333333-3333-4333-8333-333333333333";
 
+// Single source for both "every tool the registry exposes" and "which of
+// those are writes" — READ_TOOL_NAMES + [...WRITE_TOOL_NAMES] must partition
+// ALL_TOOL_NAMES exactly, so a tool added to one list without the other (or
+// left off both) fails loudly here instead of silently under/over-exposing
+// `/act`.
+const READ_TOOL_NAMES = [
+  "get_today_overview",
+  "get_health_history",
+  "get_workouts",
+  "get_calendar",
+  "get_tasks",
+  "get_money_summary",
+  "get_transactions",
+  "get_focus_history",
+  "get_journal",
+];
+const ALL_TOOL_NAMES = [...READ_TOOL_NAMES, ...WRITE_TOOL_NAMES];
+
 describe("buildTools", () => {
   it("exposes exactly the tool names A3 depends on, each as a callable AI SDK tool", () => {
     const { client } = createFakeSupabase({});
     const tools = buildTools(client, USER_ID);
-    const expectedNames = [
-      "get_today_overview",
-      "get_health_history",
-      "get_workouts",
-      "get_calendar",
-      "get_tasks",
-      "get_money_summary",
-      "get_transactions",
-      "get_focus_history",
-      "get_journal",
-      "create_task",
-      "complete_task",
-      "toggle_habit_today",
-      "create_calendar_event",
-      "start_focus_session",
-      "end_focus_session",
-      "log_journal",
-      "add_transaction",
-      "log_weight",
-      "set_budget",
-    ];
-    expect(Object.keys(tools).sort()).toEqual(expectedNames.sort());
-    for (const name of expectedNames) {
+    expect(Object.keys(tools).sort()).toEqual([...ALL_TOOL_NAMES].sort());
+    for (const name of ALL_TOOL_NAMES) {
       expect(typeof tools[name]?.execute).toBe("function");
       expect(typeof tools[name]?.description).toBe("string");
+    }
+  });
+});
+
+describe("WRITE_TOOL_NAMES", () => {
+  it("matches exactly the 10 known write tools, and excludes every read tool", () => {
+    expect([...WRITE_TOOL_NAMES].sort()).toEqual(
+      [
+        "create_task",
+        "complete_task",
+        "toggle_habit_today",
+        "create_calendar_event",
+        "start_focus_session",
+        "end_focus_session",
+        "log_journal",
+        "add_transaction",
+        "log_weight",
+        "set_budget",
+      ].sort(),
+    );
+    expect(WRITE_TOOL_NAMES.size).toBe(10);
+    for (const readName of READ_TOOL_NAMES) {
+      expect(WRITE_TOOL_NAMES.has(readName)).toBe(false);
+    }
+  });
+
+  it("is a subset of every tool buildTools actually registers (no orphaned write name)", () => {
+    const { client } = createFakeSupabase({});
+    const tools = buildTools(client, USER_ID);
+    for (const name of WRITE_TOOL_NAMES) {
+      expect(Object.keys(tools)).toContain(name);
     }
   });
 });

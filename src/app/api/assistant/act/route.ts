@@ -17,20 +17,7 @@ import type { NextRequest } from "next/server";
 import { z, ZodError } from "zod";
 import { assistantConfigured } from "@/lib/assistant/model";
 import { getUserClientFromBearer } from "@/lib/assistant/auth";
-import { buildToolExecutors } from "@/lib/assistant/tools";
-
-const WRITE_TOOL_NAMES = new Set([
-  "create_task",
-  "complete_task",
-  "toggle_habit_today",
-  "create_calendar_event",
-  "start_focus_session",
-  "end_focus_session",
-  "log_journal",
-  "add_transaction",
-  "log_weight",
-  "set_budget",
-]);
+import { buildToolExecutors, WRITE_TOOL_NAMES } from "@/lib/assistant/tools";
 
 const actBodySchema = z.object({
   tool: z.string().min(1),

@@ -124,4 +124,23 @@ describe("updateSession — unauthenticated routing", () => {
     const res = await updateSession(requestFor("/api/whoop/sync-status"));
     expect(redirectsToLogin(res)).toBe(true);
   });
+
+  // Symmetric "not too loose" guard for the assistant exemption, mirroring
+  // the cron-sync guard above: `isAssistantRoute` matches on
+  // `pathname.startsWith("/api/assistant/")` (trailing slash included), so a
+  // path that merely starts with the same characters — a same-named sibling
+  // route or the prefix with no trailing slash — must stay gated. If the
+  // predicate were loosened to a bare `.startsWith("/api/assistant")` (no
+  // slash) or a `.includes("assistant")` check, these would start passing
+  // and this test would catch it.
+  it.each(["/api/assistants/foo", "/api/assistant"])(
+    "still redirects %s to /login (does not match the /api/assistant/ exemption)",
+    async (path) => {
+      const res = await updateSession(requestFor(path));
+      expect(
+        redirectsToLogin(res),
+        `${path} was NOT redirected to /login (status ${res.status}); the assistant exemption predicate is too loose`,
+      ).toBe(true);
+    },
+  );
 });
