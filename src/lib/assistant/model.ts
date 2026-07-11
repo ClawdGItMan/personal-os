@@ -35,15 +35,14 @@ export function resolveModel(): LanguageModel {
 /**
  * True when the assistant has *some* runtime path to a model: a direct
  * Anthropic key, an explicit AI Gateway key, or a Vercel runtime (where the
- * platform backs Gateway calls via its own OIDC token even with neither key
- * present in `process.env`). False only when none of those can be assumed —
- * assistant routes should use this to short-circuit into a clear
- * "not configured" response instead of a raw fetch failure.
+ * Requires an explicit key: `ANTHROPIC_API_KEY` (direct) or
+ * `AI_GATEWAY_API_KEY` (Vercel AI Gateway). `process.env.VERCEL` was
+ * originally accepted as a proxy for OIDC-backed Gateway access, but it is
+ * always set on Vercel — with the Gateway not enabled, routes attempted the
+ * call and 500'd instead of degrading to the designed 503
+ * "assistant_not_configured" (caught by the prod curl smoke, 2026-07-10).
+ * Routes use this to short-circuit into the clear "not configured" response.
  */
 export function assistantConfigured(): boolean {
-  return !!(
-    process.env.ANTHROPIC_API_KEY ||
-    process.env.AI_GATEWAY_API_KEY ||
-    process.env.VERCEL
-  );
+  return !!(process.env.ANTHROPIC_API_KEY || process.env.AI_GATEWAY_API_KEY);
 }
