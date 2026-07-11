@@ -14,6 +14,10 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Pre-existing design reference material — not app source
     "design_handoff_personal_os/**",
+    // The Expo app has its own toolchain (mobile/tsconfig.json, tsc + expo export
+    // gates) — the web build/lint must not compile it: its deps aren't installed
+    // in the Vercel build, which failed every deploy since mobile/ landed.
+    "mobile/**",
   ]),
 ]);
 
