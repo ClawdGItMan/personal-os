@@ -35,8 +35,11 @@ export type UseFocusSessionsResult = {
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
-  /** Starts a new session (does not auto-end any existing active one — the
-   * caller decides whether to end() first). Refetches after insert. */
+  /** Starts a new session. Enforces the one-active-session invariant
+   * server-side: queries for this user's newest still-running session
+   * (never trusts hook state, which can be stale) and ends it before
+   * inserting the new one — mirrors `start_focus_session` in
+   * `src/lib/assistant/tools.ts`. Refetches after insert. */
   start: (label: string, plannedMinutes: number) => Promise<void>;
   /** Sets `ended_at = now()` on the current active session, then refetches. */
   end: () => Promise<void>;
@@ -121,7 +124,8 @@ function computeStreakDays(rows: FocusSessionRow[]): number {
 /**
  * Focus sessions (read + write). Fetches the last `LOOKBACK_DAYS` days of
  * sessions once and derives `active` / `todayStats` / `weekMinutes` /
- * `streakDays` from that set. `start()` inserts (user_id from
+ * `streakDays` from that set. `start()` ends any pre-existing active session
+ * (queried server-side, not from hook state) before inserting (user_id from
  * `auth.getUser()`) and refetches; `end()` sets `ended_at = now()` on the
  * current `active` row and refetches.
  */
@@ -164,6 +168,38 @@ export function useFocusSessions(): UseFocusSessionsResult {
         setError("Not signed in");
         return;
       }
+
+      // Product invariant: only one active focus session at a time. Query
+      // server-side for this user's newest still-running session — don't
+      // trust `rows`/`active` from hook state, it can be stale — and end it
+      // before inserting the new one, so a stray start() never leaves two
+      // sessions open. Mirrors `start_focus_session` in
+      // `src/lib/assistant/tools.ts`.
+      const { data: active, error: findErr } = await supabase
+        .from("focus_sessions")
+        .select("id")
+        .eq("user_id", user.id)
+        .is("ended_at", null)
+        .order("started_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (findErr) {
+        setError(findErr.message);
+        return;
+      }
+
+      if (active) {
+        const { error: endErr } = await supabase
+          .from("focus_sessions")
+          .update({ ended_at: new Date().toISOString() })
+          .eq("id", active.id)
+          .eq("user_id", user.id);
+        if (endErr) {
+          setError(endErr.message);
+          return;
+        }
+      }
+
       const { error: err } = await supabase
         .from("focus_sessions")
         .insert({ user_id: user.id, label, planned_minutes: plannedMinutes });

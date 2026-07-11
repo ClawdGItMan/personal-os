@@ -50,10 +50,22 @@ export class AssistantApiError extends Error {
   }
 }
 
+/** Thrown by `streamChat` when its caller-supplied `AbortSignal` fires
+ * mid-stream — distinct from a network failure or server error, so the UI
+ * can treat a deliberate cancel (e.g. navigating away, sending a new
+ * message) as a silent no-op instead of an error toast. */
+export class AssistantAbortedError extends Error {
+  constructor(message = "Request aborted") {
+    super(message);
+    this.name = "AssistantAbortedError";
+  }
+}
+
 type AssistantFetchInit = {
   method?: string;
   body?: string;
   headers?: Record<string, string>;
+  signal?: AbortSignal;
 };
 
 type AssistantResponse = Awaited<ReturnType<typeof expoFetch>>;
@@ -64,7 +76,9 @@ type AssistantResponse = Awaited<ReturnType<typeof expoFetch>>;
  * 503 → `AssistantNotConfiguredError`, and any thrown network error →
  * `AssistantOfflineError`. Any other status is returned as-is for the caller
  * to inspect (`res.ok`) — those are request-specific (400/500/...), not
- * auth/availability concerns this helper owns.
+ * auth/availability concerns this helper owns. `init.signal`, if given, is
+ * passed straight through to the underlying fetch (used by `act`/`getBrief`
+ * callers that want to cancel an in-flight request).
  */
 export async function assistantFetch(path: string, init: AssistantFetchInit = {}): Promise<AssistantResponse> {
   const {
@@ -174,8 +188,8 @@ function normalizeBrief(v: unknown): AssistantBrief {
  * — defensive per the contract note ("wrap in a row envelope tolerant of
  * {brief: ...} or the raw object").
  */
-export async function getBrief(refresh?: boolean): Promise<BriefEnvelope> {
-  const res = await assistantFetch(`/api/assistant/brief${refresh ? "?refresh=1" : ""}`);
+export async function getBrief(refresh?: boolean, signal?: AbortSignal): Promise<BriefEnvelope> {
+  const res = await assistantFetch(`/api/assistant/brief${refresh ? "?refresh=1" : ""}`, { signal });
   if (!res.ok) {
     throw new AssistantApiError(`GET /api/assistant/brief failed (${res.status})`, res.status);
   }
@@ -197,8 +211,8 @@ export type ActResult = { ok: true; summary: string; undo?: { table: string; id:
 
 /** POST /api/assistant/act — direct write-tool execution (e.g. from a
  * brief's `topMove`/`alsoSeeing` action, or a confirmed chat suggestion). */
-export async function act(tool: string, args: Record<string, unknown>): Promise<ActResult> {
-  const res = await assistantFetch("/api/assistant/act", { method: "POST", body: JSON.stringify({ tool, args }) });
+export async function act(tool: string, args: Record<string, unknown>, signal?: AbortSignal): Promise<ActResult> {
+  const res = await assistantFetch("/api/assistant/act", { method: "POST", body: JSON.stringify({ tool, args }), signal });
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     const message = typeof asRecord(body).error === "string" ? String(asRecord(body).error) : `POST /api/assistant/act failed (${res.status})`;
@@ -281,16 +295,25 @@ function isToolPart(part: unknown): boolean {
  * Calls `onDelta(delta, textSoFar)` for every text-delta part and (if given)
  * `onToolEvent(part)` with the raw part for every tool-call/result part.
  * Resolves with the full accumulated assistant text once the stream ends.
+ *
+ * `opts.signal`, if given, aborts the underlying fetch — on abort the reader
+ * is cancelled and the call rejects with `AssistantAbortedError` rather than
+ * a generic network error, so callers can tell "cancelled on purpose" apart
+ * from "the request actually failed". Appended as a final, optional
+ * parameter to stay backward compatible with existing call sites.
  */
 export async function streamChat(
   messages: ChatMessageInput[],
   source: ChatSource | undefined,
   onDelta: (delta: string, textSoFar: string) => void,
   onToolEvent?: (part: unknown) => void,
+  opts?: { signal?: AbortSignal },
 ): Promise<string> {
+  const signal = opts?.signal;
   const res = await assistantFetch("/api/assistant/chat", {
     method: "POST",
     body: JSON.stringify({ messages: toWireMessages(messages), source }),
+    signal,
   });
 
   if (!res.ok || !res.body) {
@@ -302,13 +325,11 @@ export async function streamChat(
   let buffer = "";
   let text = "";
 
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-
-    // SSE events are separated by a blank line ("\n\n"); an event can carry
-    // multiple "data:" lines, so split what we pull off per-line too.
+  // SSE events are separated by a blank line ("\n\n"); an event can carry
+  // multiple "data:" lines, so split what we pull off per-line too. Drains
+  // every complete event currently sitting in `buffer`, leaving any trailing
+  // partial event for the next chunk (or the final flush) to complete.
+  function drainBuffer(): void {
     let sepIndex: number;
     while ((sepIndex = buffer.indexOf("\n\n")) !== -1) {
       const rawEvent = buffer.slice(0, sepIndex);
@@ -326,6 +347,33 @@ export async function streamChat(
       }
     }
   }
+
+  for (;;) {
+    if (signal?.aborted) {
+      await reader.cancel().catch(() => {});
+      throw new AssistantAbortedError();
+    }
+
+    let done: boolean;
+    let value: Uint8Array | undefined;
+    try {
+      ({ done, value } = await reader.read());
+    } catch (cause) {
+      if (signal?.aborted) {
+        await reader.cancel().catch(() => {});
+        throw new AssistantAbortedError();
+      }
+      throw cause;
+    }
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    drainBuffer();
+  }
+
+  // Flush any buffered bytes from a multi-byte character split across the
+  // last chunk boundary, then drain whatever final event that completes.
+  buffer += decoder.decode();
+  drainBuffer();
 
   return text;
 }
