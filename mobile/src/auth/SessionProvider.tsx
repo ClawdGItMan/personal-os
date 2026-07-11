@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { Platform } from "react-native";
 
 import { supabase } from "../lib/supabase";
+import { tryDevLogin } from "./devLogin";
 
 type SessionValue = {
   session: Session | null;
@@ -33,6 +34,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setLoading(false);
+      // Dev-bundle simulator auto-login (no-op in Release, see devLogin.ts).
+      if (!data.session) void tryDevLogin();
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
       setSession(next);
