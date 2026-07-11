@@ -1,57 +1,88 @@
 import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { SleepStageBar } from "../components/body/SleepStageBar";
-import { TrainingBand } from "../components/body/TrainingBand";
+import { BandMessage } from "../components/body/BandMessage";
+import { SleepBand } from "../components/body/SleepBand";
+import { TrainingBand, TrainingEmptyBand } from "../components/body/TrainingBand";
+import { useBodyHistory } from "../components/body/useBodyHistory";
 import { WeekCells } from "../components/body/WeekCells";
 import { Band } from "../components/spec/Band";
 import { Eyebrow } from "../components/spec/Eyebrow";
 import { HrvBars } from "../components/spec/HrvBars";
 import { RecoveryDial } from "../components/spec/RecoveryDial";
 import { ScreenHeader } from "../components/spec/ScreenHeader";
+import { Skeleton } from "../components/spec/Skeleton";
 import { StatGrid } from "../components/spec/StatGrid";
 import type { StatItem } from "../components/spec/StatGrid";
 import { TitleBlock } from "../components/spec/TitleBlock";
 import {
-  formatSleepHero,
+  buildWeekDays,
+  countWeekSessions,
+  daysSinceMonday,
+  formatTrainingSub,
   hrvMock,
   isoWeek,
   recoveryFallback,
   restHRMock,
-  sleepColor,
-  sleepMock,
-  trainingMock,
-  weekMock,
-  weightMock,
+  titleCaseSport,
 } from "../data/body";
-import { eyebrowDate } from "../lib/format";
-import { useHealthToday } from "../lib/queries";
+import { eyebrowDate, time12 } from "../lib/format";
+import { useHealthToday, useSleepDetail, useWorkouts } from "../lib/queries";
 import { FadeUp } from "../motion/FadeUp";
+import { useNav } from "../navigation/NavContext";
 import { useTheme } from "../theme/ThemeContext";
+
+/** A workout older than this doesn't count as "this week's" training. */
+const WORKOUT_STALE_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
  * Body (design README §Body, spec 7a) — recovery dial, today's training,
  * last night's sleep, vitals, and this week's sessions. Recovery score, HRV,
- * rest HR, sleep hours + quality are live via `useHealthToday`; everything
- * else (training, sleep stages/window, weight, week grid) is mock — see
- * `src/data/body.ts`.
+ * rest HR are live via `useHealthToday` (HRV/REST HR 7-day deltas still have
+ * no trend provider, see `src/data/body.ts`'s `hrvMock`/`restHRMock`);
+ * training + the week grid are live via `useWorkouts`; sleep is live via
+ * `useSleepDetail`; weight + sleep debt are live via the colocated
+ * `useBodyHistory`.
  */
 export function BodyScreen() {
   const { c, t } = useTheme();
   const { data: health } = useHealthToday();
+  const sleep = useSleepDetail();
+  const bodyHistory = useBodyHistory();
+  const { openDetail } = useNav();
+
+  const now = new Date();
+  const workouts = useWorkouts(daysSinceMonday(now) + 1); // Monday…today, oldest first
 
   const recoveryScore = health?.recoveryScore ?? recoveryFallback.score;
   const hrv = health?.hrv != null ? Math.round(health.hrv) : hrvMock.fallback;
   const rhr = health?.rhr != null ? Math.round(health.rhr) : restHRMock.fallback;
-  const sleepHours = health?.sleepHours ?? sleepMock.hoursFallback;
-  const sleepQuality = health?.sleepScore != null ? Math.round(health.sleepScore) : sleepMock.qualityFallback;
 
-  const now = new Date();
+  const weightValue = bodyHistory.loading
+    ? "···"
+    : bodyHistory.weightLatest != null
+      ? bodyHistory.weightLatest.toFixed(1)
+      : "—";
+  const weightSub = bodyHistory.loading
+    ? ""
+    : bodyHistory.error
+      ? "COULDN'T LOAD"
+      : bodyHistory.weightDeltaLb != null
+        ? `${bodyHistory.weightDeltaLb > 0 ? "+" : bodyHistory.weightDeltaLb < 0 ? "−" : "±"}${Math.abs(bodyHistory.weightDeltaLb).toFixed(1)} · 30D`
+        : bodyHistory.weightLatest != null
+          ? "NO 30D DATA"
+          : "NO DATA";
 
   const statItems: StatItem[] = [
     { label: "REST HR", value: String(rhr), sub: restHRMock.delta },
     { label: "HRV", value: String(hrv), sub: hrvMock.delta, subColor: c.accent },
-    { label: "WEIGHT", value: weightMock.value, sub: weightMock.delta },
+    { label: "WEIGHT", value: weightValue, sub: weightSub },
   ];
+
+  const isStaleOrMissingWorkout =
+    !workouts.latest || Date.now() - new Date(workouts.latest.startedAt).getTime() > WORKOUT_STALE_MS;
+
+  const weekDays = buildWeekDays(workouts.week);
+  const weekSessions = countWeekSessions(workouts.week);
 
   return (
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -79,25 +110,60 @@ export function BodyScreen() {
         </Band>
       </View>
 
-      <TrainingBand time={trainingMock.time} title={trainingMock.title} sub={trainingMock.sub} index={2} />
+      {workouts.loading ? (
+        <Band variant="plain" index={2}>
+          <Text style={t.sectionHeader}>TRAINING</Text>
+          <View style={styles.skeletonTitle}>
+            <Skeleton width="70%" height={21} radius={4} />
+          </View>
+          <View style={styles.skeletonSub}>
+            <Skeleton width="50%" height={12} radius={4} />
+          </View>
+        </Band>
+      ) : workouts.error ? (
+        <Band variant="plain" index={2}>
+          <Text style={t.sectionHeader}>TRAINING</Text>
+          <BandMessage kind="error" onRetry={workouts.refetch} />
+        </Band>
+      ) : isStaleOrMissingWorkout ? (
+        <TrainingEmptyBand index={2} />
+      ) : (
+        <TrainingBand
+          time={time12(workouts.latest!.startedAt)}
+          title={titleCaseSport(workouts.latest!.sport)}
+          sub={formatTrainingSub(workouts.latest!)}
+          onPress={() =>
+            openDetail({
+              kind: "workout",
+              title: titleCaseSport(workouts.latest!.sport),
+              ...workouts.latest!,
+            })
+          }
+          index={2}
+        />
+      )}
 
-      <Band variant="plain" index={3}>
-        <View style={styles.rowBetween}>
-          <Text style={t.sectionHeader}>SLEEP · LAST NIGHT</Text>
-          <Text style={t.ledgerTime}>{sleepMock.window}</Text>
-        </View>
-        <View style={styles.sleepHeroRow}>
-          <Text style={[t.heroValue, { color: sleepColor(c, sleepHours) }]}>{formatSleepHero(sleepHours)}</Text>
-          <Text style={t.bandSub}>{sleepQuality}% QUALITY</Text>
-        </View>
-        <SleepStageBar stages={sleepMock.stages} />
-      </Band>
+      <SleepBand sleep={sleep} sleepDebtMin={bodyHistory.sleepDebtMin} index={3} />
 
       <StatGrid items={statItems} index={4} />
 
-      <Band variant="plain" index={5}>
-        <WeekCells sessions={weekMock.sessions} days={weekMock.days} />
-      </Band>
+      {workouts.loading ? (
+        <Band variant="plain" index={5}>
+          <Text style={t.sectionHeader}>THIS WEEK</Text>
+          <View style={styles.skeletonWeek}>
+            <Skeleton width="100%" height={22} radius={4} />
+          </View>
+        </Band>
+      ) : workouts.error ? (
+        <Band variant="plain" index={5}>
+          <Text style={t.sectionHeader}>THIS WEEK</Text>
+          <BandMessage kind="error" onRetry={workouts.refetch} />
+        </Band>
+      ) : (
+        <Band variant="plain" index={5}>
+          <WeekCells sessions={weekSessions} days={weekDays} />
+        </Band>
+      )}
     </ScrollView>
   );
 }
@@ -116,21 +182,19 @@ const styles = StyleSheet.create({
   firstBand: {
     marginTop: 22,
   },
-  rowBetween: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
   recoveryRow: {
     flexDirection: "row",
     alignItems: "flex-end",
     justifyContent: "space-between",
     marginTop: 14,
   },
-  sleepHeroRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    gap: 10,
-    marginTop: 12,
+  skeletonTitle: {
+    marginTop: 10,
+  },
+  skeletonSub: {
+    marginTop: 8,
+  },
+  skeletonWeek: {
+    marginTop: 14,
   },
 });

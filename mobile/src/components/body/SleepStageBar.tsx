@@ -1,16 +1,20 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import type { SleepStage } from "../../data/body";
+import { minutesToHm } from "../../data/body";
 import { useTheme } from "../../theme/ThemeContext";
 
 type SleepStageBarProps = {
-  stages: readonly SleepStage[];
+  deepMin: number;
+  remMin: number;
+  lightMin: number;
 };
 
 /**
- * Hex → rgba string. The sleep bar's "core" segment is accent at .28 (light) /
+ * Hex → rgba string. The sleep bar's "light" segment is accent at .28 (light) /
  * .32 (dark) opacity — not a shared palette role (design README §Body: "core
- * flex accent-tint .28 light/.32 dark"), so it's derived here from `c.accent`.
+ * flex accent-tint .28 light/.32 dark"; the B3 brief renames that stage
+ * LIGHT to match the live `sleep_light_min` column), so it's derived here
+ * from `c.accent`.
  */
 function accentTint(hex: string, alpha: number): string {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -21,29 +25,32 @@ function accentTint(hex: string, alpha: number): string {
 
 /**
  * Sleep stage bar (design README §Body): 6pt stacked bar — deep (accentDeep),
- * REM (accent), core (accent-tint) — with a mono duration legend below.
+ * REM (accent), light (accent-tint) — with a mono duration legend below.
+ * Segment widths are proportional to the live deep/rem/light minutes from
+ * `useSleepDetail`.
  */
-export function SleepStageBar({ stages }: SleepStageBarProps) {
+export function SleepStageBar({ deepMin, remMin, lightMin }: SleepStageBarProps) {
   const { mode, c, t } = useTheme();
-  const coreAlpha = mode === "light" ? 0.28 : 0.32;
+  const lightAlpha = mode === "light" ? 0.28 : 0.32;
+  const total = deepMin + remMin + lightMin;
 
-  const segmentColor = (key: SleepStage["key"]): string => {
-    if (key === "deep") return c.accentDeep;
-    if (key === "rem") return c.accent;
-    return accentTint(c.accent, coreAlpha);
-  };
+  const stages = [
+    { key: "deep", label: "DEEP", minutes: deepMin, color: c.accentDeep },
+    { key: "rem", label: "REM", minutes: remMin, color: c.accent },
+    { key: "light", label: "LIGHT", minutes: lightMin, color: accentTint(c.accent, lightAlpha) },
+  ] as const;
 
   return (
     <View style={styles.wrap}>
       <View style={styles.bar}>
         {stages.map((s) => (
-          <View key={s.key} style={{ flex: s.fraction, backgroundColor: segmentColor(s.key) }} />
+          <View key={s.key} style={{ flex: total > 0 ? s.minutes / total : 1, backgroundColor: s.color }} />
         ))}
       </View>
       <View style={styles.legend}>
         {stages.map((s) => (
           <Text key={s.key} style={t.bandSub}>
-            {s.label} {s.duration}
+            {s.label} {minutesToHm(s.minutes)}
           </Text>
         ))}
       </View>
