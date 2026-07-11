@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import type { LedgerState } from "../components/spec/LedgerRow";
+import type { PressedHaptic } from "../components/spec/Pressed";
 import { extractDueTime12h, focusData, formatEventTime12h } from "../data/focus";
 import type { DeviceCalendarTodayEvent } from "../lib/deviceCalendar";
 import { dedupeDeviceEvents } from "../lib/mergeCalendarEvents";
@@ -23,6 +24,14 @@ export type QueueRowVM = {
   tag: "CAL" | "TASK" | "HABIT" | "JOURNAL" | "DEVICE";
   state: LedgerState;
   onPress?: () => void;
+  /** Passthrough to LedgerRow's `haptic` prop (fix pass, C1: single-haptic
+   * discipline). Rows whose `onPress` itself performs a write (task toggle
+   * in "queue" mode, habit toggle) pass "none" — the owning hook's
+   * `fireSuccessHaptic()` on write-completion is the feedback. Navigation/
+   * expand rows (calendar, device, journal, and "today-all" mode's tasks —
+   * which openDetail instead of toggling) omit this and get LedgerRow's
+   * "selection" default. */
+  haptic?: PressedHaptic;
 };
 
 /** "queue" (default) = Focus's QUEUE ledger, unchanged: calendar + tasks +
@@ -252,6 +261,9 @@ export function useQueueRows(mode: QueueRowsMode = "queue"): UseQueueRowsResult 
           mode === "today-all"
             ? () => openDetail({ kind: "task", ...raw, title: item.title, sub: item.sub, done: item.done })
             : () => void tasks.toggleTask(item.id, !item.done),
+        // "today-all" taps openDetail (navigation → tick is right); "queue"
+        // taps toggle in place (write → useTasks' toggleTask owns the buzz).
+        haptic: mode === "today-all" ? undefined : "none",
       },
     };
   });
@@ -263,6 +275,8 @@ export function useQueueRows(mode: QueueRowsMode = "queue"): UseQueueRowsResult 
     tag: "HABIT",
     state: h.todayDone ? "done" : "up",
     onPress: () => void habits.toggleHabitToday(h.id, !h.todayDone),
+    // Write row — useHabits' toggleHabitToday owns the success buzz.
+    haptic: "none",
   }));
 
   const journalDoneToday =

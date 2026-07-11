@@ -9,7 +9,6 @@ import { DetailFactsRow } from "../components/detail/DetailFactsRow";
 import type { Fact } from "../components/detail/DetailFactsRow";
 import { DetailHeader } from "../components/detail/DetailHeader";
 import { capitalize, formatDurationHM, formatRelativeDate, titleCaseFromSnake } from "../components/detail/detailFormat";
-import { fireSuccessHaptic } from "../components/spec/Pressed";
 import { time12 } from "../lib/format";
 import { useFocusSessions, useTasks } from "../lib/queries";
 import { FadeUp } from "../motion/FadeUp";
@@ -238,7 +237,9 @@ export function DetailScreen({ item }: { item: DetailItem }) {
         setActionError(after);
         return;
       }
-      fireSuccessHaptic();
+      // No haptic here — every write this drives (toggleTask, snoozeTask,
+      // startFocus) already fires its own success buzz from inside the
+      // owning hook on completion. Firing another one here would double it.
       close();
     },
     [close],

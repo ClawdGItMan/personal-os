@@ -261,6 +261,7 @@ export function HomeScreen() {
               tag={item.tag}
               state={item.state}
               onPress={item.onPress}
+              haptic={item.haptic}
             />
           ))
         )}

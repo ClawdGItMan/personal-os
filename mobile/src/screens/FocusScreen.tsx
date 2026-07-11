@@ -137,6 +137,7 @@ export function FocusScreen() {
               tag={row.tag}
               state={row.state}
               onPress={row.onPress}
+              haptic={row.haptic}
             />
           ))
         )}

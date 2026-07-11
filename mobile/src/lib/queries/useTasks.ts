@@ -131,7 +131,8 @@ export function useTasks(): UseTasksResult {
       setError(err.message);
       return;
     }
-    fireSuccessHaptic();
+    // Directional: only buzz when marking done, not when reopening/un-completing.
+    if (next) fireSuccessHaptic();
   }, []);
 
   const snoozeTask = useCallback(
@@ -147,6 +148,9 @@ export function useTasks(): UseTasksResult {
         setError(err.message);
         return;
       }
+      // DetailScreen's Snooze action no longer fires its own haptic (C1
+      // fix pass: hooks own success haptics) — this is now its one buzz.
+      fireSuccessHaptic();
       await refetch();
     },
     [rows, refetch],

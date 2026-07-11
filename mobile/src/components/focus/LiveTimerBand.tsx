@@ -105,6 +105,9 @@ export function LiveTimerBand({ nowMs, active, loading, onStart, onEnd, index = 
     <Band variant="accent" index={index}>
       <Pressed
         onPress={handlePress}
+        // "none": useFocusSessions' start()/end() already fire the success
+        // buzz on write-completion — a selection tick here would double-fire.
+        haptic="none"
         accessibilityRole="button"
         accessibilityLabel={active ? "End focus session" : "Start deep work"}
       >

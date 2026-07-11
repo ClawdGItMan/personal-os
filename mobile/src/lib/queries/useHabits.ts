@@ -191,7 +191,8 @@ export function useHabits(): UseHabitsResult {
         setError(err.message);
         return;
       }
-      fireSuccessHaptic();
+      // Directional: only buzz when marking done, not when un-marking.
+      if (nextDone) fireSuccessHaptic();
       // Refetch so the streak + week-dots recompute from the source of truth.
       await refetch();
     },

@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { useTheme } from "../../theme/ThemeContext";
 import { layout } from "../../theme/layout";
+import type { PressedHaptic } from "./Pressed";
 import { Pressed } from "./Pressed";
 
 export type LedgerState = "done" | "up";
@@ -13,6 +14,12 @@ type LedgerRowProps = {
   /** "done" = filled deep-accent square, struck title · "up" = outlined square, upcoming. */
   state: LedgerState;
   onPress?: () => void;
+  /** Passthrough to Pressed. Defaults to "selection" (the right tick for
+   * navigation/expand rows — calendar, journal). Rows whose `onPress` itself
+   * performs a write (task/habit toggles) should pass "none": the owning
+   * hook's `fireSuccessHaptic()` on write-completion is the feedback, so a
+   * selection tick on press-in would double-fire alongside it. */
+  haptic?: PressedHaptic;
 };
 
 /**
@@ -22,7 +29,7 @@ type LedgerRowProps = {
  * ink, never colored. The section header above supplies the stronger leading
  * hairline; rows carry the faint row rule.
  */
-export function LedgerRow({ time, title, tag, state, onPress }: LedgerRowProps) {
+export function LedgerRow({ time, title, tag, state, onPress, haptic = "selection" }: LedgerRowProps) {
   const { c, t } = useTheme();
   const done = state === "done";
 
@@ -30,6 +37,7 @@ export function LedgerRow({ time, title, tag, state, onPress }: LedgerRowProps) 
     <Pressed
       onPress={onPress}
       disabled={!onPress}
+      haptic={haptic}
       style={[styles.row, { borderTopColor: c.hairRow }]}
     >
       <Text style={[t.ledgerTime, styles.time, { color: done ? c.ink34 : c.ink50 }]}>{time}</Text>
