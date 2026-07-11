@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import Svg, { Path } from "react-native-svg";
+import Svg, { Path, Rect } from "react-native-svg";
 
 /**
  * Assistant-sheet-only glyphs — close (header) and send (ask bar). Follows
@@ -40,6 +40,16 @@ export function IconSend({ size = 15, color, strokeWidth = 1.8 }: IconProps) {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </Frame>
+  );
+}
+
+/** Stop — filled square, swaps into the ask bar's send circle while a chat
+ * reply is streaming (tap to cancel, brief B6). */
+export function IconStop({ size = 15, color }: Omit<IconProps, "strokeWidth">) {
+  return (
+    <Frame size={size}>
+      <Rect x={6} y={6} width={12} height={12} rx={2} fill={color} />
     </Frame>
   );
 }

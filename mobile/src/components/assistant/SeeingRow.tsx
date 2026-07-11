@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { SeeingItem } from "../../data/assistant";
+import { CheckIcon } from "../icons";
 import { useTheme } from "../../theme/ThemeContext";
 import { fonts } from "../../theme/typeRoles";
 
@@ -15,10 +16,17 @@ type SeeingRowProps = {
  * grid. components/spec/LedgerRow is a 58pt-time | 1fr | auto grid built for
  * timeline rows (marker dot + strike-through), which doesn't fit a domain tag
  * + action pill, so this is its own row (foundation note, brief B5).
+ *
+ * `item.status` (brief B6): `pending` dims the pill and disables it while
+ * `act()` runs; `success` swaps the pill to a ✓ badge; `error` reverts the
+ * pill to its normal pressable label (so the row can retry) and adds a small
+ * inline mono error line under the sub.
  */
 export function SeeingRow({ item, first, onAction }: SeeingRowProps) {
   const { c, t } = useTheme();
   const accentAction = item.actionTone === "accent";
+  const pending = item.status === "pending";
+  const success = item.status === "success";
 
   return (
     <View style={[styles.row, { borderTopColor: first ? c.hairSection : c.hairRow }]}>
@@ -26,10 +34,25 @@ export function SeeingRow({ item, first, onAction }: SeeingRowProps) {
       <View style={styles.body}>
         <Text style={t.ledgerTitle}>{item.title}</Text>
         <Text style={[t.bandSub, styles.sub]}>{item.sub}</Text>
+        {item.status === "error" && item.errorMessage ? (
+          <Text style={[styles.error, { color: c.red }]}>{item.errorMessage}</Text>
+        ) : null}
       </View>
-      <Pressable onPress={onAction} style={[styles.pill, { borderColor: accentAction ? c.accent : c.hairSection }]}>
-        <Text style={[styles.pillLabel, { color: accentAction ? c.accent : c.ink64 }]}>{item.action}</Text>
-      </Pressable>
+      {success ? (
+        <View style={[styles.pill, styles.pillDone, { borderColor: c.accent }]}>
+          <CheckIcon size={11} color={c.accent} strokeWidth={2.4} />
+        </View>
+      ) : (
+        <Pressable
+          onPress={onAction}
+          disabled={pending}
+          style={[styles.pill, { borderColor: accentAction ? c.accent : c.hairSection }, pending && styles.pillPending]}
+        >
+          <Text style={[styles.pillLabel, { color: accentAction ? c.accent : c.ink64 }]}>
+            {pending ? "···" : item.action}
+          </Text>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -56,12 +79,30 @@ const styles = StyleSheet.create({
   sub: {
     marginTop: 4,
   },
+  error: {
+    fontFamily: fonts.mono500,
+    fontSize: 8.5,
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
+    marginTop: 5,
+  },
   pill: {
     borderWidth: 1,
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 6,
     alignSelf: "flex-start",
+  },
+  pillPending: {
+    opacity: 0.5,
+  },
+  pillDone: {
+    width: 26,
+    height: 26,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    alignItems: "center",
+    justifyContent: "center",
   },
   pillLabel: {
     fontFamily: fonts.mono600,
