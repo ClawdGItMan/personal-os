@@ -59,3 +59,4 @@ next-env.d.ts
 
 # Claude Code session artifacts
 .claude/
+.superpowers/
