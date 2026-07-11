@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import {
@@ -88,7 +88,24 @@ export function useAssistantChat(source: ChatSource = "MAX_OS") {
   const historyLoadedRef = useRef(false);
   const apiMessagesRef = useRef<ChatMessageInput[]>([]);
   const lastUserTextRef = useRef<string | null>(null);
+  const lastAssistantIdRef = useRef<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  /** False once the sheet has unmounted (dismissed mid-turn) — guards every
+   * setState after an `await` so a stale stream never updates state on a
+   * component React has already torn down. */
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      // Dismissing the sheet unmounts this hook immediately; abort whatever
+      // streamChat turn is still in flight rather than let it keep running
+      // (and billing) after the user has already left (mirrors
+      // useCaptureSession's unmount-abort pattern).
+      abortRef.current?.abort();
+    };
+  }, []);
 
   const loadHistoryOnce = useCallback(async () => {
     if (historyLoadedRef.current) return;
@@ -174,6 +191,7 @@ export function useAssistantChat(source: ChatSource = "MAX_OS") {
 
   const runAssistantTurn = useCallback(async () => {
     const assistantId = nextId("asst");
+    lastAssistantIdRef.current = assistantId;
     const controller = new AbortController();
     abortRef.current = controller;
     setLiveEntries((prev) => [...prev, { id: assistantId, kind: "assistant", segments: [], streaming: true }]);
@@ -196,18 +214,21 @@ export function useAssistantChat(source: ChatSource = "MAX_OS") {
         },
         { signal: controller.signal },
       );
+      if (!isMountedRef.current) return;
       apiMessagesRef.current = [...apiMessagesRef.current, { role: "assistant", content: finalText }];
       setStreaming(assistantId, false);
     } catch (err) {
+      if (!isMountedRef.current) return;
       setStreaming(assistantId, false);
-      // A deliberate cancel (stop button) is a silent end, not an error row —
-      // whatever partial text/tool rows already rendered just stay as-is.
+      // A deliberate cancel (stop button, or the sheet unmounting) is a
+      // silent end, not an error row — whatever partial text/tool rows
+      // already rendered just stay as-is.
       if (!(err instanceof AssistantAbortedError)) {
         setLiveEntries((prev) => [...prev, { id: nextId("err"), kind: "error", message: describeError(err) }]);
       }
     } finally {
       abortRef.current = null;
-      setSending(false);
+      if (isMountedRef.current) setSending(false);
     }
   }, [appendTextToAssistant, upsertToolSegment, setStreaming, source]);
 
@@ -226,9 +247,19 @@ export function useAssistantChat(source: ChatSource = "MAX_OS") {
 
   const retry = useCallback(() => {
     if (!lastUserTextRef.current || sending) return;
+    const failedId = lastAssistantIdRef.current;
     setLiveEntries((prev) => {
       const next = prev.slice();
+      // Drop the failed turn's error row(s)...
       while (next.length && next[next.length - 1].kind === "error") next.pop();
+      // ...and the partial assistant bubble (text/tool rows) that turn
+      // streamed before it failed, so the retry's fresh response replaces it
+      // cleanly instead of appending after stale content. The user's message
+      // stays untouched.
+      if (failedId && next.length) {
+        const last = next[next.length - 1];
+        if (last.kind === "assistant" && last.id === failedId) next.pop();
+      }
       return next;
     });
     void runAssistantTurn();

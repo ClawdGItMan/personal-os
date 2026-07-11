@@ -104,6 +104,25 @@ export function AssistantSheet() {
   const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: translateY.value }] }));
   const scrimStyle = useAnimatedStyle(() => ({ opacity: scrim.value }));
 
+  // ---- Unmount guards ----
+  // App.tsx unmounts this sheet immediately on dismiss; `actAbortRef` cancels
+  // any in-flight `act()` call (APPLY / also-seeing) rather than let it keep
+  // running after the user has left, and `isMountedRef` guards every setState
+  // that follows an `await` so a stale response never updates a torn-down
+  // component (mirrors `useAssistantChat`'s / useCaptureSession's
+  // unmount-abort pattern).
+  const isMountedRef = useRef(true);
+  const actAbortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    actAbortRef.current = controller;
+    return () => {
+      isMountedRef.current = false;
+      controller.abort();
+    };
+  }, []);
+
   // ---- Brief (headline/body/top-move/also-seeing) ----
   const [briefState, setBriefState] = useState<BriefState>("loading");
   const [briefErrorMessage, setBriefErrorMessage] = useState<string | null>(null);
@@ -149,11 +168,13 @@ export function AssistantSheet() {
     setTopMoveStatus("pending");
     setTopMoveError(null);
     try {
-      const result = await act(topMove.tool, topMove.args);
+      const result = await act(topMove.tool, topMove.args, actAbortRef.current?.signal);
+      if (!isMountedRef.current) return;
       setTopMoveSummary(result.summary);
       setTopMoveStatus("success");
       dismissTimerRef.current = setTimeout(() => close(), APPLY_SUCCESS_DISMISS_MS);
     } catch (err) {
+      if (!isMountedRef.current) return;
       setTopMoveStatus("error");
       setTopMoveError(actErrorMessage(err));
     }
@@ -167,9 +188,11 @@ export function AssistantSheet() {
       if (item.tool) {
         setRowStates((prev) => ({ ...prev, [index]: { status: "pending" } }));
         try {
-          await act(item.tool, item.args ?? {});
+          await act(item.tool, item.args ?? {}, actAbortRef.current?.signal);
+          if (!isMountedRef.current) return;
           setRowStates((prev) => ({ ...prev, [index]: { status: "success" } }));
         } catch (err) {
+          if (!isMountedRef.current) return;
           setRowStates((prev) => ({ ...prev, [index]: { status: "error", errorMessage: actErrorMessage(err) } }));
         }
         return;
@@ -185,6 +208,17 @@ export function AssistantSheet() {
   // ---- Chat mode ----
   const [mode, setMode] = useState<Mode>("brief");
   const chat = useAssistantChat();
+
+  // Gate the TOP MOVE success auto-dismiss on the sheet still being in brief
+  // mode — if the user enters chat (e.g. sends a message) while the timer is
+  // pending, cancel it so APPLY's success state doesn't yank them out of the
+  // conversation they just started.
+  useEffect(() => {
+    if (mode !== "brief" && dismissTimerRef.current) {
+      clearTimeout(dismissTimerRef.current);
+      dismissTimerRef.current = null;
+    }
+  }, [mode]);
 
   const handleSend = useCallback(
     (text: string) => {
