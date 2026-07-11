@@ -27,12 +27,36 @@ import {
 } from "../data/body";
 import { eyebrowDate, time12 } from "../lib/format";
 import { useHealthToday, useSleepDetail, useWorkouts } from "../lib/queries";
+import type { LatestWorkout } from "../lib/queries";
 import { FadeUp } from "../motion/FadeUp";
+import type { DetailItem } from "../navigation/NavContext";
 import { useNav } from "../navigation/NavContext";
 import { useTheme } from "../theme/ThemeContext";
 
 /** A workout older than this doesn't count as "this week's" training. */
 const WORKOUT_STALE_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Maps `useWorkouts`' camelCased `LatestWorkout` projection back to the raw
+ * `workouts` table column names DetailScreen's `workoutFacts()` reads
+ * (DetailItem is `[key: string]: unknown`, so this mismatch isn't caught by
+ * tsc — see NavContext.DetailItem). Keep in sync with `workoutFacts()`.
+ */
+function toWorkoutDetailItem(w: LatestWorkout): DetailItem {
+  return {
+    kind: "workout",
+    title: titleCaseSport(w.sport),
+    sport: w.sport,
+    source: w.source,
+    started_at: w.startedAt,
+    duration_sec: w.durationSec,
+    avg_hr: w.avgHr,
+    max_hr: w.maxHr,
+    strain: w.strain,
+    distance_m: w.distanceM,
+    energy_kj: w.energyKj,
+  };
+}
 
 /**
  * Body (design README §Body, spec 7a) — recovery dial, today's training,
@@ -132,13 +156,7 @@ export function BodyScreen() {
           time={time12(workouts.latest!.startedAt)}
           title={titleCaseSport(workouts.latest!.sport)}
           sub={formatTrainingSub(workouts.latest!)}
-          onPress={() =>
-            openDetail({
-              kind: "workout",
-              title: titleCaseSport(workouts.latest!.sport),
-              ...workouts.latest!,
-            })
-          }
+          onPress={() => openDetail(toWorkoutDetailItem(workouts.latest!))}
           index={2}
         />
       )}
