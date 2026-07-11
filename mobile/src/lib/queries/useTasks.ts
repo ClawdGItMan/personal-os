@@ -33,6 +33,11 @@ export type UseTasksResult = {
   refetch: () => Promise<void>;
   /** Optimistically flip a task's `done`, persist, and revert on failure. */
   toggleTask: (id: string, next: boolean) => Promise<void>;
+  /** Push a task's `due_at` to `untilIso` (e.g. "Snooze +1 day"). Optimistically
+   * moves the item to the bucket implied by the new due date, reverting on
+   * failure, then refetches so the rest (sub's due-time text, ordering)
+   * resyncs from the server. */
+  snoozeTask: (id: string, untilIso: string) => Promise<void>;
 };
 
 function startOfTodayMs(): number {
@@ -126,6 +131,24 @@ export function useTasks(): UseTasksResult {
     }
   }, []);
 
+  const snoozeTask = useCallback(
+    async (id: string, untilIso: string) => {
+      // Optimistic: move the item to the bucket implied by the new due date
+      // (drives it out of "today" immediately); refetch resyncs the rest
+      // (sub's due-time text, ordering) once the write lands.
+      const prevRows = rows;
+      setRows((prev) => prev.map((t) => (t.id === id ? { ...t, bucket: bucketOf(untilIso) } : t)));
+      const { error: err } = await supabase.from("tasks").update({ due_at: untilIso }).eq("id", id);
+      if (err) {
+        setRows(prevRows);
+        setError(err.message);
+        return;
+      }
+      await refetch();
+    },
+    [rows, refetch],
+  );
+
   const today = rows.filter((t) => t.bucket === "today");
   const week = rows.filter((t) => t.bucket === "week");
 
@@ -143,5 +166,6 @@ export function useTasks(): UseTasksResult {
     error,
     refetch,
     toggleTask,
+    snoozeTask,
   };
 }
