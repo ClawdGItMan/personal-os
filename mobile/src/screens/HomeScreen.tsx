@@ -21,7 +21,6 @@ import {
   firstUpcomingEvent,
   formatNetWorthPctLabel,
   greetingLead,
-  homeData,
   isBriefFresh,
   netWorthChangePct,
   nextFocusBandContent,
@@ -55,8 +54,8 @@ const DEFAULT_SESSION_MINUTES = 50;
  * calendar + tasks, no habits/journal, tasks tap-to-openDetail). The status
  * line prefers a fresh (<12h) assistant brief, fetched fire-and-forget on
  * mount, falling back to a deterministic line composed from live recovery +
- * next-event data. Health/habits/sleep keep their pre-existing mock-fallback
- * merge (unchanged) but now gate behind a loading skeleton alongside money.
+ * next-event data. Health/habits/sleep are honest: skeleton while loading,
+ * explicit no-data states when a fresh account has no rows — no mock merge.
  */
 export function HomeScreen() {
   const { c, t } = useTheme();
@@ -110,16 +109,17 @@ export function HomeScreen() {
     };
   }, []);
 
-  const recoveryScore = health?.recoveryScore != null ? Math.round(health.recoveryScore) : homeData.recovery.score;
-  const hrv = health?.hrv != null ? Math.round(health.hrv) : homeData.hrv.ms;
-  const restHr = health?.rhr != null ? Math.round(health.rhr) : homeData.hrv.restHr;
-  const sleep = health?.sleepHours != null ? splitHours(health.sleepHours) : homeData.vitals.sleep;
-  const sleepSub =
-    health?.sleepScore != null ? `${Math.round(health.sleepScore)}% QUAL` : homeData.vitals.sleep.sub;
-  // `habits` is null only while loading; an empty result ({done:0,total:0}) must
-  // still win over the mock, else a user with no habits keeps the mock tally forever.
-  const habitsDone = habits ? habits.done : homeData.vitals.habits.done;
-  const habitsTotal = habits ? habits.total : homeData.vitals.habits.total;
+  // Honest values only (mock-data policy): loading is covered by skeletons,
+  // and a user with no health rows sees an explicit no-data state, never the
+  // old design-fixture numbers (caught on-sim with a fresh empty account).
+  const recoveryScore = health?.recoveryScore != null ? Math.round(health.recoveryScore) : null;
+  const hrv = health?.hrv != null ? Math.round(health.hrv) : null;
+  const restHr = health?.rhr != null ? Math.round(health.rhr) : null;
+  const sleep = health?.sleepHours != null ? splitHours(health.sleepHours) : null;
+  const sleepSub = health?.sleepScore != null ? `${Math.round(health.sleepScore)}% QUAL` : "";
+  // `habits` is null only while loading (skeleton covers it) — render 0/0 honestly.
+  const habitsDone = habits ? habits.done : 0;
+  const habitsTotal = habits ? habits.total : 0;
 
   const now = new Date();
   const dayPct = dayProgressPct(now);
@@ -142,7 +142,7 @@ export function HomeScreen() {
   const statItems: StatItem[] = [
     {
       label: "SLEEP",
-      value: `${sleep.hours}:${sleep.minutes}`,
+      value: sleep ? `${sleep.hours}:${sleep.minutes}` : "—",
       sub: sleepSub,
     },
     {
@@ -211,11 +211,16 @@ export function HomeScreen() {
                 <Skeleton width={80} height={9} radius={2} />
               </View>
             </View>
-          ) : (
+          ) : recoveryScore != null ? (
             <View style={styles.recoveryRow}>
               <RecoveryDial score={recoveryScore} />
-              <HrvBars label="HRV · 7D" sub={`${hrv} MS · REST ${restHr}`} />
+              <HrvBars
+                label="HRV · 7D"
+                sub={hrv != null && restHr != null ? `${hrv} MS · REST ${restHr}` : ""}
+              />
             </View>
+          ) : (
+            <Text style={[t.bandSub, styles.recoveryEmpty]}>NO HEALTH DATA YET — CONNECT WHOOP ON WEB</Text>
           )}
         </Band>
       </View>
@@ -295,6 +300,9 @@ const styles = StyleSheet.create({
   },
   focusSub: {
     marginTop: 6,
+  },
+  recoveryEmpty: {
+    marginTop: 14,
   },
   recoveryRow: {
     flexDirection: "row",

@@ -18,15 +18,6 @@ import type { CalendarTodayEvent, NetWorthPoint } from "../lib/queries";
  * convention.
  */
 
-export const homeData = {
-  recovery: { score: 72 },
-  hrv: { ms: 64, restHr: 48 },
-  vitals: {
-    sleep: { hours: "7", minutes: "12", sub: "87% QUAL" },
-    habits: { done: 4, total: 6 },
-  },
-};
-
 /** Day progress 0–100 through the 6:00–23:00 wake window (design README §Home). */
 export function dayProgressPct(d: Date = new Date()): number {
   const wakeMin = 6 * 60;
@@ -113,7 +104,13 @@ export function recoveryWord(score: number): "green" | "amber" | "red" {
  * available: "Recovery's {word} and your next block is {event} at {time}."
  * — the second clause is omitted when there's no upcoming event today.
  */
-export function fallbackStatusSegments(recoveryScore: number, upcoming: UpcomingEvent | null): StatusSegment[] {
+export function fallbackStatusSegments(recoveryScore: number | null, upcoming: UpcomingEvent | null): StatusSegment[] {
+  // No health data yet (fresh account): keep the line honest — no recovery claim.
+  if (recoveryScore == null) {
+    if (!upcoming) return ["All quiet — nothing on the schedule."];
+    const t0 = time12(new Date(upcoming.targetMs));
+    return ["Your next block is ", { b: upcoming.title }, ` at ${t0}.`];
+  }
   const word = recoveryWord(recoveryScore);
   if (!upcoming) return ["Recovery's ", { b: word }, "."];
   const time = time12(new Date(upcoming.targetMs));
