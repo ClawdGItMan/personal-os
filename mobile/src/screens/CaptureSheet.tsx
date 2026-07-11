@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from "react";
-import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef } from "react";
+import { Animated, Easing, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { BlurView } from "expo-blur";
 
 import { Conversation } from "../components/capture/Conversation";
 import { InputDock } from "../components/capture/InputDock";
 import { SheetGlow } from "../components/capture/SheetGlow";
-import { VoiceState } from "../components/capture/VoiceState";
+import { useCaptureSession } from "../components/capture/useCaptureSession";
 import { CloseIcon } from "../components/icons";
 import { captureData } from "../data/capture";
 import { useNav } from "../navigation/NavContext";
@@ -14,17 +14,18 @@ import { fonts } from "../theme/typeRoles";
 
 /**
  * Capture sheet (spec §5.6) — the ⊕ agent spine. A full-screen blurred scrim
- * (tap → close) with a bottom sheet that gently rises in. The sheet holds the
- * agent conversation + input dock, and toggles into the voice Listening state
- * when the mic is tapped (Stop/Cancel/Keyboard return to the conversation).
- * Retheme onto ivy/porcelain: same flow, blur tint now follows the active mode
- * so the scrim reads correctly in both. Takes no props: App renders
- * <CaptureSheet /> and it reads useNav().close.
+ * (tap → close) with a bottom sheet that gently rises in, holding the live
+ * agent conversation (`useCaptureSession`, task B7) + input dock. Voice input
+ * is iOS keyboard dictation (v1): the mic just focuses the text field, so
+ * there's no separate listening screen to swap in anymore. Retheme onto
+ * ivy/porcelain: same flow, blur tint follows the active mode so the scrim
+ * reads correctly in both. Takes no props: App renders <CaptureSheet /> and
+ * it reads useNav().close.
  */
 export function CaptureSheet() {
   const { c, mode } = useTheme();
   const { close } = useNav();
-  const [voice, setVoice] = useState(false);
+  const capture = useCaptureSession();
   const rise = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -39,7 +40,7 @@ export function CaptureSheet() {
   }, [rise]);
 
   const translateY = rise.interpolate({ inputRange: [0, 1], outputRange: [40, 0] });
-  const eyebrow = voice ? captureData.header.listening : captureData.header.idle;
+  const eyebrow = capture.composerState === "sending" ? captureData.header.sending : captureData.header.idle;
 
   return (
     <View style={styles.host}>
@@ -69,18 +70,19 @@ export function CaptureSheet() {
           </Pressable>
         </View>
 
-        {voice ? (
-          <VoiceState
-            onStop={() => setVoice(false)}
-            onCancel={() => setVoice(false)}
-            onKeyboard={() => setVoice(false)}
+        <KeyboardAvoidingView
+          style={styles.body}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
+        >
+          <Conversation entries={capture.entries} onUndo={capture.undo} onRetry={capture.retry} />
+          <InputDock
+            value={capture.input}
+            onChangeText={capture.setInput}
+            onSend={() => capture.send(capture.input)}
+            disabled={capture.composerState !== "ready"}
           />
-        ) : (
-          <>
-            <Conversation />
-            <InputDock onMic={() => setVoice(true)} />
-          </>
-        )}
+        </KeyboardAvoidingView>
       </Animated.View>
     </View>
   );
@@ -104,6 +106,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderBottomWidth: 0,
     overflow: "hidden",
+  },
+  body: {
+    flex: 1,
   },
   grabber: {
     alignSelf: "center",
