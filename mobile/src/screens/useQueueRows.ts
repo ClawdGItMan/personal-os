@@ -2,8 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { LedgerState } from "../components/spec/LedgerRow";
 import { extractDueTime12h, focusData, formatEventTime12h } from "../data/focus";
+import type { DeviceCalendarTodayEvent } from "../lib/deviceCalendar";
+import { dedupeDeviceEvents } from "../lib/mergeCalendarEvents";
+import type { SupabaseDedupeEvent } from "../lib/mergeCalendarEvents";
 import type { CalendarTodayEvent } from "../lib/queries";
 import { useCalendarToday, useHabits, useJournal, useTasks } from "../lib/queries";
+// Not barrel-exported from lib/queries (task C-platform note) — import directly.
+import { useDeviceCalendar } from "../lib/queries/useDeviceCalendar";
 import { supabase } from "../lib/supabase";
 import type { Database } from "../lib/database.types";
 import { useNav } from "../navigation/NavContext";
@@ -15,7 +20,7 @@ export type QueueRowVM = {
   key: string;
   time: string;
   title: string;
-  tag: "CAL" | "TASK" | "HABIT" | "JOURNAL";
+  tag: "CAL" | "TASK" | "HABIT" | "JOURNAL" | "DEVICE";
   state: LedgerState;
   onPress?: () => void;
 };
@@ -38,9 +43,13 @@ export type UseQueueRowsResult = {
   /** Insert a new journal entry — passed through to JournalField's onSubmit. */
   addJournalEntry: (text: string) => Promise<boolean>;
   /** Refetches every source this hook reads (calendar, tasks, habits,
-   * journal) — all four are fetched regardless of `mode` (hooks can't be
-   * called conditionally), so pull-to-refresh on either screen that uses
-   * this hook refreshes the full set in parallel. */
+   * journal, device calendar) — all five are fetched regardless of `mode`
+   * (hooks can't be called conditionally), so pull-to-refresh on either
+   * screen that uses this hook refreshes the full set in parallel. Neither
+   * HomeScreen nor FocusScreen touch `useDeviceCalendar` directly — this is
+   * the only place its `refetch` is wired in, so both screens' existing
+   * pull-to-refresh (`refetchQueue()` in their own `refreshAll`) picks up
+   * device events for free. */
   refetch: () => Promise<void>;
 };
 
@@ -113,6 +122,20 @@ function eventSortMs(ev: CalendarTodayEvent, raw: CalendarEventRawRow | undefine
   return new Date(now.getFullYear(), now.getMonth(), now.getDate(), Number(match[1]), Number(match[2])).getTime();
 }
 
+/** Chronological sort key (ms) for a device event — mirrors `eventSortMs`'s
+ * HH:MM/NOW fallback (device events have no raw `starts_at` to prefer, only
+ * the display-mapped "HH:MM"/"NOW"/"ALL DAY" string). All-day events sort to
+ * the very start of the day, matching `deviceCalendar.ts`'s own ascending
+ * sort (all-day events first). */
+function deviceEventSortMs(ev: DeviceCalendarTodayEvent, nowMs: number): number {
+  const now = new Date(nowMs);
+  if (ev.time === "ALL DAY") return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0).getTime();
+  if (ev.time === "NOW") return nowMs;
+  const match = /^(\d{2}):(\d{2})$/.exec(ev.time);
+  if (!match) return Number.POSITIVE_INFINITY;
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), Number(match[1]), Number(match[2])).getTime();
+}
+
 type ScoredRow = { row: QueueRowVM; sortMs: number };
 
 /**
@@ -123,12 +146,22 @@ type ScoredRow = { row: QueueRowVM; sortMs: number };
  * ledger-row view model. Extracted out of the screens so they stay
  * render-only; also owns the once-a-second clock tick both screens' live
  * timer/band clock read off of.
+ *
+ * Task C2 (screen-integration half): also merges in device-calendar events
+ * (`useDeviceCalendar`, task C-platform) alongside the Supabase calendar,
+ * de-duped via `mergeCalendarEvents.ts`. Inert by construction whenever the
+ * user hasn't opted into any device calendars in Settings — `device.events`
+ * is `[]` in that state, so `deviceScored`/`dedupedDeviceEvents` are also
+ * always `[]` and every row/sort/merge below is a no-op. Both "queue" and
+ * "today-all" modes get device rows automatically since they're folded into
+ * the shared `calendarAndDeviceScored` block rather than handled per-mode.
  */
 export function useQueueRows(mode: QueueRowsMode = "queue"): UseQueueRowsResult {
   const calendar = useCalendarToday();
   const tasks = useTasks();
   const habits = useHabits();
   const journal = useJournal();
+  const device = useDeviceCalendar();
   const { eventsById, tasksById } = useDetailRawRows();
   const { openDetail } = useNav();
   const [journalOpen, setJournalOpen] = useState(false);
@@ -152,6 +185,55 @@ export function useQueueRows(mode: QueueRowsMode = "queue"): UseQueueRowsResult 
       },
     };
   });
+
+  // Device-calendar rows (task C2 screen-integration half): inert whenever
+  // `device.selectedIds` is empty (default, Settings opt-in required) since
+  // `useDeviceCalendar`'s `events` is already [] in that state — no branch
+  // needed here to special-case "feature off". De-dupe against today's
+  // Supabase calendar rows first (mergeCalendarEvents.ts) so a device
+  // calendar that mirrors the app's own google_calendar sync doesn't render
+  // every synced event twice.
+  const supabaseDedupeInputs: SupabaseDedupeEvent[] = calendar.data.map((ev) => ({
+    title: ev.title,
+    time: ev.time,
+    allDay: eventsById.get(ev.id)?.all_day ?? false,
+  }));
+  const dedupedDeviceEvents = dedupeDeviceEvents(supabaseDedupeInputs, device.events, nowMs);
+
+  const deviceScored: ScoredRow[] = dedupedDeviceEvents.map((ev) => ({
+    sortMs: deviceEventSortMs(ev, nowMs),
+    row: {
+      key: `device-${ev.id}`,
+      time: ev.time === "ALL DAY" ? ev.time : formatEventTime12h(ev.time),
+      title: ev.title,
+      tag: "DEVICE",
+      state: ev.state === "done" ? "done" : "up",
+      // No Supabase-backed raw row to spread (these never land in
+      // `calendar_events`) — pass the display-mapped fields directly.
+      // `source: "device"` (never "google_calendar") and no `external_id`
+      // together mean DetailScreen's `eventActions` correctly omits "Open in
+      // Calendar" for these. `location` doubles from `sub` — deviceCalendar.ts
+      // derives `sub` from `event.location` in the first place.
+      onPress: () =>
+        openDetail({
+          kind: "event",
+          id: ev.id,
+          title: ev.title,
+          sub: ev.sub,
+          location: ev.sub,
+          time: ev.time,
+          state: ev.state,
+          source: "device",
+        }),
+    },
+  }));
+
+  // Calendar + device rows share one chronologically-sorted block in both
+  // modes — "queue" mode groups calendar-type rows before tasks/habits/
+  // journal (unchanged), "today-all" flattens everything below.
+  const calendarAndDeviceScored: ScoredRow[] = [...calendarScored, ...deviceScored].sort(
+    (a, b) => a.sortMs - b.sortMs,
+  );
 
   const taskScored: ScoredRow[] = tasks.today.map((item) => {
     const raw = tasksById.get(item.id);
@@ -196,16 +278,20 @@ export function useQueueRows(mode: QueueRowsMode = "queue"): UseQueueRowsResult 
 
   const queueRows: QueueRowVM[] =
     mode === "today-all"
-      ? [...calendarScored, ...taskScored].sort((a, b) => a.sortMs - b.sortMs).map((s) => s.row)
-      : [...calendarScored.map((s) => s.row), ...taskScored.map((s) => s.row), ...habitRows, journalRow];
+      ? [...calendarAndDeviceScored, ...taskScored].sort((a, b) => a.sortMs - b.sortMs).map((s) => s.row)
+      : [...calendarAndDeviceScored.map((s) => s.row), ...taskScored.map((s) => s.row), ...habitRows, journalRow];
 
+  // Device calendar loading is intentionally NOT part of this — with the
+  // feature off (default, `device.selectedIds` empty) it must never delay
+  // or flicker the existing loading gate; when on, device rows just merge
+  // in on their own next render once `device.events` resolves.
   const queueLoading =
     mode === "today-all" ? calendar.loading || tasks.loading : calendar.loading || tasks.loading || habits.loading || journal.loading;
   const queueLeft = queueRows.filter((r) => r.state === "up").length;
 
   const refetch = useCallback(async () => {
-    await Promise.all([calendar.refetch(), tasks.refetch(), habits.refetch(), journal.refetch()]);
-  }, [calendar, tasks, habits, journal]);
+    await Promise.all([calendar.refetch(), tasks.refetch(), habits.refetch(), journal.refetch(), device.refetch()]);
+  }, [calendar, tasks, habits, journal, device]);
 
   return {
     nowMs,
