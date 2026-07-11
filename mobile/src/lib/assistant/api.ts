@@ -288,6 +288,18 @@ function isToolPart(part: unknown): boolean {
   return typeof type === "string" && (type === "dynamic-tool" || type.startsWith("tool-"));
 }
 
+/** Extracts the message from a mid-stream `{type:"error", errorText}` part —
+ * emitted by the server's `onError` (see `src/app/api/assistant/chat/route.ts`)
+ * when `streamText` fails *after* the response has already started, so the
+ * failure can't be reported as an HTTP status and rides the wire as one more
+ * UI-message chunk instead. Returns `null` for any other part. */
+function errorTextFromPart(part: unknown): string | null {
+  if (!part || typeof part !== "object") return null;
+  const p = part as { type?: unknown; errorText?: unknown };
+  if (p.type !== "error") return null;
+  return typeof p.errorText === "string" && p.errorText ? p.errorText : "assistant_error";
+}
+
 /**
  * POST /api/assistant/chat and stream the reply. Reads the AI SDK v7
  * UI-message SSE stream (`data: {...}\n\n` events, terminated by
@@ -324,11 +336,18 @@ export async function streamChat(
   const decoder = new TextDecoder();
   let buffer = "";
   let text = "";
+  // Set by `drainBuffer` when it hits a mid-stream `{type:"error"}` chunk.
+  // Checked after every `drainBuffer` call so the read loop can cancel the
+  // reader and throw from proper `async` context (cancelling is async;
+  // `drainBuffer` itself stays synchronous).
+  let pendingError: string | null = null;
 
   // SSE events are separated by a blank line ("\n\n"); an event can carry
   // multiple "data:" lines, so split what we pull off per-line too. Drains
   // every complete event currently sitting in `buffer`, leaving any trailing
-  // partial event for the next chunk (or the final flush) to complete.
+  // partial event for the next chunk (or the final flush) to complete. Stops
+  // draining as soon as it hits an error part — `pendingError` is set and any
+  // event still in `buffer` behind it is stream tail we deliberately ignore.
   function drainBuffer(): void {
     let sepIndex: number;
     while ((sepIndex = buffer.indexOf("\n\n")) !== -1) {
@@ -337,6 +356,11 @@ export async function streamChat(
       for (const line of rawEvent.split("\n")) {
         const part = parseSSEDataLine(line);
         if (part === null) continue; // blank / non-data / [DONE]
+        const errorText = errorTextFromPart(part);
+        if (errorText !== null) {
+          pendingError = errorText;
+          return;
+        }
         const delta = textDeltaFromPart(part);
         if (delta !== null) {
           text += delta;
@@ -368,12 +392,19 @@ export async function streamChat(
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
     drainBuffer();
+    if (pendingError !== null) {
+      await reader.cancel().catch(() => {});
+      throw new AssistantApiError(pendingError, res.status);
+    }
   }
 
   // Flush any buffered bytes from a multi-byte character split across the
   // last chunk boundary, then drain whatever final event that completes.
   buffer += decoder.decode();
   drainBuffer();
+  if (pendingError !== null) {
+    throw new AssistantApiError(pendingError, res.status);
+  }
 
   return text;
 }

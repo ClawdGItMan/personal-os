@@ -34,6 +34,7 @@ const UNDOABLE_TABLES = [
   "focus_sessions",
   "calendar_events",
   "habit_logs",
+  "budgets",
 ] as const;
 type UndoTable = (typeof UNDOABLE_TABLES)[number];
 
@@ -72,6 +73,10 @@ async function deleteUndoRow(table: UndoTable, id: string): Promise<string | nul
     }
     case "habit_logs": {
       const { error } = await supabase.from("habit_logs").delete().eq("id", id);
+      return error?.message ?? null;
+    }
+    case "budgets": {
+      const { error } = await supabase.from("budgets").delete().eq("id", id);
       return error?.message ?? null;
     }
   }
