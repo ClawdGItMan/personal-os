@@ -78,8 +78,21 @@ export function LoginScreen() {
               Check your <Text style={[styles.emphasis, { color: c.ink }]}>email.</Text>
             </Text>
             <Text style={[styles.sub, { color: c.ink64 }]}>
-              Enter the 6-digit code sent to {email.trim()}.
+              Enter the 6-digit code for your email.
             </Text>
+
+            <TextInput
+              style={[styles.field, { backgroundColor: c.surface, borderColor: c.hairSection, color: c.ink, marginBottom: 12 }]}
+              value={email}
+              onChangeText={setEmail}
+              placeholder="you@example.com"
+              placeholderTextColor={c.ink38}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="email"
+              inputMode="email"
+            />
 
             <TextInput
               style={[styles.field, styles.codeField, { backgroundColor: c.surface, borderColor: c.hairSection, color: c.ink }]}
