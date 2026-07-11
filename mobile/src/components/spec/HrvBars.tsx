@@ -34,8 +34,10 @@ function Bar({ height, color, delay }: { height: number; color: string; delay: n
 type HrvBarsProps = {
   /** Bar heights in pt; defaults to the locked 7-day series. */
   heights?: number[];
-  /** Mono label above the bars, e.g. "HRV · 7D". */
-  label: string;
+  /** Mono label above the bars, e.g. "HRV · 7D". Omit when a wrapping
+   * composite (task C4's `HrvRangeBand`) already renders its own header row
+   * — e.g. alongside a `RangeToggle` — so the label isn't drawn twice. */
+  label?: string;
   /** Mono sub below, e.g. "64 MS · REST 48". */
   sub: string;
 };
@@ -51,7 +53,7 @@ export function HrvBars({ heights = DEFAULT_HEIGHTS, label, sub }: HrvBarsProps)
 
   return (
     <View style={styles.wrap}>
-      <Text style={t.bandSub}>{label}</Text>
+      {label != null ? <Text style={t.bandSub}>{label}</Text> : null}
       <View style={styles.bars}>
         {heights.map((h, i) => (
           <Bar key={i} height={h} color={i === last ? c.accent : c.hrvBar} delay={i * 60} />

@@ -13,6 +13,8 @@ import { TransactionSheet } from "../components/money/TransactionSheet";
 import { Band } from "../components/spec/Band";
 import { Eyebrow } from "../components/spec/Eyebrow";
 import { fireSuccessHaptic, Pressed } from "../components/spec/Pressed";
+import type { RangeDays } from "../components/spec/RangeToggle";
+import { RangeToggle } from "../components/spec/RangeToggle";
 import { ScreenHeader } from "../components/spec/ScreenHeader";
 import { Sparkline } from "../components/spec/Sparkline";
 import { StatGrid } from "../components/spec/StatGrid";
@@ -63,10 +65,12 @@ function buildStatus(series: NetWorthPoint[], monthBurn: number, budgetAmount: n
   return ["Add accounts to see your full picture."];
 }
 
-/** Hero sub line — "+$X LATEST · +Y% 30D" built only from points that exist
+/** Hero sub line — "+$X LATEST · +Y% {N}D" built only from points that exist
  * ("LATEST" not "TODAY": a sparse snapshot history means the newest point
- * isn't guaranteed to be today, see useMoney.ts's netWorthSeries30d note). */
-function buildNetWorthSub(series: NetWorthPoint[]): string | null {
+ * isn't guaranteed to be today, see useMoney.ts's netWorthSeries30d note).
+ * `rangeDays` (task C4's NET WORTH RangeToggle) only labels the pct window —
+ * it doesn't change which points are summarized; that's `series` itself. */
+function buildNetWorthSub(series: NetWorthPoint[], rangeDays: number): string | null {
   if (series.length === 0) return null;
   const parts: string[] = [];
   if (series.length >= 2) {
@@ -76,7 +80,7 @@ function buildNetWorthSub(series: NetWorthPoint[]): string | null {
   const first = series[0].value;
   if (series.length >= 2 && first !== 0) {
     const pct = ((series[series.length - 1].value - first) / Math.abs(first)) * 100;
-    parts.push(`${pct >= 0 ? "+" : ""}${pct.toFixed(2)}% 30D`);
+    parts.push(`${pct >= 0 ? "+" : ""}${pct.toFixed(2)}% ${rangeDays}D`);
   }
   return parts.length > 0 ? parts.join(" · ") : null;
 }
@@ -93,6 +97,7 @@ export function MoneyScreen() {
     netWorth,
     groups,
     netWorthSeries30d,
+    netWorthSeries90d,
     monthBurn,
     budgetAmount,
     runwayMonths,
@@ -107,6 +112,10 @@ export function MoneyScreen() {
   } = useMoney();
 
   const [sheet, setSheet] = useState<SheetState>(null);
+  // NET WORTH band's range toggle (task C4) — useMoney already fetches a 90d
+  // window and exposes both slices, so this only picks which one feeds the
+  // sparkline/sub line; no query change needed.
+  const [netWorthRange, setNetWorthRange] = useState<RangeDays>(30);
   const [budgetEditing, setBudgetEditing] = useState(false);
   const [budgetInput, setBudgetInput] = useState("");
   const [savingBudget, setSavingBudget] = useState(false);
@@ -132,7 +141,11 @@ export function MoneyScreen() {
   const remaining = budgetAmount != null ? budgetAmount - monthBurn : 0;
 
   const status = loading ? LOADING_STATUS : error ? ERROR_STATUS : buildStatus(netWorthSeries30d, monthBurn, budgetAmount);
-  const netWorthSub = buildNetWorthSub(netWorthSeries30d);
+  // The band's own toggle picks which window feeds its sparkline/sub line;
+  // the page-level status sentence above stays anchored to the 30D window
+  // regardless (it's a monthly narrative, not this band's chart).
+  const netWorthSeries = netWorthRange === 90 ? netWorthSeries90d : netWorthSeries30d;
+  const netWorthSub = buildNetWorthSub(netWorthSeries, netWorthRange);
 
   const cashCount = accounts.filter((a) => a.group === "cash").length;
   const investedCount = accounts.filter((a) => a.group === "invested").length;
@@ -214,7 +227,10 @@ export function MoneyScreen() {
           ) : (
             <>
               <Band variant="plain" index={0}>
-                <BandHeader left="NET WORTH" right="30D" />
+                <View style={styles.netHeaderRow}>
+                  <Text style={t.bandSub}>NET WORTH</Text>
+                  <RangeToggle value={netWorthRange} onChange={setNetWorthRange} options={[30, 90]} />
+                </View>
                 <View style={styles.netRow}>
                   <View>
                     <CountUpText
@@ -226,9 +242,11 @@ export function MoneyScreen() {
                       <Text style={[t.bandSub, styles.netSub, { color: c.accent }]}>{netWorthSub}</Text>
                     ) : null}
                   </View>
-                  {netWorthSeries30d.length >= 2 ? (
-                    <Sparkline points={netWorthSeries30d.map((p) => p.value)} width={118} height={34} />
-                  ) : null}
+                  {netWorthSeries.length >= 2 ? (
+                    <Sparkline points={netWorthSeries.map((p) => p.value)} width={118} height={34} />
+                  ) : (
+                    <Text style={[t.bandSub, styles.notEnoughData]}>{`NOT ENOUGH DATA · ${netWorthRange}D`}</Text>
+                  )}
                 </View>
               </Band>
 
@@ -372,6 +390,11 @@ const styles = StyleSheet.create({
   bandsWrap: {
     marginTop: 20,
   },
+  netHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   netRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -383,6 +406,10 @@ const styles = StyleSheet.create({
   },
   netSub: {
     letterSpacing: 0.2,
+  },
+  notEnoughData: {
+    maxWidth: 118,
+    textAlign: "right",
   },
   burnRow: {
     flexDirection: "row",

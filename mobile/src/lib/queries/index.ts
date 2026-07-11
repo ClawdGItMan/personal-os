@@ -1,5 +1,7 @@
 export { useHealthToday } from "./useHealthToday";
 export type { HealthToday, UseHealthToday } from "./useHealthToday";
+export { sliceLastNDays, useHealthHistory } from "./useHealthHistory";
+export type { HealthHistoryPoint, UseHealthHistoryResult } from "./useHealthHistory";
 export { useHomeHabits } from "./useHomeHabits";
 export type { HomeHabits, UseHomeHabits } from "./useHomeHabits";
 

@@ -1,19 +1,21 @@
 import { useCallback, useState } from "react";
 import { Platform, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeIn, FadeOut, LinearTransition, useReducedMotion } from "react-native-reanimated";
 
 import { BandMessage } from "../components/body/BandMessage";
+import { HrvRangeBand } from "../components/body/HrvRangeBand";
 import { SleepBand } from "../components/body/SleepBand";
 import { TrainingBand, TrainingEmptyBand } from "../components/body/TrainingBand";
 import { useBodyHistory } from "../components/body/useBodyHistory";
+import type { VitalsItem } from "../components/body/VitalsGrid";
+import { VitalsGrid } from "../components/body/VitalsGrid";
 import { WeekCells } from "../components/body/WeekCells";
+import { WeightTrendBand } from "../components/body/WeightTrendBand";
 import { Band } from "../components/spec/Band";
 import { Eyebrow } from "../components/spec/Eyebrow";
-import { HrvBars } from "../components/spec/HrvBars";
 import { RecoveryDial } from "../components/spec/RecoveryDial";
 import { ScreenHeader } from "../components/spec/ScreenHeader";
 import { Skeleton } from "../components/spec/Skeleton";
-import { StatGrid } from "../components/spec/StatGrid";
-import type { StatItem } from "../components/spec/StatGrid";
 import { TitleBlock } from "../components/spec/TitleBlock";
 import {
   buildWeekDays,
@@ -27,7 +29,7 @@ import {
   titleCaseSport,
 } from "../data/body";
 import { eyebrowDate, time12 } from "../lib/format";
-import { useHealthToday, useSleepDetail, useWorkouts } from "../lib/queries";
+import { useHealthHistory, useHealthToday, useSleepDetail, useWorkouts } from "../lib/queries";
 import type { LatestWorkout } from "../lib/queries";
 import { FadeUp } from "../motion/FadeUp";
 import type { DetailItem } from "../navigation/NavContext";
@@ -62,18 +64,27 @@ function toWorkoutDetailItem(w: LatestWorkout): DetailItem {
 /**
  * Body (design README §Body, spec 7a) — recovery dial, today's training,
  * last night's sleep, vitals, and this week's sessions. Recovery score, HRV,
- * rest HR are live via `useHealthToday` (HRV/REST HR 7-day deltas still have
- * no trend provider, see `src/data/body.ts`'s `hrvMock`/`restHRMock`);
- * training + the week grid are live via `useWorkouts`; sleep is live via
- * `useSleepDetail`; weight + sleep debt are live via the colocated
- * `useBodyHistory`.
+ * rest HR are live via `useHealthToday` (REST HR's 7-day delta still has no
+ * trend provider, see `src/data/body.ts`'s `restHRMock`; HRV's RangeToggle
+ * band gained one in task C4 via `useHealthHistory`); training + the week
+ * grid are live via `useWorkouts`; sleep is live via `useSleepDetail`;
+ * weight + sleep debt are derived (via the colocated `useBodyHistory`) from
+ * the same `useHealthHistory(90)` fetch the HRV/weight RangeToggle bands
+ * slice for their windows.
  */
 export function BodyScreen() {
   const { c, t } = useTheme();
+  const reduceMotion = useReducedMotion();
   const { data: health, refetch: refetchHealth } = useHealthToday();
   const sleep = useSleepDetail();
-  const bodyHistory = useBodyHistory();
+  // Single 90d fetch (covers any of 7/30/90) — task C4 promoted the old
+  // useBodyHistory-owned fetch into lib/queries/useHealthHistory.ts; both
+  // useBodyHistory's derivation and the HRV/weight RangeToggle bands below
+  // slice this one result instead of each issuing their own query.
+  const history = useHealthHistory(90);
+  const bodyHistory = useBodyHistory(history.points);
   const { openDetail } = useNav();
+  const [weightExpanded, setWeightExpanded] = useState(false);
 
   const now = new Date();
   const workouts = useWorkouts(daysSinceMonday(now) + 1); // Monday…today, oldest first
@@ -85,24 +96,24 @@ export function BodyScreen() {
   const refreshAll = useCallback(async () => {
     setRefreshing(true);
     try {
-      await Promise.all([refetchHealth(), sleep.refetch(), bodyHistory.refetch(), workouts.refetch()]);
+      await Promise.all([refetchHealth(), sleep.refetch(), history.refetch(), workouts.refetch()]);
     } finally {
       setRefreshing(false);
     }
-  }, [refetchHealth, sleep.refetch, bodyHistory.refetch, workouts.refetch]);
+  }, [refetchHealth, sleep.refetch, history.refetch, workouts.refetch]);
 
   const recoveryScore = health?.recoveryScore ?? recoveryFallback.score;
   const hrv = health?.hrv != null ? Math.round(health.hrv) : hrvMock.fallback;
   const rhr = health?.rhr != null ? Math.round(health.rhr) : restHRMock.fallback;
 
-  const weightValue = bodyHistory.loading
+  const weightValue = history.loading
     ? "···"
     : bodyHistory.weightLatest != null
       ? bodyHistory.weightLatest.toFixed(1)
       : "—";
-  const weightSub = bodyHistory.loading
+  const weightSub = history.loading
     ? ""
-    : bodyHistory.error
+    : history.error
       ? "COULDN'T LOAD"
       : bodyHistory.weightDeltaLb != null
         ? `${bodyHistory.weightDeltaLb > 0 ? "+" : bodyHistory.weightDeltaLb < 0 ? "−" : "±"}${Math.abs(bodyHistory.weightDeltaLb).toFixed(1)} · 30D`
@@ -110,10 +121,16 @@ export function BodyScreen() {
           ? "NO 30D DATA"
           : "NO DATA";
 
-  const statItems: StatItem[] = [
+  const statItems: VitalsItem[] = [
     { label: "REST HR", value: String(rhr), sub: restHRMock.delta },
     { label: "HRV", value: String(hrv), sub: hrvMock.delta, subColor: c.accent },
-    { label: "WEIGHT", value: weightValue, sub: weightSub },
+    {
+      label: "WEIGHT",
+      value: weightValue,
+      sub: weightSub,
+      onPress: () => setWeightExpanded((v) => !v),
+      expanded: weightExpanded,
+    },
   ];
 
   const isStaleOrMissingWorkout =
@@ -147,7 +164,7 @@ export function BodyScreen() {
           <Text style={t.sectionHeader}>RECOVERY</Text>
           <View style={styles.recoveryRow}>
             <RecoveryDial score={recoveryScore} />
-            <HrvBars label="HRV · 7D" sub={`${hrv} MS · REST ${rhr}`} />
+            <HrvRangeBand points={history.points} loading={history.loading} currentHrv={hrv} />
           </View>
         </Band>
       </View>
@@ -181,7 +198,17 @@ export function BodyScreen() {
 
       <SleepBand sleep={sleep} sleepDebtMin={bodyHistory.sleepDebtMin} index={3} />
 
-      <StatGrid items={statItems} index={4} />
+      <Animated.View layout={reduceMotion ? undefined : LinearTransition.duration(260)}>
+        <VitalsGrid items={statItems} index={4} />
+        {weightExpanded ? (
+          <Animated.View
+            entering={reduceMotion ? undefined : FadeIn.duration(220)}
+            exiting={reduceMotion ? undefined : FadeOut.duration(160)}
+          >
+            <WeightTrendBand points={history.points} loading={history.loading} />
+          </Animated.View>
+        ) : null}
+      </Animated.View>
 
       {workouts.loading ? (
         <Band variant="plain" index={5}>

@@ -1,36 +1,30 @@
-import { useCallback, useEffect, useState } from "react";
+import { useMemo } from "react";
 
-import { supabase } from "../../lib/supabase";
+import type { HealthHistoryPoint } from "../../lib/queries";
 
 /**
- * Small history read colocated here (not in `lib/queries/`) — Task B3's file
- * scope excludes editing the query hooks, and `useHealthToday`/
- * `useSleepDetail` only expose the single latest `health_snapshots` row.
- * The WEIGHT stat's 30-day delta and the SLEEP DEBT line both need a short
- * window of history, so this hook fetches one small range and derives both,
- * following `useHealthToday.ts`'s plain read pattern (RLS-scoped, no manual
- * `user_id` filter).
+ * Small history derivation colocated here (not in `lib/queries/`) — Task
+ * B3's file scope excluded editing the query hooks. Task C4 promoted the raw
+ * fetch this used to own into `lib/queries/useHealthHistory.ts` (a `days`-
+ * parameterized hook several Body surfaces now share: this derivation, the
+ * HRV band's RangeToggle, and the WEIGHT stat's trend expand), so this file
+ * is now a pure derivation over the points that hook returns — no fetch,
+ * no loading/error/refetch of its own. Callers read those from the shared
+ * `useHealthHistory` result instead (see BodyScreen).
  */
 export type UseBodyHistoryResult = {
   weightLatest: number | null;
   /** Latest weight minus the closest snapshot ≥30 days before it (same raw
    * unit as stored — see note below). `null` when no snapshot exists that
-   * far back in the fetched window (not enough history yet), not when the
-   * value is genuinely zero. */
+   * far back in `points` (not enough history yet), not when the value is
+   * genuinely zero. */
   weightDeltaLb: number | null;
   /** Σ max(0, 7.5h − sleepHours) over the last 7 local days, in minutes. Days
    * with no `sleep_hours` value are skipped entirely (treated as unknown, not
    * as zero sleep) so a sync gap doesn't inflate the debt. */
   sleepDebtMin: number;
-  loading: boolean;
-  error: string | null;
-  refetch: () => Promise<void>;
 };
 
-type HistoryPoint = { date: string; weight: number | null; sleepHours: number | null };
-
-/** 30d weight lookback + 7d sleep-debt window, plus margin for sync gaps. */
-const HISTORY_DAYS = 40;
 const TARGET_DEBT_HOURS = 7.5;
 
 function ymd(d: Date): string {
@@ -56,14 +50,17 @@ function lastNDates(n: number): string[] {
 
 /** Points must be sorted ascending by date. Finds the latest weight and the
  * closest earlier weight at or before (latest date − 30d). */
-function computeWeightDelta(points: readonly HistoryPoint[]): { latest: number | null; deltaLb: number | null } {
-  const withWeight = points.filter((p): p is HistoryPoint & { weight: number } => p.weight != null);
+function computeWeightDelta(points: readonly HealthHistoryPoint[]): {
+  latest: number | null;
+  deltaLb: number | null;
+} {
+  const withWeight = points.filter((p): p is HealthHistoryPoint & { weight: number } => p.weight != null);
   if (withWeight.length === 0) return { latest: null, deltaLb: null };
 
   const latestPoint = withWeight[withWeight.length - 1];
   const targetTime = new Date(`${latestPoint.date}T00:00:00`).getTime() - 30 * 86400000;
 
-  let prior: (HistoryPoint & { weight: number }) | null = null;
+  let prior: (HealthHistoryPoint & { weight: number }) | null = null;
   for (const p of withWeight) {
     const t = new Date(`${p.date}T00:00:00`).getTime();
     if (t <= targetTime) prior = p; // ascending order → keep the closest-before-or-on target
@@ -74,7 +71,7 @@ function computeWeightDelta(points: readonly HistoryPoint[]): { latest: number |
   return { latest: latestPoint.weight, deltaLb: Math.round((latestPoint.weight - prior.weight) * 10) / 10 };
 }
 
-function computeSleepDebtMin(points: readonly HistoryPoint[]): number {
+function computeSleepDebtMin(points: readonly HealthHistoryPoint[]): number {
   const byDate = new Map(points.map((p) => [p.date, p.sleepHours]));
   let debtHours = 0;
   for (const date of lastNDates(7)) {
@@ -85,44 +82,12 @@ function computeSleepDebtMin(points: readonly HistoryPoint[]): number {
   return Math.round(debtHours * 60);
 }
 
-export function useBodyHistory(): UseBodyHistoryResult {
-  const [weightLatest, setWeightLatest] = useState<number | null>(null);
-  const [weightDeltaLb, setWeightDeltaLb] = useState<number | null>(null);
-  const [sleepDebtMin, setSleepDebtMin] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const refetch = useCallback(async () => {
-    setError(null);
-    const sinceISO = ymd(new Date(Date.now() - HISTORY_DAYS * 86400000));
-
-    const { data, error: err } = await supabase
-      .from("health_snapshots")
-      .select("date,weight,sleep_hours")
-      .gte("date", sinceISO)
-      .order("date", { ascending: true });
-
-    if (err) {
-      setError(err.message);
-      setLoading(false);
-      return;
-    }
-
-    const points: HistoryPoint[] = (data ?? []).map((r) => ({
-      date: r.date,
-      weight: r.weight,
-      sleepHours: r.sleep_hours,
-    }));
+/** Derives the WEIGHT stat's 30d delta and the SLEEP DEBT line from a
+ * `useHealthHistory(days)` points array (needs ≥30d + a 7d margin — see
+ * BodyScreen's `useHealthHistory(90)` call). */
+export function useBodyHistory(points: readonly HealthHistoryPoint[]): UseBodyHistoryResult {
+  return useMemo(() => {
     const { latest, deltaLb } = computeWeightDelta(points);
-    setWeightLatest(latest);
-    setWeightDeltaLb(deltaLb);
-    setSleepDebtMin(computeSleepDebtMin(points));
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    void refetch();
-  }, [refetch]);
-
-  return { weightLatest, weightDeltaLb, sleepDebtMin, loading, error, refetch };
+    return { weightLatest: latest, weightDeltaLb: deltaLb, sleepDebtMin: computeSleepDebtMin(points) };
+  }, [points]);
 }
