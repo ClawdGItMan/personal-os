@@ -22,14 +22,33 @@ function groupThousands(digits: string): string {
  * "$XK"/"$X.XK" (1 decimal below $100K so small-K figures like burn keep
  * precision, 0 decimals at/above $100K to match group-total precedent);
  * below $1K -> plain grouped dollars, no decimals.
+ *
+ * Tier boundaries are checked against the *post-rounding* magnitude, not the
+ * raw one, so a value that rounds up into the next tier renders in that
+ * tier's format rather than producing a mixed-precision artifact:
+ *  - $999,500 -> "$1.00M", not "$1000K" (raw abs is < $1M, but the 2-decimal
+ *    M rendering of it already rounds to 1.00).
+ *  - $99,950 -> "$100K", not "$100.0K" (raw abs is < $100K, but the 1-decimal
+ *    K rendering of it already rounds to 100.0, which belongs in the
+ *    0-decimal >=$100K tier).
  */
 export function formatCompactMagnitude(n: number): string {
   const abs = Math.abs(n);
-  if (abs >= 1_000_000) return `$${(abs / 1_000_000).toFixed(2)}M`;
+
+  const roundedM = Math.round((abs / 1_000_000) * 100) / 100;
+  if (abs >= 1_000_000 || roundedM >= 1) {
+    return `$${roundedM.toFixed(2)}M`;
+  }
+
   if (abs >= 1_000) {
     const k = abs / 1_000;
-    return `$${k >= 100 ? Math.round(k) : k.toFixed(1)}K`;
+    const roundedK1 = Math.round(k * 10) / 10;
+    if (k >= 100 || roundedK1 >= 100) {
+      return `$${Math.round(k)}K`;
+    }
+    return `$${roundedK1.toFixed(1)}K`;
   }
+
   return `$${groupThousands(String(Math.round(abs)))}`;
 }
 

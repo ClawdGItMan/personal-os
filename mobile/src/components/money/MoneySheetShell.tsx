@@ -1,6 +1,17 @@
 import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
-import { Animated, Easing, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Animated,
+  Easing,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import { CloseIcon } from "../icons";
 import { useTheme } from "../../theme/ThemeContext";
@@ -21,6 +32,16 @@ type MoneySheetShellProps = {
  * per the design brief's "keep them simple slide-ups" direction. No BlurView
  * — a flat scrim keeps these lightweight since MoneyScreen may mount two of
  * these in quick succession (list → add-account, row → add-transaction).
+ *
+ * Hosted in a React Native `Modal` (transparent, animationType="none" — our
+ * own translateY/opacity Animated values drive the actual motion, the Modal
+ * just supplies the native full-screen host) rather than a plain absolutely-
+ * positioned View: MoneyScreen renders this as a normal child, which sits
+ * *below* App's TabBar in the Shell's paint order (TabBar renders after the
+ * active screen — see App.tsx's Shell), so a plain View here left the tabs
+ * tappable through the sheet and a stray tap unmounted MoneyScreen mid-edit.
+ * Modal escapes the in-app view hierarchy entirely and paints above
+ * everything, including the TabBar, without touching App.tsx/NavContext.
  */
 export function MoneySheetShell({ title, onClose, children }: MoneySheetShellProps) {
   const { c } = useTheme();
@@ -40,40 +61,48 @@ export function MoneySheetShell({ title, onClose, children }: MoneySheetShellPro
   const translateY = rise.interpolate({ inputRange: [0, 1], outputRange: [32, 0] });
 
   return (
-    <View style={styles.host}>
-      <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Dismiss">
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: c.scrim }]} />
-      </Pressable>
+    <Modal visible transparent animationType="none" onRequestClose={onClose}>
+      <View style={styles.host}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Dismiss">
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: c.scrim }]} />
+        </Pressable>
 
-      <Animated.View
-        style={[
-          styles.sheet,
-          { backgroundColor: c.sheet, borderColor: c.hairSection },
-          { opacity: rise, transform: [{ translateY }] },
-        ]}
-      >
-        <View style={[styles.grabber, { backgroundColor: c.hairSection }]} />
-
-        <View style={[styles.header, { borderColor: c.hairRow }]}>
-          <View style={styles.headerLeft}>
-            <View style={[styles.dot, { backgroundColor: c.accent }]} />
-            <Text style={[styles.headerLabel, { color: c.ink72 }]}>{title}</Text>
-          </View>
-          <Pressable style={[styles.close, { borderColor: c.hairSection }]} onPress={onClose} hitSlop={8}>
-            <CloseIcon size={12} color={c.ink50} strokeWidth={2} />
-          </Pressable>
-        </View>
-
-        <ScrollView
-          style={styles.body}
-          contentContainerStyle={styles.bodyContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+        <Animated.View
+          style={[
+            styles.sheet,
+            { backgroundColor: c.sheet, borderColor: c.hairSection },
+            { opacity: rise, transform: [{ translateY }] },
+          ]}
         >
-          {children}
-        </ScrollView>
-      </Animated.View>
-    </View>
+          <View style={[styles.grabber, { backgroundColor: c.hairSection }]} />
+
+          <View style={[styles.header, { borderColor: c.hairRow }]}>
+            <View style={styles.headerLeft}>
+              <View style={[styles.dot, { backgroundColor: c.accent }]} />
+              <Text style={[styles.headerLabel, { color: c.ink72 }]}>{title}</Text>
+            </View>
+            <Pressable style={[styles.close, { borderColor: c.hairSection }]} onPress={onClose} hitSlop={8}>
+              <CloseIcon size={12} color={c.ink50} strokeWidth={2} />
+            </Pressable>
+          </View>
+
+          <KeyboardAvoidingView
+            style={styles.body}
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
+          >
+            <ScrollView
+              style={styles.bodyScroll}
+              contentContainerStyle={styles.bodyContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {children}
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </Animated.View>
+      </View>
+    </Modal>
   );
 }
 
@@ -136,6 +165,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   body: {
+    flexShrink: 1,
+  },
+  bodyScroll: {
+    flexGrow: 0,
     flexShrink: 1,
   },
   bodyContent: {

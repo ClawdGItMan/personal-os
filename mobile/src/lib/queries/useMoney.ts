@@ -60,14 +60,19 @@ export type UseMoneyResult = {
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
-  /** Insert a new account + an opening `finance_snapshots` row for today. */
+  /** Insert a new account + an opening `finance_snapshots` row for today.
+   * THROWS on failure (auth/insert/snapshot) — does not touch the read-path
+   * `error` state. Callers (the sheets) must catch and render their own
+   * inline error; see MoneySheetShell's spec error idiom. */
   addAccount: (name: string, type: FinanceAccountType, value: number) => Promise<void>;
   /** Update an account's current value + upsert today's snapshot (one row
    * per account per day — a same-day re-edit overwrites, per the table's
-   * `unique(account_id, date)`). */
+   * `unique(account_id, date)`). THROWS on failure — see addAccount's note. */
   updateAccountValue: (id: string, value: number) => Promise<void>;
+  /** THROWS on failure — see addAccount's note. */
   addTransaction: (input: { name: string; amount: number; category: string }) => Promise<void>;
-  /** Upsert the current month's budget amount (`unique(user_id, month)`). */
+  /** Upsert the current month's budget amount (`unique(user_id, month)`).
+   * THROWS on failure — see addAccount's note. */
   setBudget: (amount: number) => Promise<void>;
 };
 
@@ -181,6 +186,12 @@ function computeRunwayMonths(cashTotal: number, monthlyBurn: Map<string, number>
  * group totals, burn and runway all depend on the full account/transaction
  * set, so a full refetch is the safer source of truth (contrast useTasks.ts's
  * single-field optimistic toggle).
+ *
+ * Write contract: the four write functions (addAccount, updateAccountValue,
+ * addTransaction, setBudget) THROW on failure instead of writing into the
+ * shared `error` state — `error` is read-path only (populated solely by
+ * `refetch`). Callers own presenting write failures (the Money sheets catch
+ * and render an inline error, keeping the sheet open with the user's input).
  */
 export function useMoney(): UseMoneyResult {
   const [accounts, setAccounts] = useState<MoneyAccount[]>([]);
@@ -252,8 +263,7 @@ export function useMoney(): UseMoneyResult {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        setError("Not signed in");
-        return;
+        throw new Error("Not signed in");
       }
       const { data, error: err } = await supabase
         .from("finance_accounts")
@@ -261,15 +271,13 @@ export function useMoney(): UseMoneyResult {
         .select("id")
         .single();
       if (err || !data) {
-        setError(err?.message ?? "Failed to add account");
-        return;
+        throw new Error(err?.message ?? "Failed to add account");
       }
       const { error: snapErr } = await supabase
         .from("finance_snapshots")
         .insert({ user_id: user.id, account_id: data.id, date: ymd(new Date()), value });
       if (snapErr) {
-        setError(snapErr.message);
-        return;
+        throw new Error(snapErr.message);
       }
       await refetch();
     },
@@ -282,13 +290,11 @@ export function useMoney(): UseMoneyResult {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        setError("Not signed in");
-        return;
+        throw new Error("Not signed in");
       }
       const { error: updErr } = await supabase.from("finance_accounts").update({ current_value: value }).eq("id", id);
       if (updErr) {
-        setError(updErr.message);
-        return;
+        throw new Error(updErr.message);
       }
       const { error: snapErr } = await supabase
         .from("finance_snapshots")
@@ -297,8 +303,7 @@ export function useMoney(): UseMoneyResult {
           { onConflict: "account_id,date" },
         );
       if (snapErr) {
-        setError(snapErr.message);
-        return;
+        throw new Error(snapErr.message);
       }
       await refetch();
     },
@@ -311,8 +316,7 @@ export function useMoney(): UseMoneyResult {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        setError("Not signed in");
-        return;
+        throw new Error("Not signed in");
       }
       const { error: err } = await supabase.from("transactions").insert({
         user_id: user.id,
@@ -321,8 +325,7 @@ export function useMoney(): UseMoneyResult {
         category: input.category,
       });
       if (err) {
-        setError(err.message);
-        return;
+        throw new Error(err.message);
       }
       await refetch();
     },
@@ -335,15 +338,13 @@ export function useMoney(): UseMoneyResult {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        setError("Not signed in");
-        return;
+        throw new Error("Not signed in");
       }
       const { error: err } = await supabase
         .from("budgets")
         .upsert({ user_id: user.id, month: monthStartYMD(new Date()), amount }, { onConflict: "user_id,month" });
       if (err) {
-        setError(err.message);
-        return;
+        throw new Error(err.message);
       }
       await refetch();
     },

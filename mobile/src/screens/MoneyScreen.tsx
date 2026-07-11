@@ -4,12 +4,12 @@ import { useState } from "react";
 
 import { AccountEditorSheet } from "../components/money/AccountEditorSheet";
 import { BandHeader } from "../components/money/BandHeader";
+import { CountUpText } from "../components/money/CountUpText";
 import { formatCompact, formatCompactMagnitude, monthAbbrev, runwayLabel } from "../components/money/format";
 import { MoneyLedgerRow } from "../components/money/MoneyLedgerRow";
-import { SheetPrimaryButton, SheetTextField } from "../components/money/MoneyFormControls";
+import { FormError, SheetPrimaryButton, SheetTextField } from "../components/money/MoneyFormControls";
 import { AccountsSkeleton, BurnSkeleton, LedgerSkeleton, NetWorthSkeleton } from "../components/money/MoneySkeletons";
 import { TransactionSheet } from "../components/money/TransactionSheet";
-import { useCountUp } from "../components/money/useCountUp";
 import { Band } from "../components/spec/Band";
 import { Eyebrow } from "../components/spec/Eyebrow";
 import { ScreenHeader } from "../components/spec/ScreenHeader";
@@ -109,8 +109,8 @@ export function MoneyScreen() {
   const [budgetEditing, setBudgetEditing] = useState(false);
   const [budgetInput, setBudgetInput] = useState("");
   const [savingBudget, setSavingBudget] = useState(false);
+  const [budgetError, setBudgetError] = useState<string | null>(null);
 
-  const displayedNetWorth = useCountUp(netWorth);
   const over = budgetAmount != null && monthBurn > budgetAmount;
   const burnPct = budgetAmount ? Math.min(100, (monthBurn / budgetAmount) * 100) : 0;
   const burnFill = useFillAnim(burnPct);
@@ -135,6 +135,7 @@ export function MoneyScreen() {
 
   function startEditBudget() {
     setBudgetInput(budgetAmount != null ? String(budgetAmount) : "");
+    setBudgetError(null);
     setBudgetEditing(true);
   }
 
@@ -142,11 +143,19 @@ export function MoneyScreen() {
     const parsed = Number(budgetInput);
     if (!Number.isFinite(parsed) || parsed <= 0 || savingBudget) return;
     setSavingBudget(true);
-    // setBudget never throws — see the sheets' matching comment; failures
-    // surface via the shared `error` retry row, not here.
-    await setBudget(parsed);
-    setSavingBudget(false);
-    setBudgetEditing(false);
+    setBudgetError(null);
+    // setBudget (useMoney) THROWS on failure — catch here so a failed save
+    // renders an inline error and keeps the editor open with the user's
+    // input, instead of falling through to MoneyScreen's read-error retry
+    // row (that row is READ-path only; see useMoney's write contract note).
+    try {
+      await setBudget(parsed);
+      setBudgetEditing(false);
+    } catch (err) {
+      setBudgetError(err instanceof Error ? err.message : "Couldn't save budget");
+    } finally {
+      setSavingBudget(false);
+    }
   }
 
   const budgetInputValid = Number.isFinite(Number(budgetInput)) && Number(budgetInput) > 0;
@@ -188,9 +197,11 @@ export function MoneyScreen() {
                 <BandHeader left="NET WORTH" right="30D" />
                 <View style={styles.netRow}>
                   <View>
-                    <Text style={[t.heroValue, styles.netValue, { color: c.accent }]}>
-                      {formatCompact(displayedNetWorth)}
-                    </Text>
+                    <CountUpText
+                      target={netWorth}
+                      format={formatCompact}
+                      style={[t.heroValue, styles.netValue, { color: c.accent }]}
+                    />
                     {netWorthSub ? (
                       <Text style={[t.bandSub, styles.netSub, { color: c.accent }]}>{netWorthSub}</Text>
                     ) : null}
@@ -232,8 +243,20 @@ export function MoneyScreen() {
                         autoFocus
                       />
                     </View>
+                    {budgetError ? (
+                      <View style={styles.budgetEditError}>
+                        <FormError>{budgetError}</FormError>
+                      </View>
+                    ) : null}
                     <View style={styles.budgetEditActions}>
-                      <Pressable onPress={() => setBudgetEditing(false)} hitSlop={8} style={styles.budgetCancel}>
+                      <Pressable
+                        onPress={() => {
+                          setBudgetError(null);
+                          setBudgetEditing(false);
+                        }}
+                        hitSlop={8}
+                        style={styles.budgetCancel}
+                      >
                         <Text style={[styles.budgetCancelText, { color: c.ink50 }]}>Cancel</Text>
                       </Pressable>
                       <View style={styles.budgetSaveWrap}>
@@ -367,6 +390,9 @@ const styles = StyleSheet.create({
   },
   budgetEditField: {
     marginTop: 12,
+  },
+  budgetEditError: {
+    marginTop: 10,
   },
   budgetEditActions: {
     flexDirection: "row",

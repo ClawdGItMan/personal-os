@@ -5,7 +5,7 @@ import type { FinanceAccountType, MoneyAccount, MoneyGroup } from "../../lib/que
 import { useTheme } from "../../theme/ThemeContext";
 import { fonts } from "../../theme/typeRoles";
 import { formatPlainMagnitude } from "./format";
-import { FieldLabel, SegmentedToggle, SheetPrimaryButton, SheetTextField } from "./MoneyFormControls";
+import { FieldLabel, FormError, SegmentedToggle, SheetPrimaryButton, SheetTextField } from "./MoneyFormControls";
 import { MoneySheetShell } from "./MoneySheetShell";
 
 type Sign = "asset" | "debt";
@@ -65,12 +65,14 @@ export function AccountEditorSheet({
   const [sign, setSign] = useState<Sign>("asset");
   const [magnitude, setMagnitude] = useState("");
   const [saving, setSaving] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
 
   function resetAddForm() {
     setName("");
     setType("BANK");
     setSign("asset");
     setMagnitude("");
+    setAddError(null);
   }
 
   const parsedMagnitude = Number(magnitude);
@@ -80,14 +82,22 @@ export function AccountEditorSheet({
   async function submitAdd() {
     if (!addValid || saving) return;
     setSaving(true);
-    // `onAddAccount` (useMoney's addAccount) never throws — failures land in
-    // the hook's shared `error` state, surfaced by MoneyScreen's retry row
-    // after this closes, not here (there's no per-call success signal).
+    setAddError(null);
+    // `onAddAccount` (useMoney's addAccount) THROWS on failure — caught here
+    // so a failed add renders an inline error and keeps the form open with
+    // the user's input, instead of falling through to MoneyScreen's
+    // read-error retry row (that row is READ-path only; see useMoney's write
+    // contract note).
     const value = sign === "debt" ? -Math.abs(parsedMagnitude) : Math.abs(parsedMagnitude);
-    await onAddAccount(name.trim(), type, value);
-    setSaving(false);
-    resetAddForm();
-    setAdding(false);
+    try {
+      await onAddAccount(name.trim(), type, value);
+      resetAddForm();
+      setAdding(false);
+    } catch (err) {
+      setAddError(err instanceof Error ? err.message : "Failed to add account");
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (adding) {
@@ -109,6 +119,7 @@ export function AccountEditorSheet({
         <SheetTextField value={magnitude} onChangeText={setMagnitude} placeholder="0.00" keyboardType="decimal-pad" numeric />
 
         <View style={styles.gapLarge} />
+        {addError ? <FormError>{addError}</FormError> : null}
         <SheetPrimaryButton label="Add account" onPress={submitAdd} disabled={!addValid} loading={saving} />
         {accounts.length > 0 ? (
           <Pressable
@@ -195,6 +206,7 @@ function AccountEditRow({ account, onCancel, onSave }: AccountEditRowProps) {
   const [sign, setSign] = useState<Sign>(account.currentValue < 0 ? "debt" : "asset");
   const [magnitude, setMagnitude] = useState(String(Math.abs(account.currentValue)));
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const parsedMagnitude = Number(magnitude);
   const valid = magnitude.trim().length > 0 && Number.isFinite(parsedMagnitude) && parsedMagnitude >= 0;
@@ -202,11 +214,20 @@ function AccountEditRow({ account, onCancel, onSave }: AccountEditRowProps) {
   async function save() {
     if (!valid || saving) return;
     setSaving(true);
-    // `onSave` → useMoney's updateAccountValue never throws — see submitAdd's
-    // comment above for why there's no local success/failure branch here.
+    setSaveError(null);
+    // `onSave` → useMoney's updateAccountValue THROWS on failure — caught
+    // here so a failed save renders an inline error and keeps this row's
+    // editor open with the user's input, instead of falling through to
+    // MoneyScreen's read-error retry row (READ-path only; see useMoney's
+    // write contract note).
     const value = sign === "debt" ? -Math.abs(parsedMagnitude) : Math.abs(parsedMagnitude);
-    await onSave(value);
-    setSaving(false);
+    try {
+      await onSave(value);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -216,6 +237,11 @@ function AccountEditRow({ account, onCancel, onSave }: AccountEditRowProps) {
       <SegmentedToggle options={SIGN_OPTIONS} value={sign} onChange={setSign} />
       <View style={styles.gap} />
       <SheetTextField value={magnitude} onChangeText={setMagnitude} placeholder="0.00" keyboardType="decimal-pad" numeric autoFocus />
+      {saveError ? (
+        <View style={styles.editRowError}>
+          <FormError>{saveError}</FormError>
+        </View>
+      ) : null}
       <View style={styles.editRowActions}>
         <Pressable onPress={onCancel} hitSlop={8} style={styles.cancelButton}>
           <Text style={[styles.cancelButtonText, { color: c.ink50 }]}>Cancel</Text>
@@ -299,6 +325,9 @@ const styles = StyleSheet.create({
     paddingTop: 13,
     paddingBottom: 16,
     borderTopWidth: 1,
+  },
+  editRowError: {
+    marginTop: 12,
   },
   editRowActions: {
     flexDirection: "row",

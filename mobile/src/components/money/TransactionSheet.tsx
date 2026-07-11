@@ -5,7 +5,7 @@ import type { MoneyTransaction } from "../../lib/queries";
 import { useTheme } from "../../theme/ThemeContext";
 import { fonts } from "../../theme/typeRoles";
 import { fullDateTimeLabel, formatPlainSigned } from "./format";
-import { FieldLabel, SegmentedToggle, SheetPrimaryButton, SheetTextField } from "./MoneyFormControls";
+import { FieldLabel, FormError, SegmentedToggle, SheetPrimaryButton, SheetTextField } from "./MoneyFormControls";
 import { MoneySheetShell } from "./MoneySheetShell";
 
 type Direction = "expense" | "income";
@@ -37,6 +37,7 @@ export function TransactionSheet({ transaction, onClose, onAdd }: TransactionShe
   const [category, setCategory] = useState("");
   const [direction, setDirection] = useState<Direction>("expense");
   const [saving, setSaving] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
 
   if (transaction) {
     const amountColor = transaction.amount >= 0 ? c.accent : c.red;
@@ -60,13 +61,21 @@ export function TransactionSheet({ transaction, onClose, onAdd }: TransactionShe
   async function save() {
     if (!valid || saving) return;
     setSaving(true);
-    // `onAdd` (useMoney's addTransaction) never throws — failures land in the
-    // hook's shared `error` state, surfaced by MoneyScreen's retry row after
-    // this sheet closes, not here (there's no per-call success signal).
+    setAddError(null);
+    // `onAdd` (useMoney's addTransaction) THROWS on failure — caught here so
+    // a failed add renders an inline error and keeps the sheet open with the
+    // user's input, instead of falling through to MoneyScreen's read-error
+    // retry row (that row is READ-path only; see useMoney's write contract
+    // note). Close only on success.
     const amount = direction === "expense" ? -Math.abs(parsedMagnitude) : Math.abs(parsedMagnitude);
-    await onAdd({ name: name.trim(), amount, category: category.trim() });
-    setSaving(false);
-    onClose();
+    try {
+      await onAdd({ name: name.trim(), amount, category: category.trim() });
+      onClose();
+    } catch (err) {
+      setAddError(err instanceof Error ? err.message : "Failed to add transaction");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -87,6 +96,7 @@ export function TransactionSheet({ transaction, onClose, onAdd }: TransactionShe
       <SheetTextField value={category} onChangeText={setCategory} placeholder="e.g. Dining" />
 
       <View style={styles.gapLarge} />
+      {addError ? <FormError>{addError}</FormError> : null}
       <SheetPrimaryButton label="Add transaction" onPress={save} disabled={!valid} loading={saving} />
     </MoneySheetShell>
   );

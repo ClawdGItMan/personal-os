@@ -122,6 +122,19 @@ export function FieldLabel({ children }: { children: string }) {
   return <Text style={[styles.fieldLabel, { color: c.ink38 }]}>{children}</Text>;
 }
 
+/**
+ * Inline mono error line for sheet/form writes — the app's spec error idiom
+ * (matches TopMove.tsx's `errorMessage` line: mono, small, uppercase, red).
+ * Money's sheets render this on a failed write (useMoney's addAccount /
+ * updateAccountValue / addTransaction / setBudget all THROW on failure) so
+ * the form stays open with the user's input instead of getting replaced by
+ * MoneyScreen's screen-level retry row, which is READ-path only.
+ */
+export function FormError({ children }: { children: string }) {
+  const { c } = useTheme();
+  return <Text style={[styles.formError, { color: c.red }]}>{children}</Text>;
+}
+
 const styles = StyleSheet.create({
   fieldWrap: {
     marginBottom: 4,
@@ -185,5 +198,12 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
     textTransform: "uppercase",
     marginBottom: 8,
+  },
+  formError: {
+    fontFamily: fonts.mono500,
+    fontSize: 9,
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+    marginBottom: 12,
   },
 });
