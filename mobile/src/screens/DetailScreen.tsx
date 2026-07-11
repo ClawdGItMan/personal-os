@@ -1,3 +1,5 @@
+import { useCallback, useRef, useState } from "react";
+import type { MutableRefObject } from "react";
 import { Linking, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { ActionBar } from "../components/ActionBar";
@@ -32,6 +34,15 @@ import { fonts } from "../theme/typeRoles";
  *
  * Entrance choreography uses the shared FadeUp (motion/FadeUp), matching
  * every other screen.
+ *
+ * Fix pass: `useTasks`/`useFocusSessions` never throw on a write failure —
+ * they swallow it into their own `error` state instead — so awaiting
+ * toggleTask/snoozeTask/start and then unconditionally closing would treat a
+ * failed write as a success. `run()` below detects a *new* error on the
+ * relevant hook via a ref mirror (see its own comment) and keeps the screen
+ * open with an inline `COULDN'T SAVE — {error}` line instead of closing;
+ * ActionBar goes into its `pending` (disabled) state for the duration so a
+ * second tap can't fire mid-write.
  */
 
 /** Reads an unknown field as a non-empty string, else undefined. */
@@ -111,14 +122,18 @@ function workoutFacts(item: DetailItem): Fact[] {
 }
 
 type ActionsCtx = {
-  close: () => void;
   toggleTask: (id: string, next: boolean) => Promise<void>;
   snoozeTask: (id: string, untilIso: string) => Promise<void>;
   startFocus: (label: string, plannedMinutes: number) => Promise<void>;
+  /** Runs a write action against the hook's own (never-throwing) contract:
+   * snapshots `errorRef.current` before `fn()`, awaits it, then compares.
+   * Closes the screen only when no *new* error appeared; otherwise leaves
+   * the screen open for the caller to surface `errorRef.current`. */
+  run: (fn: () => Promise<void>, errorRef: MutableRefObject<string | null>) => Promise<void>;
 };
 
 /** Event → "Start focus block" (always) + "Open in Calendar" (google_calendar + external_id only). */
-function eventActions(item: DetailItem, ctx: ActionsCtx): ActionBarItem[] {
+function eventActions(item: DetailItem, ctx: ActionsCtx, focusErrorRef: MutableRefObject<string | null>): ActionBarItem[] {
   const actions: ActionBarItem[] = [];
   const starts = asString(item.starts_at);
   const ends = asString(item.ends_at);
@@ -130,9 +145,8 @@ function eventActions(item: DetailItem, ctx: ActionsCtx): ActionBarItem[] {
   actions.push({
     label: "Start focus block",
     primary: true,
-    onPress: async () => {
-      await ctx.startFocus(item.title, minutes);
-      ctx.close();
+    onPress: () => {
+      void ctx.run(() => ctx.startFocus(item.title, minutes), focusErrorRef);
     },
   });
 
@@ -150,7 +164,7 @@ function eventActions(item: DetailItem, ctx: ActionsCtx): ActionBarItem[] {
 }
 
 /** Task → Complete/Reopen (toggles on done) + Snooze +1 day. Needs `item.id`; omits actions if it's missing. */
-function taskActions(item: DetailItem, ctx: ActionsCtx): ActionBarItem[] {
+function taskActions(item: DetailItem, ctx: ActionsCtx, tasksErrorRef: MutableRefObject<string | null>): ActionBarItem[] {
   const id = asString(item.id);
   if (!id) return [];
   const done = item.done === true;
@@ -160,18 +174,23 @@ function taskActions(item: DetailItem, ctx: ActionsCtx): ActionBarItem[] {
     {
       label: done ? "Reopen" : "Complete",
       primary: true,
-      onPress: async () => {
-        await ctx.toggleTask(id, !done);
-        ctx.close();
+      onPress: () => {
+        void ctx.run(() => ctx.toggleTask(id, !done), tasksErrorRef);
       },
     },
     {
       label: "Snooze +1 day",
-      onPress: async () => {
-        const base = dueAt ? new Date(dueAt) : new Date();
-        base.setDate(base.getDate() + 1);
-        await ctx.snoozeTask(id, base.toISOString());
-        ctx.close();
+      onPress: () => {
+        void ctx.run(() => {
+          // Defensive: a malformed/unparseable due_at must not become
+          // "Invalid Date" → NaN through setDate/toISOString. Fall back to
+          // now-based +1 day, matching this file's asString/asNumber
+          // "omit rather than render garbage" philosophy.
+          let base = dueAt ? new Date(dueAt) : new Date();
+          if (!Number.isFinite(base.getTime())) base = new Date();
+          base.setDate(base.getDate() + 1);
+          return ctx.snoozeTask(id, base.toISOString());
+        }, tasksErrorRef);
       },
     },
   ];
@@ -180,13 +199,54 @@ function taskActions(item: DetailItem, ctx: ActionsCtx): ActionBarItem[] {
 export function DetailScreen({ item }: { item: DetailItem }) {
   const { c } = useTheme();
   const { close } = useNav();
-  const { toggleTask, snoozeTask } = useTasks();
-  const { start } = useFocusSessions();
+  const { toggleTask, snoozeTask, error: tasksError } = useTasks();
+  const { start, error: focusError } = useFocusSessions();
+
+  // Ref mirrors of each hook's `error`, reassigned every render (not in an
+  // effect). React 18+ batches a hook's internal `setError` — called
+  // synchronously inside toggleTask/snoozeTask/start before their own
+  // promise settles — via a microtask enqueued *before* the one that
+  // resumes our `await` in `run()` below, so by the time `run()` reads
+  // `errorRef.current` after awaiting, this render (and thus the
+  // reassignment) has already happened. That's what makes the before/after
+  // snapshot in `run()` a reliable failure signal instead of a stale
+  // closure read (the hooks return `Promise<void>` with no throw/boolean —
+  // confirmed by reading useTasks.ts / useFocusSessions.ts — so this ref
+  // trick is the only way to observe their outcome from outside the hook).
+  const tasksErrorRef = useRef(tasksError);
+  tasksErrorRef.current = tasksError;
+  const focusErrorRef = useRef(focusError);
+  focusErrorRef.current = focusError;
+
+  const [pending, setPending] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const run = useCallback(
+    async (fn: () => Promise<void>, errorRef: MutableRefObject<string | null>) => {
+      setPending(true);
+      setActionError(null);
+      const before = errorRef.current;
+      await fn();
+      const after = errorRef.current;
+      setPending(false);
+      // Not a bare `after != null` check: toggleTask doesn't clear `error`
+      // on success, so a stale error from an earlier unrelated failure
+      // would otherwise misreport this call as failing too. A *new* value
+      // is the only reliable signal of this call's own outcome.
+      if (after != null && after !== before) {
+        setActionError(after);
+        return;
+      }
+      close();
+    },
+    [close],
+  );
 
   const eyebrow = eyebrowFor(item);
   const facts = item.kind === "event" ? eventFacts(item) : item.kind === "task" ? taskFacts(item) : workoutFacts(item);
-  const ctx: ActionsCtx = { close, toggleTask, snoozeTask, startFocus: start };
-  const actions = item.kind === "event" ? eventActions(item, ctx) : item.kind === "task" ? taskActions(item, ctx) : [];
+  const ctx: ActionsCtx = { toggleTask, snoozeTask, startFocus: start, run };
+  const actions =
+    item.kind === "event" ? eventActions(item, ctx, focusErrorRef) : item.kind === "task" ? taskActions(item, ctx, tasksErrorRef) : [];
 
   return (
     <View style={[styles.host, { backgroundColor: c.bg }]}>
@@ -224,7 +284,10 @@ export function DetailScreen({ item }: { item: DetailItem }) {
 
         {actions.length > 0 ? (
           <FadeUp index={2}>
-            <ActionBar actions={actions} />
+            <ActionBar actions={actions} pending={pending} />
+            {actionError ? (
+              <Text style={[styles.errorText, { color: c.red }]}>{`COULDN'T SAVE — ${actionError}`}</Text>
+            ) : null}
           </FadeUp>
         ) : null}
       </ScrollView>
@@ -291,5 +354,12 @@ const styles = StyleSheet.create({
   facts: {
     marginTop: 20,
     borderTopWidth: 1,
+  },
+  errorText: {
+    fontFamily: fonts.mono500,
+    fontSize: 9,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+    marginTop: 10,
   },
 });
