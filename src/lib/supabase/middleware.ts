@@ -45,8 +45,16 @@ export async function updateSession(request: NextRequest) {
   // (Strava / Apple Health / Plaid), so this class of bug cannot silently recur.
   const isCronSyncRoute =
     pathname.startsWith("/api/") && pathname.endsWith("/sync");
+  // Assistant API routes (chat/brief/act) authenticate via
+  // `Authorization: Bearer <supabase access_token>` (mobile's auth model, not
+  // the web app's session cookie — see `getUserClientFromBearer`), so there is
+  // no session cookie for this middleware to see even on a legitimate,
+  // authenticated request. Each route enforces its own 401. Exempting the
+  // whole `/api/assistant/*` prefix (not just today's three routes) means
+  // future assistant endpoints don't silently inherit the redirect bug.
+  const isAssistantRoute = pathname.startsWith("/api/assistant/");
 
-  if (!user && !isAuthRoute && !isPublicRoute && !isCronSyncRoute) {
+  if (!user && !isAuthRoute && !isPublicRoute && !isCronSyncRoute && !isAssistantRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

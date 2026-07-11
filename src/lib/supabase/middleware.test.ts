@@ -93,6 +93,25 @@ describe("updateSession — unauthenticated routing", () => {
     expect(redirectsToLogin(res)).toBe(false);
   });
 
+  // Assistant API routes (chat/brief/act) auth via `Authorization: Bearer
+  // <supabase access_token>` — mobile's auth model, not the web app's session
+  // cookie — so there is never a session cookie for this middleware to see,
+  // even on a legitimate authenticated request. Each route enforces its own
+  // 401 (see `getUserClientFromBearer`); the middleware must not redirect
+  // first, or the route's own auth check would never run (same class of bug
+  // as the cron */sync case above).
+  it.each([
+    "/api/assistant/chat",
+    "/api/assistant/brief",
+    "/api/assistant/act",
+  ])("does NOT redirect assistant route %s to /login", async (path) => {
+    const res = await updateSession(requestFor(path));
+    expect(
+      redirectsToLogin(res),
+      `${path} was redirected to /login (status ${res.status}); the route's own Bearer check would never run`,
+    ).toBe(false);
+  });
+
   it("does NOT redirect /login itself (auth route)", async () => {
     const res = await updateSession(requestFor("/login"));
     expect(redirectsToLogin(res)).toBe(false);
