@@ -60,3 +60,8 @@ next-env.d.ts
 # Claude Code session artifacts
 .claude/
 .superpowers/
+
+# Local tool dumps (playwright-cli sessions, screenshot output) — may contain personal data
+.playwright-cli/
+/output/
+.superpowers/
