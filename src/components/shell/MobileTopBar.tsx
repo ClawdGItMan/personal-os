@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { PersonalOsLogo } from "@/components/brand/PersonalOsLogo";
 import { useClock } from "@/lib/hooks/useClock";
 import { fmtClock } from "@/lib/format";
 
@@ -11,7 +12,7 @@ export function MobileTopBar({ initials }: { initials: string }) {
   return (
     <header className="flex items-center justify-between h-12 px-4 border-b border-[color:var(--os-line-1)]">
       <div className="flex items-center gap-2">
-        <span className="os-dot os-pulse" />
+        <PersonalOsLogo size={26} />
         <span className="font-mono text-sm tracking-[0.08em] text-[color:var(--os-fg-1)]">MAX OS</span>
       </div>
       <div className="flex items-center gap-3">

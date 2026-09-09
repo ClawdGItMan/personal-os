@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MAX OS — Home / Sleek</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    /* palette — locked brand */
+    --bg:#0E1014;
+    --surface:#14171C;
+    --sheet:#12151A;
+    --fg1:#F2EEE6;
+    --fg2:rgba(242,238,230,.72);
+    --fg3:rgba(242,238,230,.52);
+    --fg4:rgba(242,238,230,.36);
+    --fg5:rgba(242,238,230,.20);
+    --line1:rgba(242,238,230,.07);
+    --line2:rgba(242,238,230,.12);
+    --blue:#3A70A8;
+    --green:#2F6647;
+    --green-txt:#4E9B6E;
+    --yellow:#F1DA85;
+
+    --sans:'Manrope',system-ui,sans-serif;
+    --mono:'Geist Mono',ui-monospace,monospace;
+
+    --gutter:22px;
+  }
+
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+
+  html,body{
+    width:390px;
+    margin:0;
+    overflow-x:hidden;
+    background:#000;
+    min-height:100vh;
+  }
+  body{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:var(--sans);
+  }
+
+  /* ---------- FRAME ---------- */
+  .frame{
+    position:relative;
+    width:390px;
+    height:844px;
+    background:var(--bg);
+    overflow:hidden;
+    color:var(--fg1);
+    box-sizing:border-box;
+    /* the only "depth": a single very soft top vignette so the header sits on air */
+    isolation:isolate;
+  }
+  .frame::before{
+    content:"";
+    position:absolute;inset:0;
+    background:linear-gradient(180deg, rgba(242,238,230,.018), transparent 220px);
+    pointer-events:none;z-index:0;
+  }
+
+  .scroll{
+    position:absolute;inset:0;
+    overflow-y:auto;overflow-x:hidden;
+    z-index:1;
+    padding:0 var(--gutter) 116px;
+    scrollbar-width:none;
+    box-sizing:border-box;
+  }
+  .scroll::-webkit-scrollbar{display:none;}
+
+  /* ---------- HEADER ---------- */
+  .header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding-top:26px;padding-bottom:26px;
+  }
+  .wordmark{
+    font-family:var(--mono);
+    font-size:10px;font-weight:500;letter-spacing:.36em;
+    color:var(--fg3);text-transform:uppercase;
+  }
+  .avatar{
+    position:relative;width:34px;height:34px;border-radius:999px;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--surface);
+    font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.06em;
+    color:var(--fg2);
+    box-shadow:inset 0 0 0 1px var(--line2);
+  }
+  .avatar::after{
+    content:"";position:absolute;inset:-3px;border-radius:999px;
+    border:1px solid var(--line1);
+  }
+
+  /* ---------- GREETING ---------- */
+  .eyebrow{
+    font-family:var(--mono);
+    font-size:9.5px;letter-spacing:.24em;color:var(--fg3);
+    text-transform:uppercase;font-weight:500;
+    display:flex;align-items:center;gap:9px;
+    margin-bottom:18px;
+  }
+  .eyebrow .sep{color:var(--fg5);}
+
+  .greeting{
+    font-family:var(--sans);
+    font-size:33px;line-height:1.02;letter-spacing:-.035em;
+    font-weight:600;
+    margin-bottom:16px;
+  }
+  .greeting .muted{color:var(--fg3);font-weight:500;}
+  .greeting .name{color:var(--fg1);font-weight:700;display:block;}
+
+  .whisper{
+    font-family:var(--sans);
+    font-size:13px;line-height:1.5;letter-spacing:-.005em;
+    color:var(--fg2);font-weight:400;
+    max-width:300px;
+    margin-bottom:22px;
+  }
+  .whisper b{color:var(--fg1);font-weight:600;}
+
+  /* ---------- DAY PROGRESS ---------- */
+  .dayprog{
+    display:flex;align-items:center;gap:12px;
+    margin-bottom:30px;
+  }
+  .dayprog .track{
+    position:relative;flex:1;height:2px;border-radius:999px;
+    background:var(--line1);
+  }
+  .dayprog .fill{
+    position:absolute;left:0;top:0;bottom:0;width:55%;
+    border-radius:999px;background:var(--fg3);
+  }
+  .dayprog .fill::after{
+    content:"";position:absolute;right:0;top:50%;
+    width:3px;height:3px;transform:translate(50%,-50%);
+    border-radius:999px;background:var(--fg1);
+  }
+  .dayprog .pct{
+    font-family:var(--mono);font-size:9.5px;font-weight:500;
+    color:var(--fg3);font-variant-numeric:tabular-nums;letter-spacing:.02em;
+  }
+
+  /* ---------- VITALS ---------- */
+  .vitals{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:9px;
+    margin-bottom:34px;
+  }
+  .card{
+    position:relative;
+    border-radius:15px;
+    background:var(--surface);
+    box-shadow:inset 0 0 0 1px var(--line1);
+    padding:15px;
+    box-sizing:border-box;
+    overflow:hidden;
+  }
+  .card .clabel{
+    font-family:var(--mono);
+    font-size:9px;letter-spacing:.2em;color:var(--fg3);
+    text-transform:uppercase;font-weight:500;
+  }
+
+  /* Recovery hero — spans full width */
+  .card--recovery{
+    grid-column:1 / -1;
+    display:flex;align-items:center;gap:18px;
+    padding:16px 18px;
+  }
+  .gauge{position:relative;width:80px;height:80px;flex-shrink:0;}
+  .gauge .val{
+    position:absolute;inset:0;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+  }
+  .gauge .val .num{
+    font-family:var(--mono);
+    font-size:25px;font-weight:600;line-height:1;
+    color:var(--fg1);font-variant-numeric:tabular-nums;letter-spacing:-.02em;
+  }
+  .gauge .val .unit{
+    font-family:var(--mono);
+    font-size:7px;letter-spacing:.22em;color:var(--fg4);
+    margin-top:4px;text-transform:uppercase;
+  }
+  .rec-meta{
+    display:flex;flex-direction:column;gap:8px;min-width:0;flex:1;
+  }
+  .rec-meta .rlabel{
+    font-family:var(--mono);
+    font-size:9px;letter-spacing:.2em;color:var(--fg3);text-transform:uppercase;
+    font-weight:500;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .rec-meta .rlabel .status{
+    color:var(--green-txt);letter-spacing:.16em;
+  }
+  .rec-meta .hrv{
+    font-family:var(--mono);
+    font-size:11px;color:var(--fg2);font-variant-numeric:tabular-nums;letter-spacing:.01em;
+    font-weight:400;
+  }
+  .rec-meta .hrv b{color:var(--fg1);font-weight:600;}
+  .spark{display:block;width:100%;height:24px;}
+
+  /* metric cards */
+  .card--metric{
+    display:flex;flex-direction:column;justify-content:space-between;
+    min-height:98px;
+  }
+  .metric-value{
+    font-family:var(--mono);font-weight:600;color:var(--fg1);
+    font-variant-numeric:tabular-nums;letter-spacing:-.015em;line-height:1;
+  }
+  .metric-value.lg{font-size:26px;}
+  .metric-value .u{font-size:14px;color:var(--fg4);font-weight:500;letter-spacing:0;}
+  .metric-sub{
+    font-family:var(--mono);
+    font-size:9px;letter-spacing:.1em;color:var(--fg3);text-transform:uppercase;
+    font-variant-numeric:tabular-nums;font-weight:500;
+    display:flex;align-items:center;gap:6px;
+  }
+  .metric-sub .green{color:var(--green-txt);}
+  .metric-sub .dot{width:2.5px;height:2.5px;border-radius:999px;background:var(--fg5);}
+  .metric-top{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:auto;
+  }
+
+  /* habits — spans full width, restrained segments */
+  .card--habits{
+    grid-column:1 / -1;
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+    padding:15px 18px;
+  }
+  .habits-l{display:flex;flex-direction:column;gap:9px;}
+  .habits-l .hval{
+    font-family:var(--mono);font-size:19px;font-weight:600;
+    color:var(--fg1);font-variant-numeric:tabular-nums;letter-spacing:-.01em;line-height:1;
+  }
+  .habits-l .hval .u{font-size:12px;color:var(--fg4);font-weight:500;}
+  .segs{display:flex;gap:5px;flex:1;max-width:190px;}
+  .segs span{
+    flex:1;height:6px;border-radius:3px;
+    background:var(--line2);
+  }
+  .segs span.on{background:var(--green);}
+
+  /* ---------- TODAY ---------- */
+  .today-head{
+    display:flex;align-items:baseline;justify-content:space-between;
+    margin-bottom:6px;
+  }
+  .today-head .t{
+    font-family:var(--mono);
+    font-size:10.5px;letter-spacing:.26em;color:var(--fg2);text-transform:uppercase;
+    font-weight:500;
+  }
+  .today-head .m{
+    font-family:var(--mono);
+    font-size:9px;letter-spacing:.14em;color:var(--fg3);text-transform:uppercase;
+    font-variant-numeric:tabular-nums;font-weight:500;
+  }
+  .today-rule{height:1px;background:var(--line1);margin:0 0 6px;}
+
+  /* timeline */
+  .timeline{position:relative;display:flex;flex-direction:column;}
+  .row{
+    position:relative;
+    display:grid;
+    grid-template-columns:44px 22px 1fr;
+    align-items:start;
+    padding:12px 0;
+  }
+  .row .time{
+    font-family:var(--mono);
+    font-size:11px;color:var(--fg3);font-variant-numeric:tabular-nums;
+    letter-spacing:.02em;padding-top:1px;font-weight:400;
+  }
+  .row.done .time{color:var(--fg4);}
+  .row.now .time{
+    color:var(--blue);font-weight:600;font-size:10px;letter-spacing:.14em;
+  }
+
+  /* rail */
+  .rail{position:relative;display:flex;justify-content:center;align-self:stretch;}
+  .rail .line{
+    position:absolute;top:-12px;bottom:-12px;width:1px;background:var(--line2);
+  }
+  .row:first-child .rail .line{top:8px;}
+  .row:last-child .rail .line{bottom:auto;height:8px;top:-12px;}
+  .node{
+    position:relative;width:9px;height:9px;margin-top:4px;
+    border-radius:999px;background:var(--sheet);
+    box-shadow:inset 0 0 0 1.5px var(--line2);
+    z-index:2;
+  }
+  .node.done{
+    background:var(--green);
+    box-shadow:inset 0 0 0 1.5px rgba(78,155,110,.55);
+  }
+  .node.now{
+    width:11px;height:11px;margin-top:3px;
+    background:var(--blue);
+    box-shadow:0 0 0 4px rgba(58,112,168,.14);
+  }
+  .node.upcoming{
+    background:var(--sheet);
+    box-shadow:inset 0 0 0 1.5px var(--line2);
+  }
+
+  /* content */
+  .content{padding-top:0;padding-left:2px;}
+  .content .name{
+    font-family:var(--sans);
+    font-size:14px;font-weight:600;color:var(--fg1);line-height:1.25;letter-spacing:-.01em;
+  }
+  .row.done .content .name{color:var(--fg3);font-weight:500;}
+  .row.done .content .name .strike{text-decoration:line-through;text-decoration-color:var(--fg5);}
+  .row.upcoming .content .name{color:var(--fg2);font-weight:500;}
+  .content .sublabel{
+    font-family:var(--mono);
+    font-size:8.5px;letter-spacing:.16em;color:var(--fg4);text-transform:uppercase;
+    margin-top:6px;display:flex;align-items:center;gap:7px;
+    font-variant-numeric:tabular-nums;font-weight:500;
+  }
+  .content .sublabel .tag{color:var(--fg3);}
+  .content .sublabel .divide{width:2.5px;height:2.5px;border-radius:999px;background:var(--fg5);}
+
+  /* NOW row — sleek thin blue accent, not a glowing card */
+  .row.now{
+    margin:4px -14px;padding:14px 14px;
+    grid-template-columns:44px 22px 1fr;
+    border-radius:14px;
+    background:rgba(58,112,168,.06);
+    box-shadow:inset 0 0 0 1px rgba(58,112,168,.20);
+  }
+  .row.now::before{
+    content:"";position:absolute;left:0;top:14px;bottom:14px;width:2px;border-radius:999px;
+    background:var(--blue);
+  }
+  .row.now .rail .line{top:-14px;bottom:-14px;}
+  .now-top{
+    display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;
+  }
+  .now-tag{
+    font-family:var(--mono);
+    font-size:8.5px;letter-spacing:.18em;color:var(--blue);text-transform:uppercase;font-weight:500;
+  }
+  .now-timer{
+    font-family:var(--mono);
+    font-size:11px;color:var(--blue);font-variant-numeric:tabular-nums;
+    letter-spacing:.04em;font-weight:600;
+  }
+  .row.now .now-title{
+    font-family:var(--sans);
+    font-size:15px;font-weight:600;color:var(--fg1);line-height:1.2;letter-spacing:-.015em;
+  }
+  .row.now .now-bar{
+    margin-top:11px;height:2px;border-radius:999px;
+    background:rgba(242,238,230,.08);position:relative;overflow:hidden;
+  }
+  .row.now .now-bar i{
+    position:absolute;left:0;top:0;bottom:0;width:42%;border-radius:999px;background:var(--blue);
+  }
+
+  /* ---------- BOTTOM NAV ---------- */
+  .nav{
+    position:absolute;left:0;right:0;bottom:0;
+    height:96px;z-index:5;
+    display:flex;align-items:flex-start;justify-content:space-between;
+    padding:16px 30px 0;
+    box-sizing:border-box;
+    background:linear-gradient(180deg, rgba(14,16,20,0), rgba(14,16,20,.92) 34%, var(--bg) 60%);
+    -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+  }
+  .nav::before{
+    content:"";position:absolute;left:0;right:0;top:0;height:1px;background:var(--line1);
+  }
+  .navitem{
+    position:relative;
+    display:flex;flex-direction:column;align-items:center;gap:7px;
+    width:48px;padding-top:8px;
+  }
+  .navitem .ico{
+    width:20px;height:20px;display:flex;align-items:center;justify-content:center;
+    color:var(--fg4);
+  }
+  .navitem.active .ico{color:var(--fg1);}
+  .navitem .lbl{
+    font-family:var(--mono);
+    font-size:7.5px;letter-spacing:.16em;color:var(--fg4);text-transform:uppercase;font-weight:500;
+  }
+  .navitem.active .lbl{color:var(--fg2);}
+  .navitem.active::after{
+    content:"";position:absolute;top:0;width:16px;height:2px;border-radius:999px;background:var(--fg1);
+  }
+
+  .capture{
+    position:relative;width:50px;height:50px;margin-top:-10px;
+    border-radius:16px;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--blue);
+    box-shadow:inset 0 0 0 1px rgba(242,238,230,.10), 0 6px 16px rgba(0,0,0,.4);
+  }
+  .capture svg{color:#EAF2FB;}
+
+</style>
+</head>
+<body>
+  <div class="frame">
+    <div class="scroll">
+
+      <!-- HEADER -->
+      <div class="header">
+        <div class="wordmark">MAX&nbsp;OS</div>
+        <div class="avatar">MA</div>
+      </div>
+
+      <!-- GREETING -->
+      <div class="eyebrow">
+        <span>FRIDAY</span><span class="sep">·</span>
+        <span>MAY&nbsp;8</span><span class="sep">·</span>
+        <span>GULF&nbsp;UTC+4</span>
+      </div>
+
+      <div class="greeting">
+        <span class="muted">Good afternoon,</span>
+        <span class="name">Max.</span>
+      </div>
+
+      <div class="whisper">
+        Recovery's <b>green</b> and your afternoon is clear until the <b>Sequoia call</b>.
+      </div>
+
+      <!-- DAY PROGRESS -->
+      <div class="dayprog">
+        <div class="track"><div class="fill"></div></div>
+        <div class="pct">55%</div>
+      </div>
+
+      <!-- VITALS -->
+      <div class="vitals">
+
+        <!-- RECOVERY (hero gauge) -->
+        <div class="card card--recovery">
+          <div class="gauge">
+            <svg width="80" height="80" viewBox="0 0 80 80">
+              <!-- track -->
+              <circle cx="40" cy="40" r="31" fill="none" stroke="rgba(242,238,230,.08)" stroke-width="4"/>
+              <!-- value arc: 72% of circle, thin, no glow. circumference = 2*pi*31 = 194.8 -->
+              <circle cx="40" cy="40" r="31" fill="none"
+                      stroke="#2F6647" stroke-width="4" stroke-linecap="round"
+                      stroke-dasharray="140.3 194.8" stroke-dashoffset="0"
+                      transform="rotate(-90 40 40)"/>
+              <!-- subtle leading cap in the lighter green-txt for a touch of life -->
+              <circle cx="40" cy="40" r="31" fill="none"
+                      stroke="#4E9B6E" stroke-width="4" stroke-linecap="round"
+                      stroke-dasharray="2 194.8" stroke-dashoffset="-138.3"
+                      transform="rotate(-90 40 40)"/>
+            </svg>
+            <div class="val">
+              <div class="num">72</div>
+              <div class="unit">RECOVERY</div>
+            </div>
+          </div>
+          <div class="rec-meta">
+            <div class="rlabel"><span>HRV · 7D</span><span class="status">GREEN</span></div>
+            <div class="hrv"><b>64</b> ms · resting 48 bpm</div>
+            <svg class="spark" width="176" height="24" viewBox="0 0 176 24" fill="none" preserveAspectRatio="none">
+              <path d="M0 17 L16 14 L32 18 L48 10 L64 13 L80 7 L96 11 L112 6 L128 9 L144 5 L160 8 L176 6"
+                    stroke="#4E9B6E" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>
+              <circle cx="176" cy="6" r="2" fill="#4E9B6E"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- SLEEP -->
+        <div class="card card--metric">
+          <div class="metric-top">
+            <div class="clabel">SLEEP</div>
+          </div>
+          <div>
+            <div class="metric-value lg">7<span class="u">h</span>12</div>
+            <div class="metric-sub" style="margin-top:10px;">87% QUALITY</div>
+          </div>
+        </div>
+
+        <!-- NET WORTH -->
+        <div class="card card--metric">
+          <div class="metric-top">
+            <div class="clabel">NET&nbsp;WORTH</div>
+          </div>
+          <div>
+            <div class="metric-value lg"><span class="u">$</span>2.83<span class="u">M</span></div>
+            <div class="metric-sub" style="margin-top:10px;">
+              <span class="green">+0.03%</span><span class="dot"></span><span>30D</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- HABITS -->
+        <div class="card card--habits">
+          <div class="habits-l">
+            <div class="clabel">HABITS</div>
+            <div class="hval">4<span class="u">/6</span></div>
+          </div>
+          <div class="segs">
+            <span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span></span><span></span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- TODAY -->
+      <div class="today-head">
+        <div class="t">TODAY</div>
+        <div class="m">8 EVENTS · 3 DONE</div>
+      </div>
+      <div class="today-rule"></div>
+
+      <div class="timeline">
+
+        <!-- 09:30 Standup -->
+        <div class="row done">
+          <div class="time">09:30</div>
+          <div class="rail"><div class="line"></div><div class="node done"></div></div>
+          <div class="content">
+            <div class="name"><span class="strike">Standup</span></div>
+            <div class="sublabel"><span class="tag">OPS</span><span class="divide"></span>15 MIN</div>
+          </div>
+        </div>
+
+        <!-- 10:00 1:1 -->
+        <div class="row done">
+          <div class="time">10:00</div>
+          <div class="rail"><div class="line"></div><div class="node done"></div></div>
+          <div class="content">
+            <div class="name"><span class="strike">1:1 · Sarah K</span></div>
+            <div class="sublabel"><span class="tag">CALENDAR</span><span class="divide"></span>DONE</div>
+          </div>
+        </div>
+
+        <!-- 11:00 Train -->
+        <div class="row done">
+          <div class="time">11:00</div>
+          <div class="rail"><div class="line"></div><div class="node done"></div></div>
+          <div class="content">
+            <div class="name"><span class="strike">Train · push day</span></div>
+            <div class="sublabel"><span class="tag">BODY</span><span class="divide"></span>4 PRS LOGGED</div>
+          </div>
+        </div>
+
+        <!-- NOW Deep work -->
+        <div class="row now">
+          <div class="time">NOW</div>
+          <div class="rail"><div class="line"></div><div class="node now"></div></div>
+          <div class="content">
+            <div class="now-top">
+              <div class="now-tag">IN&nbsp;PROGRESS</div>
+              <div class="now-timer">13:16</div>
+            </div>
+            <div class="now-title">Deep work — pricing model</div>
+            <div class="now-bar"><i></i></div>
+          </div>
+        </div>
+
+        <!-- 17:00 Review -->
+        <div class="row upcoming">
+          <div class="time">17:00</div>
+          <div class="rail"><div class="line"></div><div class="node upcoming"></div></div>
+          <div class="content">
+            <div class="name">Review compliance checklist</div>
+            <div class="sublabel"><span class="tag">FOCUS</span><span class="divide"></span>TASK</div>
+          </div>
+        </div>
+
+        <!-- 19:00 Wind-down -->
+        <div class="row upcoming">
+          <div class="time">19:00</div>
+          <div class="rail"><div class="line"></div><div class="node upcoming"></div></div>
+          <div class="content">
+            <div class="name">Wind-down · journal</div>
+            <div class="sublabel"><span class="tag">FOCUS</span><span class="divide"></span>HABIT</div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- BOTTOM NAV -->
+    <div class="nav">
+      <div class="navitem active">
+        <div class="ico">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/>
+          </svg>
+        </div>
+        <div class="lbl">HOME</div>
+      </div>
+
+      <div class="navitem">
+        <div class="ico">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="5" r="2.4"/><path d="M12 7.5v6M12 10H7m5 0h5M8 20l2.5-6.5M16 20l-2.5-6.5"/>
+          </svg>
+        </div>
+        <div class="lbl">BODY</div>
+      </div>
+
+      <div class="capture">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+          <path d="M12 5v14M5 12h14"/>
+        </svg>
+      </div>
+
+      <div class="navitem">
+        <div class="ico">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3v18M8 7h6.5a2.5 2.5 0 0 1 0 5H8m0 0h7.5a2.5 2.5 0 0 1 0 5H8"/>
+          </svg>
+        </div>
+        <div class="lbl">MONEY</div>
+      </div>
+
+      <div class="navitem">
+        <div class="ico">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.4"/>
+          </svg>
+        </div>
+        <div class="lbl">FOCUS</div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

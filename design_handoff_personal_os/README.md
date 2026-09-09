@@ -1,482 +1,107 @@
-# Handoff: Personal OS (Max OS)
+# Handoff: Personal OS — iOS Dashboard (React Native / Expo)
 
-A personal operating system for one user — finances, health, training, calendar,
-social, journal, and a Telegram-fed agent that triages everything. Built as a
-dark "operator console" with mono labels, numbered modules, sage-green accents
-on a deep slate-cocoa canvas.
+## Overview
+Personal OS is a personal dashboard app for iOS with five surfaces — **Home, Body, Money, Focus**, and a context-aware **AI Assistant sheet** — in **light and dark modes**. The design language is a premium "spec-sheet" aesthetic: full-bleed hairline-ruled bands (no cards), Manrope for UI text, Geist Mono for all data/labels/times, a single green accent per mode, and quiet load choreography.
 
----
-
-## About the design files
-
-The files in this bundle are **design references created in HTML/JSX (React +
-inline Babel)** — interactive prototypes showing the intended look and behavior,
-**not production code to ship directly**.
-
-Your task is to **recreate these prototypes in a real codebase** using its
-established patterns. If there's no codebase yet, pick the stack — I'd recommend:
-
-- **Web:** Next.js (App Router) + TypeScript + Tailwind CSS + Radix UI primitives,
-  or your existing component library. Server actions for Telegram webhook
-  ingress, Postgres (Supabase / Neon) for the data layer.
-- **Mobile:** React Native + Expo, or native (SwiftUI / Kotlin) if performance
-  on health-device integrations matters.
-- **Agent:** an LLM with tool-calling, a webhook for Telegram, and a small set
-  of typed tools wrapping the data layer (one per module).
-
-Either way: do **not** translate the prototype's CSS literally. Lift the tokens,
-the layout structure, the component composition, and the copy — then reimplement
-in idiomatic code for your stack.
+## About the Design Files
+The files in this bundle are **design references created in HTML** — prototypes showing intended look and behavior, not production code to copy directly. The task is to **recreate these designs in React Native / Expo** using its established patterns (e.g. `StyleSheet`, Reanimated for the load animations, `react-native-svg` for the dial/sparkline/spark icon, expo-google-fonts for Manrope + a Geist Mono equivalent). The canvas file shows the full exploration history; **only the screens listed under "Locked screens" below are the spec.**
 
 ## Fidelity
+**High-fidelity.** Colors, type sizes, letter-spacing, spacing, hairline opacities, and animation timings are final. Recreate pixel-perfectly at 390pt width, scaling type/spacing with the platform's conventions.
 
-**High-fidelity.** Exact colors, typography, spacing, motion durations, and
-copy are all specified below and embedded in `app.css`. Treat them as binding.
+## Locked screens (the spec)
+In `Personal OS - Home.dc.html`, use these canvas sections:
+- **Home** — section `#t6`, option `6b` (light) and `6c` (dark)
+- **Body / Money / Focus** — section `#t7`, options `7a` / `7b` / `7c` (each shown light + dark, side by side)
+- **Assistant sheet** — section `#t8`, option `8a` (light + dark)
+Everything in sections `#t1–#t5` and options `6a`/`6d` is exploration history — ignore.
 
-The prototype uses HTML's CSS custom properties as design tokens; the same
-tokens should be the basis of your design system (Tailwind config, CSS-in-JS
-theme, design tokens JSON, etc.).
+## Design Tokens
 
----
+### Light mode ("Gallery/Porcelain", from 6b)
+- Background `#F5F3ED` · elevated surface `#FFFFFF` · ink `#0F1115`
+- Ink opacities: primary `.72`, body `.64`, label `.5`, disabled/inactive `.38`, faint `.34`, hairline-dot `.28`
+- Hairlines: section `rgba(15,17,21,.1)`, column `.07`, row `.06`
+- Accent green `#1E7A52` · deep green `#175E40` · negative red `#B0472F`
+- Accent band: top+bottom border `rgba(30,122,82,.28)` (recovery band `.24`), background `linear-gradient(180deg, rgba(30,122,82,.055), rgba(30,122,82,.02))`
 
-## Product overview
+### Dark mode ("Ivy", from 6c)
+- Background `#0C0F0C` (green-cast near-black) · elevated surface `#141813` · sheet surface `#0F120F` · ink `#EFEDE2` (bone)
+- Ink opacities: `.72 / .66 / .5 / .4 / .34 / .28`
+- Hairlines: section `rgba(239,237,226,.12)`, column `.08`, row `.07`
+- Accent ivy `#6CAB86` · deep ivy `#3A6B51` · negative red `#C86A5A`
+- Accent band: borders `rgba(108,171,134,.28)`, bg gradient `rgba(108,171,134,.06) → .025`
 
-**Operator:** Max Allaire, NYC, founder hunting an idea.
-
-**Modules on the dashboard (in numbered order):**
-
-| # | Module | What it does |
-|---|---|---|
-| 01 | OPERATOR | Identity card — name, role, location, focus, streak |
-| 02 | SESSION | Greeting, live clock, **capture bar** (the spine — typed input goes straight to the agent) |
-| 03 | FINANCE PULSE | Net worth, 30D change, sparkline, daily/monthly delta |
-| 04 | TODAY · KEY | Today's high-priority tasks (toggleable) |
-| 05 | HABITS | Daily score, sparkline, 6-cell habit grid (toggleable) |
-| 06 | CALENDAR | Today's events grouped by morning/now/evening + 7-day week strip |
-| 07 | NUTRITION | kcal ring, macros (P/C/F), meals (compact) |
-| 08 | HEALTH | Sleep score, recovery ring, HRV/RHR/strain (compact) |
-| 09 | SOCIAL | Follower total, 26-day sparkbar, per-platform breakdown |
-| 10 | TRAINING | Today's split, next session, recent PR, weekly volume |
-| 11 | AGENT | Right-rail chat panel — Telegram-fed; agent replies inline |
-
-**Secondary pages** (full canvas takeover when nav tab clicked):
-- `FINANCE` — accounts list, allocation bars, weekly cash flow
-- `HEALTH`  — recovery/sleep/strain rings, HRV/weight/steps sparks, biomarkers
-- `TRAIN`   — current session lift table, 8-week volume bars, weekly split
-- `SOCIAL`  — 30D growth bars, per-platform table
-- `JOURNAL` — chronological brain dumps in serif body type
-
-**Mobile companion** (`app/mobile.html`):
-- 4 bottom tabs: Home / Money / Body / Agent
-- Same vocabulary, single-column, capture bar at top of Home
-
----
-
-## Visual system
-
-### Theme — three palettes, one shape
-
-Tweakable in the prototype via the Tweaks panel. Default is **Dark**.
-
-| Theme | Background | Accent | When to use |
-|---|---|---|---|
-| **Dark** (default) | `#0E1014` | `#8FA67A` sage | Operator console feel |
-| **Cream** | `#F7F2E8` | `#5E7A4D` sage | Hearth-faithful, daytime |
-| **Warm** | `#1A1410` | `#ED9569` ember | Deep cocoa, evening |
-
-All three are defined as CSS variables in `app.css` under `:root` and the
-`[data-theme="light"]` / `[data-theme="hybrid"]` selectors. Implement as theme
-contexts or `data-theme` attribute on the document.
-
-### Color tokens (dark theme)
-
-```
---os-bg:        #0E1014   /* canvas */
---os-bg-2:      #14171C   /* card */
---os-bg-3:      #1A1E24   /* raised */
---os-bg-hover:  #1F242B
---os-bg-sunk:   #0A0C10
-
---os-fg-1:      #F2EEE6                          /* primary text */
---os-fg-2:      rgba(242, 238, 230, 0.72)        /* body */
---os-fg-3:      rgba(242, 238, 230, 0.52)        /* secondary */
---os-fg-4:      rgba(242, 238, 230, 0.36)        /* mono captions */
---os-fg-5:      rgba(242, 238, 230, 0.20)        /* placeholder */
-
---os-line-1:    rgba(242, 238, 230, 0.06)        /* hairlines */
---os-line-2:    rgba(242, 238, 230, 0.10)        /* default */
---os-line-3:    rgba(242, 238, 230, 0.16)        /* strong */
-
---os-accent:        #8FA67A                      /* sage — primary */
---os-accent-soft:   rgba(143, 166, 122, 0.14)
---os-accent-glow:   rgba(143, 166, 122, 0.30)
---os-accent-dim:    rgba(143, 166, 122, 0.55)
-
---os-ember:         #E07856                      /* secondary highlight */
---os-honey:         #F4B860                      /* warm flag */
---os-rust:          #C25D3F                      /* warn / overdue */
-```
-
-The full set of tokens (including spacing, radii, shadow, motion) lives in
-`hearth.css` — that's the upstream Hearth Design System this builds on.
+### State color rules (both modes)
+- Sleep: >7h green, 6–7h amber (`#A8842B` light / `#C9A45C` dark), <6h red
+- Habits: >3/6 green, else amber
+- Money: inflows/positive green, outflows/negative red (debt value red)
+- Times & dates: **always ink at an opacity, never colored**
+- Times are 12-hour format ("1:16 PM"), timeline time column 58pt wide
 
 ### Typography
-
-Three families, all from Google Fonts:
-
-```
---font-display: "Newsreader", "Iowan Old Style", Georgia, serif;   /* greetings, page titles */
---font-body:    "Manrope", system-ui, sans-serif;                  /* body, buttons */
---font-mono:    "JetBrains Mono", ui-monospace, monospace;         /* labels, numbers */
-```
-
-Scale:
-```
---text-xs:   12px
---text-sm:   13px
---text-base: 15px
---text-md:   17px
---text-lg:   20px
---text-xl:   24px
---text-2xl:  32px
---text-3xl:  44px
---text-4xl:  60px
---text-5xl:  84px
-```
-
-**Rules:**
-- **Mono labels** are ALL CAPS, tracked `0.16em`, size 11px, color `--os-fg-3` or `--os-fg-4`. Use on every card header, kpi label, eyebrow.
-- **Numbers** (net worth, kcal, weight) are mono, tabular-nums, slightly negative letter-spacing.
-- **Greetings & page titles** are Newsreader with optical sizing, italic for the *name* token (`Good evening, *Max.*`).
-- **Body** is Manrope 400 / 500. No 700 in chrome.
-- **No emoji** in product copy. Allowed: `·` separator, `↑↓→` arrows, `✓` checks, `★`.
-
-### Spacing & radii
-
-4px grid: `4 · 8 · 12 · 16 · 20 · 24 · 32 · 40 · 48 · 64 · 80 · 96`.
-
-Radii increase with element size:
-- inputs/chips: `10px`
-- cards: `14px`
-- pills (status badges, segmented controls): `999px`
-
-### Motion
-
-```
---ease-standard: cubic-bezier(0.32, 0.72, 0, 1)
---ease-entrance: cubic-bezier(0.16, 1, 0.3, 1)
---dur-fast:    160ms
---dur-base:    220ms
-```
-
-Use 160–220ms fades / cross-fades with a 4px Y translate. Pulse for live
-indicators (online dot, NOW marker), blink for the clock colon. No bouncy
-modals, no confetti.
-
-### Borders, shadows, blur
-
-- **Hairlines** at `rgba(242, 238, 230, 0.06–0.16)` (alpha cocoa tint, never grey).
-- **Use borders OR shadow, not both.** Cards on canvas: hairline border, no
-  shadow. Modals: shadow only.
-- **Backdrop blur** only on overlays/modals: `backdrop-filter: blur(8–20px)`.
-
----
-
-## Layout
-
-### Web — three-zone grid
-
-```
-┌───────────────────────────────────────────────────────────────┐
-│  Top bar (44px)  · MAX OS · tabs · clock · me                 │
-├──────────┬────────────────────────────────────┬───────────────┤
-│          │                                    │               │
-│ Left col │   Center canvas                    │  Agent panel  │
-│ 280px    │   flexible                         │  340px        │
-│          │                                    │               │
-│ Operator │   Session (hero, 220px min)        │  Header       │
-│ Finance  │   Habits                           │  ─────        │
-│ Tasks    │   Calendar                         │  Chat scroll  │
-│          │   3-up: Nutrition · Health · Social│               │
-│          │   Training                         │  Compose bar  │
-│          │                                    │               │
-└──────────┴────────────────────────────────────┴───────────────┘
-```
-
-- Three columns: `280px | 1fr | 340px`
-- Card-to-card gap inside columns: `12px`
-- Column padding: `14px`
-- Right column has its own `border-left: 1px solid --os-line-1`, no padding
-  (the AgentPanel handles its own internal padding)
-
-### Mobile
-
-- Single column, 16px gutters, 100px bottom padding (clears the nav bar)
-- Top bar: 44px, brand + clock
-- Bottom tab bar: 4 tabs (Home / Money / Body / Agent), absolute-positioned
-- Cards: `border-radius: 14px`, `padding: 14px`, hairline border, no shadow
-
----
-
-## Key components
-
-### Top bar (`TopBar` in `components-shared.jsx`)
-
-- Brand "MAX OS · V0" left with a pulsing sage dot
-- Tab row, each tab is a mono uppercase label inside a thin-bordered box
-- Active tab: white text, white underline, slightly elevated background
-- Right cluster: EXPORT button, DEMO ON pill (ember when active), date, time, MA avatar
-- Time updates every second; date is locale-formatted month/day/year
-
-### Session card (`SessionCard`)
-
-- Time-aware greeting: "Good morning / afternoon / evening / Late night / Still up"
-- Italic *name* token rendered in Newsreader
-- Live clock to the right, 44px mono with a blinking colon, seconds in a smaller weight
-- Capture bar full-width below: `⌘K` chip, placeholder, sage Capture button
-- Submitting the bar pushes a `{role: "you", source: "WEB CAPTURE"}` message
-  into the Agent panel
-- Subtle grid background pattern in the card via dual-direction linear-gradients
-  with a radial mask
-
-### Card (`Card`)
-
-Every module sits inside this:
-```
-┌──────────────────────────────────────┐
-│ NN //  TITLE                  META   │  ← head
-│                                      │
-│  [body]                              │
-└──────────────────────────────────────┘
-```
-- `NN //` is mono 10px, color `--os-fg-5`
-- TITLE is mono 11px, tracked `0.18em`, color `--os-fg-3`
-- META is right-aligned, mono 10px, color `--os-fg-4`
-- Hover: border lifts from `--os-line-1` to `--os-line-2`
-
-### Agent panel (`AgentPanel` in `agent.jsx`)
-
-The product spine.
-
-- Header: `11 // AGENT` + "CONNECTED" pulse, sub-line `↗ TELEGRAM @maxOS_bot · Always listening`
-- Scrollable message list
-- Each message:
-  - Meta line: `YOU · 06:48 · TELEGRAM` (or `AGENT · 08:13 · MAX OS`)
-  - Bubble: 13px text, 10px line-height 1.4, padding 10/12
-  - YOU bubble aligns right, sage-tinted background + dim border
-  - AGENT bubble aligns left, `--os-bg-2` background, hairline border
-  - Optional action chips below the bubble (sage / ember / honey / neutral)
-- Typing indicator: 3 sage dots with staggered animation while the agent "thinks"
-- Compose bar at bottom: same shape as the Session capture bar
-- Below compose: 3 suggestion pills + "↩ to send · ⌥↩ for newline" / `● TG SYNCED` meta
-
-**Agent reply behavior:**
-Currently heuristic regex match on input → canned reply. See `CANNED_REPLIES`
-in `app/agent.jsx`. **In production, replace with an LLM** (Anthropic Claude,
-Haiku for cheap turns) tool-calling into:
-- `logWeight(value, unit)`
-- `logMeal(text)` → returns kcal/macro estimate
-- `logLift(name, weight, reps)` → returns PR detection
-- `addTask(title, tags, priority)`
-- `addCalendarEvent(time, title)`
-- `logInvestment(name, amount, type)`
-- `pullCRMCandidates(topic)` → returns suggested contacts
-- `summarizeDay()` / `summarizeWeek()`
-
-### Finance Pulse + sparkline
-
-- Net worth in mono 32px tabular-nums
-- 30D change pill: sage-tinted, mono caps, has up/down arrow + percentage
-- SVG sparkline below: line + gradient area fill, dot + glow at the last point
-- 2-up grid below: Daily delta + Monthly delta, each a sage value in a raised cell
-
-### Habits
-
-- 48px circular score badge (count of done habits)
-- 48-pip random-height "EQ bar" beside it, filled proportionally
-- 3×2 grid of habit cards. Each card: checkbox + name + mono sub-label + streak `♨ 28` in the top-right
-- Done state: sage-tinted background, sage checkmark
-
-### Calendar
-
-- 7-day week strip across the top, each day a small button (border + dot when has events)
-- Vertical event list grouped by section labels ("MORNING / NOW · 14:32 / EVENING")
-- "NOW" section label is sage with a gradient bar
-- Each event: `time | title + sub | location-mono`
-- Hover lifts background
-
-### Mobile bottom nav
-
-```
-┌───────────────────────────────────────────┐
-│  ◉ Home   $ Money   ♡ Body   ✦ Agent      │
-└───────────────────────────────────────────┘
-```
-Position: absolute bottom, 12/24px padding, backdrop blur, hairline top border.
-Active tab is full opacity `--os-fg-1`; inactive is `--os-fg-4`.
-
----
-
-## Interactions
-
-| Where | Action | Result |
-|---|---|---|
-| Top bar tab | click | swap center column to that page; sticky left rail rebuilds with quick-switch |
-| Habit cell | click | toggle done; sage-tint applies; score badge updates |
-| Task row | click | toggle done; strikethrough text fade |
-| Session capture | submit | append `{you, WEB CAPTURE}` to agent thread; clear input |
-| Agent compose | submit | append user msg; 0.9–1.6s later append heuristic reply + chips |
-| Agent suggestion pill | click | acts as if user typed that suggestion |
-| Tweaks panel | toggled by host toolbar | live theme/typography/density switch |
-| Modal | Esc / click scrim | dismiss |
-
-All transitions are `160–220ms cubic-bezier(0.32, 0.72, 0, 1)`. No spring, no
-overshoot in standard UI.
-
----
-
-## Data model (suggested)
-
-```ts
-// Aspirational schema — see app/data.js for concrete values
-
-type Operator = {
-  name: string; last: string; initials: string;
-  role: string; location: string;
-  focus: string; streak: number;
-  timezone: string;
-};
-
-type Finance = {
-  netWorth: number;
-  change30d: number;     // percent
-  daily: number;         // $
-  dailyPct: number;
-  monthly: number;
-  monthlyPct: number;
-  spark: number[];       // 28 daily points
-  accounts: Array<{ name: string; type: "BANK"|"HYSA"|"EQUITY"|"RETIRE"|"CRYPTO"|"PRIVATE"|"T-BILLS"; value: number; delta: string }>;
-};
-
-type Task = { id: number; title: string; tags: string[]; star: boolean; done: boolean };
-
-type Habit = { id: string; name: string; sub: string; done: boolean; streak: number };
-
-type CalendarEvent = {
-  section?: "MORNING"|"EVENING"|`NOW · ${string}`|null;
-  time: string;       // "08:30 –\n09:30" or "07:00"
-  title: string;
-  sub: string;        // mono caps
-  loc: string;        // mono caps
-  now?: boolean;
-};
-
-type AgentMessage = {
-  id: number;
-  role: "you"|"agent";
-  time: string;        // "13:08"
-  source: "TELEGRAM"|"MAX OS"|"WEB CAPTURE"|"MOBILE";
-  text: string;
-  chips?: Array<{ label: string; kind: ""|"sage"|"ember"|"honey" }>;
-};
-```
-
-Full sample data is in `app/data.js`.
-
----
-
-## Integrations (to wire up)
-
-The prototype shows these as live; they need real connectors:
-
-| Source | What it feeds |
-|---|---|
-| **Plaid** (or Teller) | Finance Pulse, account list, daily/monthly delta |
-| **Coinbase / brokerage APIs** | Crypto + equity values, allocation bars |
-| **Oura** | Sleep score, HRV, RHR |
-| **Whoop** | Recovery, strain |
-| **Apple HealthKit** | Steps, weight, VO2 max |
-| **Libre 3 / Dexcom** | Glucose |
-| **Google Calendar** | Calendar events, all-day blocks |
-| **Google Drive** | Document attachments in journal/agent |
-| **Telegram Bot API** | Agent ingress + outbound replies |
-| **X / LinkedIn / Substack / GitHub / IG APIs** | Social follower counts and growth |
-| **Custom workout app or Strong API** | Training session lifts, PRs |
-
-Agent runtime: webhook receives Telegram messages → dispatch to LLM with the
-tool set above → write results to DB → push update to UI via websocket / SSE.
-
----
-
-## File index (what's in this folder)
-
-```
-design_handoff_personal_os/
-├── README.md                     ← this file
-├── reference.jpeg                ← user's reference image (Miles OS)
-│
-├── prototype/                    ← the design references
-│   ├── Personal OS.html          ← entry: design canvas with all artboards
-│   ├── hearth.css                ← Hearth Design System tokens
-│   ├── app/
-│   │   ├── web.html              ← web prototype shell
-│   │   ├── mobile.html           ← mobile prototype shell
-│   │   ├── app.css               ← all visual styles (themes, modules, etc)
-│   │   ├── data.js               ← demo data
-│   │   ├── components-shared.jsx ← Card, TopBar, Sparkline, Modal, helpers
-│   │   ├── components-modules.jsx← All 10 dashboard modules
-│   │   ├── agent.jsx             ← Agent panel + canned reply heuristics
-│   │   ├── pages.jsx             ← Finance/Health/Train/Social/Journal pages
-│   │   ├── web-main.jsx          ← Web entry component
-│   │   ├── mobile-main.jsx       ← Mobile entry + screens
-│   │   ├── design-canvas.jsx     ← Canvas shell (starter component)
-│   │   ├── tweaks-panel.jsx      ← Tweaks panel + form controls (starter)
-│   │   └── ios-frame.jsx         ← Unused; iPhone bezel is hand-drawn in Personal OS.html
-```
-
-**Where to start reading:**
-
-1. `prototype/Personal OS.html` — what the user sees first; design canvas with sections
-2. `prototype/app/web.html` + `web-main.jsx` — the web app composition
-3. `prototype/app/components-modules.jsx` — every dashboard module
-4. `prototype/app/agent.jsx` — agent panel + reply behavior
-5. `prototype/app/app.css` — visual system, all themes
-6. `prototype/hearth.css` — upstream tokens (cream/cocoa/ember/sage scales,
-   type, space, radii, shadow, motion)
-
----
-
-## Acceptance checklist
-
-A faithful port should:
-
-- [ ] Reproduce the 3-zone web layout at 1440px+ widths with the same proportions
-- [ ] Numbered cards (`NN //`), mono labels in ALL CAPS tracked `0.16em`
-- [ ] Newsreader serif greeting with italic name token
-- [ ] Live clock with blinking colon in mono 44px
-- [ ] Capture bar (web Session + mobile Home) pushes to agent
-- [ ] Agent panel right-rail with chat thread, typing indicator, sage user
-      bubbles, agent action chips (sage / ember / honey)
-- [ ] All 6 nav tabs route to their own page layouts
-- [ ] Habits & tasks toggle on click with sage-tint done state
-- [ ] Three themes (dark / cream / warm) switch via root data attribute
-- [ ] Mobile: bottom tab nav with Home/Money/Body/Agent
-- [ ] No emoji anywhere in chrome or copy
-- [ ] Borders OR shadows, never both
-- [ ] All motion 160–220ms ease-standard
-
----
-
-## Things deliberately not built (next pass)
-
-- Calendar week / month views (today only)
-- Account-connection auth flows (Plaid Link, OAuth, etc)
-- Real LLM agent — current replies are regex heuristics
-- CRM module
-- Journal editor (only the read view)
-- Search / command palette (the `⌘K` chip is decorative)
-- Notifications inbox
-- Settings / data sync status
-- Light theme tested less than dark (verify input contrast)
-
-Confirm scope with the user before building these.
+- **Manrope** (UI): screen title 16/600/-.02em · body/status 13/1.5 at ink .64–.66 · band title 21/700/-.025em · row title 14/500 · chips 11.5/500
+- **Geist Mono** (all data, labels, times): hero value 30–34/600/-.03em · stat value 20/600/-.01em · week-cell date 13/600 · time 11 · sub/eyebrow 9.5/500 ls .24em (right stat ls .08em) · section header 10.5 ls .26em at ink .72 · band label 8.5 ls .2em accent color · tag 8.5 ls .12em ink .34 · tab label 7.5 ls .16em · wordmark 10 ls .34em ink .5
+- All mono labels UPPERCASE.
+
+### Spacing & structure
+- Screen: 390pt wide, 24pt gutters; full-bleed bands (border spans edge to edge, content padded 24)
+- Status bar: 15pt top, 30pt sides. Header row (wordmark + spark button 34×34) at 24pt. Eyebrow row at 26pt below header; screen title block 20–22pt below that.
+- Bands: padding ~15–19pt vertical; 3-col stat grids share the row with column hairlines; ledger rows `grid 58pt | 1fr | auto`, 12pt gap, 12pt vertical padding.
+- Tab bar: top hairline via shadow, five slots — Home, Body, center capture button (50×50, r14, elevated surface, ring, "+" icon), Money, Focus. Active tab: 16×2 accent tick above icon, icon ink, label ink .72. Inactive: ink .38 (light) / .34 (dark). Home-indicator bar 134×5 r999 ink .28.
+- Radii: phone 46 (device only) · capture 14 · week cells 8 · pills/chips 999. Bars: day 2pt, session/burn 3pt, r999.
+
+### Motion (Reanimated)
+- Entrance: fadeUp (14pt rise + fade), 600ms cubic-bezier(.22,.7,.25,1), staggered per band: .02/.07/.12/.19/.25/.31/.37/.43s
+- Bar fills (day %, burn, session progress): width 0→N%, 1.1–1.3s, ~.45–.5s delay
+- Recovery dial: SVG arc (semicircle r58, stroke 5, round caps, dasharray 182.2) animating dashoffset 182.2→51 (72%), 1.6s cubic-bezier(.16,1,.3,1)
+- HRV/sparkline: line draw via dashoffset, 1.5s; bars scaleY from 0, .6s, .06s stagger
+- Live-session progress bar: a 56pt light streak sweeps across the filled portion every 3s (2s initial delay)
+- One pulse max per screen (the live element only)
+
+## Screens / Views
+
+### Home (6b/6c)
+Top→bottom: status bar · header (MAX OS wordmark + spark button) · eyebrow "FRIDAY · MAY 8" + right "DAY 55%" (both ink .5) over a 2pt day-progress bar (grey ink fill, 55%, endpoint dot) · greeting "Good afternoon, Max." + status line ("Recovery's **green** and your afternoon is clear until the **Sequoia call**.") · **FOCUS live band** (accent borders/gradient; label FOCUS + time 1:16 PM; title "Deep work — pricing model" 21/700; sub "44 MIN IN · ENDS 3:00 PM"; 3pt progress 42% with shimmer) · **RECOVERY band** (accent-tint borders; semicircle dial with 72 centered under it; right column: HRV · 7D label, 7 mini bars (14/17/12/19/16/21/26pt, last solid accent), "64 MS · REST 48") · **3-col vitals** SLEEP 7:12 (87% QUAL) / NET WORTH $2.83M (+0.03% · 30D) / HABITS 4/6 (6 pips, 4 accent) — values 20/600 ink except sleep stays ink here · **TODAY ledger** ("8 EVENTS · 3 DONE"): done rows (accent-deep square dot, struck-through title at ink .5, time ink .34, tag OPS/CAL/BODY) then upcoming (outlined square dot, ink .72, times ink .5, tags FOCUS/HABIT) · tab bar (Home active).
+
+### Body (7a)
+Eyebrow right: "WEEK 19". Title "Body" + status. **RECOVERY band** (same dial/HRV as home). **TRAINING · DONE accent band**: time 11:00 AM (accent in dark, ink in light), "Push day — 4 PRs", "52 MIN · TONNAGE 12,480 LB". **SLEEP · LAST NIGHT band**: right "10:58 PM → 6:10 AM"; 7:12 at 30/600 **in accent green** + "87% QUALITY"; stage bar 6pt (deep 16.7% deep-green, REM 25% accent, core flex accent-tint .28/.32); legend "DEEP 1:12 REM 1:48 CORE 4:12". **3-col vitals**: REST HR 48 (−2 · 7D) / HRV 64 (**↑ +6 VS AVG** in accent) / WEIGHT 182.4 (−0.6 · 30D). **THIS WEEK · 4 SESSIONS**: 7 blocks 22pt r4 — M,T,T,F filled accent (F ringed + label ink .72), W,S,S track. Tab: Body active.
+
+### Money (7b)
+Eyebrow right: "RUNWAY 34 MO". Title "Money" + "Net worth's **steady** and May spend is on pace." **NET WORTH band** (ink hairlines, not accent): $2.83M at 30/600 **accent green**, sub "+$847 TODAY · +0.03% 30D" accent; right 118×34 sparkline (draw-in, endpoint dot). **3-col accounts**: CASH $412K (LIQUID) / INVESTED $2.31M (+1.2% · 30D accent) / DEBT **−$104K in red** (MORTGAGE). **MAY BURN band**: right "ON PACE" accent; "$8.4K OF $12K" + "$3.6K LEFT"; 3pt bar 70% accent. **RECENT ledger** (TODAY · YDA): 11:42 AM "Acme Ltd · wire in" **+$12,500** green 12/600 · 9:15 AM Blue Bottle −$7.40 red · YDA Equinox −$210 · YDA AWS −$1,842 (times ink, YDA ink .34; amounts mono 12). Tab: Money active.
+
+### Focus (7c)
+Eyebrow right: "3:12 DEEP TODAY". Title "Focus" + "Two blocks left — **protect the afternoon**." **LIVE · DEEP WORK accent band**: timer 44:12 at 34/600 ink + right "ENDS 3:00 PM"; sub "Deep work — pricing model" 13/500; 3pt progress 42% + shimmer. **3-col stats**: SESSIONS 3/4 (1 LEFT) / DEEP HRS 3:12 (GOAL 4:00) / STREAK **12** accent (DAYS). **THIS WEEK calendar strip** ("MAY 4–10 · AVG 2:54"): 7 cells r8 ringed (ink .08 light / bone .1 dark); each = weekday letter 8pt, date 13/600, deep hours 8pt in accent at ~.75–.8 (2:05/2:50/1:20/3:05); today (F 8) fully accent ringed + accent-tinted bg + 3:12; weekend upcoming dimmed (date ink .34, "—"). **QUEUE ledger** (3 LEFT): 3:00 PM Sequoia call CAL / 5:00 PM Review compliance checklist TASK / 7:00 PM Wind-down · journal HABIT. Tab: Focus active (pen/lamp icon).
+
+### Assistant sheet (8a)
+Trigger: the **spark button** (34×34 circle, elevated surface, accent-tinted ring `rgba(30,122,82,.35)` light / `rgba(108,171,134,.4)` dark) holding a four-point spark SVG (`M12 3.5c.7 4.2 2.8 6.3 7 7-4.2.7-6.3 2.8-7 7-.7-4.2-2.8-6.3-7-7 4.2-.7 6.3-2.8 7-7Z` + small satellite dot at 19.4,4.6 at 50% opacity) in accent. It replaces the avatar top-right on **every screen**.
+Sheet: slides up over a scrim (`rgba(15,17,21,.38)` light / `rgba(0,0,0,.55)` dark), surface `#F5F3ED` / `#0F120F`, top radius 22, grabber 36×4. Content:
+1. Header: spark 19pt + "ASSISTANT" 10 ls .3em + close circle 30pt
+2. Briefing: "You're on pace, Max." 16/600 + one-line cross-domain synthesis 13/1.5
+3. **TOP MOVE · CAL + BODY** accent band: "Shift tomorrow's training to 4 PM" 15/600, evidence "SEQUOIA FOLLOW-UP LIKELY 10 AM · HRV TRENDING UP" 9 ls .08em ink .5, buttons APPLY (filled accent pill; text `#F5F3ED` light / `#0C0F0C` dark) + LATER (outlined pill ink .6)
+4. **ALSO SEEING (3)** ledger, rows `52pt tag | 1fr | action pill`: FOCUS "Block 30 min to prep the call" (BEFORE 3:00 PM → BLOCK pill accent-outlined) / MONEY "AWS is up 18% vs April" (−$1,842 YDA → VIEW) / HABIT "Journal streak at risk" (2 HABITS LEFT TODAY → 7:00 PM)
+5. Suggestion chips: "Plan tomorrow" / "Where's my money going?" / "How's my sleep trending?" — 11.5/500 outlined pills
+6. Ask bar: pill input (elevated surface, inset ring), placeholder "Ask anything — I have the full picture" ink .38, 34pt accent send circle with up arrow
+Sheet sections stagger in (.05/.12/.19/.26/.33/.4s).
+
+## Interactions & Behavior
+- Tab bar switches surfaces; center "+" is quick-capture (not designed yet — stub it)
+- Spark button opens the assistant sheet (slide-up + scrim fade, ~550ms, same bezier); grabber/close/scrim dismiss
+- TOP MOVE: APPLY executes the calendar change, LATER dismisses; row actions: BLOCK creates a focus block, VIEW deep-links to Money, 7:00 PM links the habit
+- Entrance choreography runs on every screen mount; live progress bars tick in real time
+- Struck-through = completed; upcoming rows tappable → detail (out of scope)
+- Light/dark follows system color scheme
+
+## State Management
+- Domain stores: body (recovery score, HRV series, sleep, sessions), money (net worth series, accounts, budget, transactions), focus (live session w/ start/end, queue, streak, per-day deep hours), habits (n/6)
+- Live session timer derived from start/end timestamps; day-progress % from wake/sleep window
+- Assistant: briefing + ranked recommendations derived from all stores (server/LLM); each rec = {domain tag, title, evidence, action}
+- Theme: system light/dark
+
+## Assets
+No raster assets. All icons are inline SVG in the reference file (~20pt, stroke 1.5–1.6, round caps): home, body silhouette, dollar, pen/lamp (focus), plus, spark, send arrow. Fonts: Manrope + Geist Mono (Google Fonts in the prototype; use expo-google-fonts / bundled fonts).
+
+## Files
+- `Personal OS - Home.dc.html` — the full design canvas (open in a browser; sections #t6, #t7, #t8 are the locked spec)
+- `system-tokens.md` — condensed token/state reference kept during design
+- `home-4-sleek.html` / `home-4-sleek.png` — the user's original starting point (context only)

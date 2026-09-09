@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { PersonalOsLogo } from "@/components/brand/PersonalOsLogo";
 import { useClock } from "@/lib/hooks/useClock";
 import { fmtClock, fmtDate } from "@/lib/format";
 import { WEB_TABS } from "@/lib/nav";
@@ -22,7 +23,7 @@ export function TopBar({ operator }: { operator: Operator }) {
       }}
     >
       <div className="flex items-center gap-2">
-        <span className="os-dot os-pulse" />
+        <PersonalOsLogo size={26} />
         <span className="font-mono text-sm tracking-[0.08em] text-[color:var(--os-fg-1)]">MAX OS</span>
         <span className="font-mono text-[10px] text-[color:var(--os-fg-5)]">{"// V0"}</span>
       </div>
